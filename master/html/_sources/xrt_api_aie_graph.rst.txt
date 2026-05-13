@@ -1,0 +1,37 @@
+.. _xrt_api_aie_graph:
+
+AIE and graphs
+==============
+
+**Headers:** ``xrt/xrt_aie.h``, ``xrt/xrt_graph.h``
+
+**``xrt::graph`` (``xrt_graph.h``)**
+
+AI Engine graph control for Versal / AIE flows.
+
+* **C typedef:** ``xrtGraphHandle``
+* **``access_mode``:** ``exclusive``, ``primary`` (default), ``shared`` — controls cross-process access semantics.
+* **Constructors:** from ``xrt::hw_context`` + name + mode (**preferred**); legacy constructor from ``xrt::device`` + xclbin UUID is **deprecated**.
+* **Control:** ``reset()``, ``run(iterations)``, ``wait`` (timeout or AIE cycles), ``suspend()``, ``resume()``, ``end(cycles)``, ``get_timestamp()``, ``gmio_bank_id(name)``, RTP ``update`` / ``read`` (templates and raw bytes).
+
+**C API (graph)** — ``xrtGraphOpen``, ``xrtGraphOpenExclusive``, ``xrtGraphOpenShared``, ``xrtGraphClose``, run/wait/suspend/resume/end, etc., at the bottom of ``xrt_graph.h``.
+
+
+**``namespace xrt::aie`` (``xrt_aie.h``)**
+
+AIE-specific device, buffers, profiling, and GMIO/External buffer abstractions.
+
+* **``xrt::aie::device``** (extends ``xrt::device``) — opens AIE in ``xrt::aie::access_mode``; **``reset_array()``**; admin-only **``read_aie_mem``** / **``write_aie_mem``** and **``read_aie_reg``** / **``write_aie_reg``**; **``get_thermal``**; additional APIs in the header (mailbox, state, etc.).
+* **``xrt::aie::buffer``** — GMIO / external buffer facades; ``sync`` / ``async`` / ``wait`` overloads with ``xrt::bo`` and ping-pong forms (see header).
+* **``xrt::aie::bo``** — AIE-oriented buffer; ``sync`` with port names and GMIO/AIE direction flags, ``async`` handle pattern where provided.
+* **``xrt::aie::profiling``** — AIE performance counters and tracing hooks (``start`` / ``read`` / ``stop``).
+
+The header defines further nested types (``mailbox``, buffer state, etc.); see ``xrt_aie.h`` for the authoritative list and signatures.
+
+**Include**
+
+.. code-block:: cpp
+
+   #include <xrt/xrt_aie.h>
+   #include <xrt/xrt_graph.h>
+   #include <xrt/xrt_hw_context.h>   // recommended graph path

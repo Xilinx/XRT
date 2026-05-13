@@ -1,0 +1,64 @@
+.. _xrt_api_experimental:
+
+Experimental and internal headers
+=================================
+
+Experimental directory
+------------------------
+
+``$XILINX_XRT/include/xrt/experimental/``
+
+APIs here may change without the same stability guarantee as the top-level ``xrt_*.h`` files. Read each header before upgrading XRT.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 32 48
+
+   * - Header
+     - Role (short)
+   * - ``xrt_xclbin.h``
+     - ``xrt::xclbin`` — parse and inspect xclbin, sections, metadata
+   * - ``xrt_elf.h``
+     - ``xrt::elf`` — ELF images for hardware context / NPU style flows
+   * - ``xrt_module.h``
+     - Module abstractions (implementation varies by platform)
+   * - ``xrt_hw_context.h`` (*also under experimental path in some trees*)
+     - See :doc:`xrt_api_hw_context` — may duplicate or alias stable header
+   * - ``xrt_device.h`` / ``xrt_bo.h`` / …
+     - Experimental extensions parallel to stable classes (e.g. extra ``xrt::bo`` constructors)
+   * - ``xrt_fence.h``
+     - ``xrt::fence`` and integration with ``xrt::run``
+   * - ``xrt_queue.h``
+     - Async in-order task queues (C++17); see :doc:`xrt_native_apis` narrative
+   * - ``xrt_exception.h``
+     - XRT exception hierarchy
+   * - ``xrt_error.h``, ``xrt_error_code.h``
+     - Asynchronous error query classes
+   * - ``xrt_ip.h``
+     - ``xrt::ip`` user-managed (register-mapped) kernels
+   * - ``xrt_kernel.h`` / ``xrt_graph.h`` / ``xrt_aie.h``
+     - Pre-stable additions to the matching classes
+   * - ``xrt_system.h``, ``xrt_message.h``, ``xrt_mailbox.h``
+     - System integration, messages, kernel mailbox
+   * - ``xrt_ini.h``
+     - Runtime INI / configuration
+   * - ``xrt_profile.h``
+     - Profiling hooks
+   * - ``xclbin_util.h``, ``xrt_version.h``, ``xrt_ext.h``
+     - Utilities, version, extensions
+   * - ``xrt_next.h``
+     - Umbrella / forward-looking declarations
+
+detail directory
+----------------
+
+Path: ``$XILINX_XRT/include/xrt/detail/``
+
+Headers such as ``xrt_mem.h``, ``ert.h``, ``pimpl.h``, ``any.h``, ``xclbin.h``, ``abi.h``, and ``xrt_error_code.h`` are **implementation support** for the public API. Do not treat them as a second public surface; include the primary ``xrt_*.h`` instead.
+
+deprecated directory
+--------------------
+
+``$XILINX_XRT/include/xrt/deprecated/``
+
+* ``xrt.h`` / ``xclerr.h`` — legacy XCL and error symbols kept for binary compatibility. New code should use the native C API sections of ``xrt_device.h``, ``xrt_bo.h``, ``xrt_kernel.h``, and related headers.

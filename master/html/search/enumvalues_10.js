@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['vmr_436',['vmr',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4a64b1714b324eda3928be5f063f7b59',1,'xrt::info']]]
+  ['uram_0',['uram',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa2d7c24ccabd5da82aa90c666185c369d',1,'xrt::xclbin::mem']]]
 ];

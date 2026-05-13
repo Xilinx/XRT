@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+<!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
+
+<script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" data-document-language="true" type="text/javascript" charset="UTF-8" data-domain-script="03af8d57-0a04-47a6-8f10-322fa00d8fc7" ></script>
+<script type="text/javascript">
+function OptanonWrapper() { }
+</script>
+<!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
+  <title>Experimental and internal headers &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+      <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/documentation_options.js?v=b41f9496"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+            <a href="index.html" class="icon icon-home"> XRT
+          </a>
+              <div class="version">
+                Master
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_hip_runtime_api.html">XRT HIP Runtime APIs</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: black" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Experimental and internal headers</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/xrt_api_experimental_headers.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="experimental-and-internal-headers">
+<span id="xrt-api-experimental"></span><h1>Experimental and internal headers<a class="headerlink" href="#experimental-and-internal-headers" title="Link to this heading">¶</a></h1>
+<section id="experimental-directory">
+<h2>Experimental directory<a class="headerlink" href="#experimental-directory" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">$XILINX_XRT/include/xrt/experimental/</span></code></p>
+<p>APIs here may change without the same stability guarantee as the top-level <code class="docutils literal notranslate"><span class="pre">xrt_*.h</span></code> files. Read each header before upgrading XRT.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Header</p></th>
+<th class="head"><p>Role (short)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_xclbin.h</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">xrt::xclbin</span></code> — parse and inspect xclbin, sections, metadata</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_elf.h</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">xrt::elf</span></code> — ELF images for hardware context / NPU style flows</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_module.h</span></code></p></td>
+<td><p>Module abstractions (implementation varies by platform)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_hw_context.h</span></code> (<em>also under experimental path in some trees</em>)</p></td>
+<td><p>See <a class="reference internal" href="xrt_api_hw_context.html"><span class="doc">Hardware context (xrt::hw_context)</span></a> — may duplicate or alias stable header</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_device.h</span></code> / <code class="docutils literal notranslate"><span class="pre">xrt_bo.h</span></code> / …</p></td>
+<td><p>Experimental extensions parallel to stable classes (e.g. extra <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> constructors)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_fence.h</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">xrt::fence</span></code> and integration with <code class="docutils literal notranslate"><span class="pre">xrt::run</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_queue.h</span></code></p></td>
+<td><p>Async in-order task queues (C++17); see <a class="reference internal" href="xrt_native_apis.html"><span class="doc">XRT Native APIs</span></a> narrative</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_exception.h</span></code></p></td>
+<td><p>XRT exception hierarchy</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_error.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt_error_code.h</span></code></p></td>
+<td><p>Asynchronous error query classes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_ip.h</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">xrt::ip</span></code> user-managed (register-mapped) kernels</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_kernel.h</span></code> / <code class="docutils literal notranslate"><span class="pre">xrt_graph.h</span></code> / <code class="docutils literal notranslate"><span class="pre">xrt_aie.h</span></code></p></td>
+<td><p>Pre-stable additions to the matching classes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_system.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt_message.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt_mailbox.h</span></code></p></td>
+<td><p>System integration, messages, kernel mailbox</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_ini.h</span></code></p></td>
+<td><p>Runtime INI / configuration</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_profile.h</span></code></p></td>
+<td><p>Profiling hooks</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xclbin_util.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt_version.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt_ext.h</span></code></p></td>
+<td><p>Utilities, version, extensions</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xrt_next.h</span></code></p></td>
+<td><p>Umbrella / forward-looking declarations</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="detail-directory">
+<h2>detail directory<a class="headerlink" href="#detail-directory" title="Link to this heading">¶</a></h2>
+<p>Path: <code class="docutils literal notranslate"><span class="pre">$XILINX_XRT/include/xrt/detail/</span></code></p>
+<p>Headers such as <code class="docutils literal notranslate"><span class="pre">xrt_mem.h</span></code>, <code class="docutils literal notranslate"><span class="pre">ert.h</span></code>, <code class="docutils literal notranslate"><span class="pre">pimpl.h</span></code>, <code class="docutils literal notranslate"><span class="pre">any.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code>, <code class="docutils literal notranslate"><span class="pre">abi.h</span></code>, and <code class="docutils literal notranslate"><span class="pre">xrt_error_code.h</span></code> are <strong>implementation support</strong> for the public API. Do not treat them as a second public surface; include the primary <code class="docutils literal notranslate"><span class="pre">xrt_*.h</span></code> instead.</p>
+</section>
+<section id="deprecated-directory">
+<h2>deprecated directory<a class="headerlink" href="#deprecated-directory" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">$XILINX_XRT/include/xrt/deprecated/</span></code></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt.h</span></code> / <code class="docutils literal notranslate"><span class="pre">xclerr.h</span></code> — legacy XCL and error symbols kept for binary compatibility. New code should use the native C API sections of <code class="docutils literal notranslate"><span class="pre">xrt_device.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt_bo.h</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt_kernel.h</span></code>, and related headers.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          
+                  <style>
+                        .footer {
+                        position: fixed;
+                        left: 0;
+                        bottom: 0;
+                        width: 100%;
+                        }
+                  </style>
+				  
+				  <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
+      </span></p>
+  </div>
+
+
+
+										<div class="aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid sub-footer">
+
+													                    <div class="row">
+                        <div class="col-xs-24">
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                        </div>
+                    </div>
+												</div>
+											</div>
+										</div>
+										
+</br>
+
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>

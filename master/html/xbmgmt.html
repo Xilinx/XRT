@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,15 +29,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script src="_static/documentation_options.js?v=b41f9496"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="xbflash2" href="xbflash2.html" />
-    <link rel="prev" title="xrt-smi" href="xrt-smi.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -50,7 +47,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
-            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -65,81 +61,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_hip_runtime_api.html">XRT HIP Runtime APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">xbmgmt</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-configure">xbmgmt configure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-dump">xbmgmt dump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-examine">xbmgmt examine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-program">xbmgmt program</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-reset">xbmgmt reset</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Security</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
         </div>
@@ -167,7 +111,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="xbmgmt-rst"></span><section id="xbmgmt">
-<h1>xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h1>
+<h1>xbmgmt<a class="headerlink" href="#xbmgmt" title="Link to this heading">¶</a></h1>
 <p>This document describes the latest <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. These latest commands are default from 21.1 release.</p>
 <p>For an instructive video on xbmgmt commands listed below click <a class="reference external" href="https://www.youtube.com/watch?v=ORYSrYegX_g">here</a>.</p>
 <p><strong>Global options</strong>: These are the global options can be used with any command.</p>
@@ -192,14 +136,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div></blockquote>
 <p><strong>Note</strong>: For applicable commands, if only one device is present on the system <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is not required. If more than one device is present in the system, <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is required.</p>
 <section id="xbmgmt-configure">
-<h2>xbmgmt configure<a class="headerlink" href="#xbmgmt-configure" title="Permalink to this headline">¶</a></h2>
+<h2>xbmgmt configure<a class="headerlink" href="#xbmgmt-configure" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code> command provides advanced options for configuring a device’s memory, clock, and DDR memory retention settings. A .ini file input is required for configuration except for DDR memory retention. The .ini file can be located in a directory of your choosing with the path specified in the command.</p>
 <ul class="simple">
 <li><p>TIP: Instead of creating a .ini file from scratch, use <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span> <span class="pre">--config</span></code> (see the <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> section) to generate the file contents which can be edited accordingly.</p></li>
 </ul>
 <p><strong>Command Options</strong></p>
 <p>The supported options are <code class="docutils literal notranslate"><span class="pre">--input</span></code> and <code class="docutils literal notranslate"><span class="pre">--retention</span></code>. Command usage is below.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--input<span class="o">]</span> &lt;path to filename with .ini extension&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>configure<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--input<span class="o">]</span><span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>filename<span class="w"> </span>with<span class="w"> </span>.ini<span class="w"> </span>extension&gt;
 </pre></div>
 </div>
 <p>Enabling/Disabling clock throttling on a device</p>
@@ -208,10 +152,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li><p>Default clock throttling threshold values are available in <a class="reference external" href="https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms">&lt;UG1120&gt;</a> for supported platforms.</p></li>
 <li><p>The contents of the .ini file for clock throttling configuration should be similar to the example provided below. Underneath the first line, <code class="docutils literal notranslate"><span class="pre">[Device]</span></code>, specify one or more key-value pairings as needed.</p></li>
 </ul>
-<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Device]</span><span class="w"></span>
-<span class="na">throttling_enabled</span><span class="o">=</span><span class="s">true</span><span class="w"></span>
-<span class="na">throttling_power_override</span><span class="o">=</span><span class="s">200</span><span class="w"></span>
-<span class="na">throttling_temp_override</span><span class="o">=</span><span class="s">90</span><span class="w"></span>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Device]</span>
+<span class="na">throttling_enabled</span><span class="o">=</span><span class="s">true</span>
+<span class="na">throttling_power_override</span><span class="o">=</span><span class="s">200</span>
+<span class="na">throttling_temp_override</span><span class="o">=</span><span class="s">90</span>
 </pre></div>
 </div>
 <ul>
@@ -229,7 +173,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li><p>To check clock throttling settings, use <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> with the <code class="docutils literal notranslate"><span class="pre">cmc</span></code> report.</p></li>
 </ul>
 <p>Enabling/Disabling DDR memory retention on a device</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --retention <span class="o">[</span>ENABLE<span class="p">|</span>DISABLE<span class="o">]</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>configure<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span>--retention<span class="w"> </span><span class="o">[</span>ENABLE<span class="p">|</span>DISABLE<span class="o">]</span>
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -246,26 +190,26 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Configure a device&#39;s memory settings using an image</span>
-xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/memory_config.ini
+xbmgmt<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.0<span class="w"> </span>--input<span class="w"> </span>/tmp/memory_config.ini
 
 <span class="c1">#Configure a device using edited output .ini from xbmgmt dump --config</span>
-xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/config.ini
+xbmgmt<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.0<span class="w"> </span>--input<span class="w"> </span>/tmp/config.ini
 
 <span class="c1">#Enable a device&#39;s DDR memory retention</span>
-xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --retention ENABLE
+xbmgmt<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.0<span class="w"> </span>--retention<span class="w"> </span>ENABLE
 </pre></div>
 </div>
 </section>
 <section id="xbmgmt-dump">
-<h2>xbmgmt dump<a class="headerlink" href="#xbmgmt-dump" title="Permalink to this headline">¶</a></h2>
+<h2>xbmgmt dump<a class="headerlink" href="#xbmgmt-dump" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> command dumps out content of the specified option</p>
 <p><strong>The supported options</strong></p>
 <p>Dumping the output of system configuration.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--config<span class="p">|</span> -c<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .ini extension&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>dump<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--config<span class="p">|</span><span class="w"> </span>-c<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="p">|</span><span class="w"> </span>-o<span class="o">]</span><span class="w"> </span>&lt;filename<span class="w"> </span>with<span class="w"> </span>.ini<span class="w"> </span>extension&gt;
 </pre></div>
 </div>
 <p>Dumping the output of programmed system image</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--flash<span class="p">|</span> -f<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .bin extension&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>dump<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--flash<span class="p">|</span><span class="w"> </span>-f<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="p">|</span><span class="w"> </span>-o<span class="o">]</span><span class="w"> </span>&lt;filename<span class="w"> </span>with<span class="w"> </span>.bin<span class="w"> </span>extension&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -283,10 +227,10 @@ xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --retention ENABLE
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dump programmed system image data</span>
-xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --flash -o /tmp/flash_dump.bin
+xbmgmt<span class="w"> </span>dump<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.0<span class="w"> </span>--flash<span class="w"> </span>-o<span class="w"> </span>/tmp/flash_dump.bin
 
 <span class="c1">#Dump system configuration. This .ini file can be edited and used as input for xbmgmt configure.</span>
-xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config_dump.ini
+xbmgmt<span class="w"> </span>dump<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.0<span class="w"> </span>--config<span class="w"> </span>-o<span class="w"> </span>/tmp/config_dump.ini
 
 <span class="c1">#Example .ini file contents from xbmgmt dump --config.</span>
 <span class="c1">#Only edit the throttling_enabled, throttling_power_override, and throttling_temp_override values when editing clock throttling settings.</span>
@@ -302,10 +246,10 @@ xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config
 </div>
 </section>
 <section id="xbmgmt-examine">
-<h2>xbmgmt examine<a class="headerlink" href="#xbmgmt-examine" title="Permalink to this headline">¶</a></h2>
+<h2>xbmgmt examine<a class="headerlink" href="#xbmgmt-examine" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> command reports detail status information of the specified device <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=137">&lt;video reference&gt;</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt examine <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>examine<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--report<span class="p">|</span><span class="w"> </span>-r<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>of<span class="w"> </span>interest&gt;<span class="w"> </span><span class="o">[</span>--format<span class="p">|</span><span class="w"> </span>-f<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>format&gt;<span class="w"> </span><span class="o">[</span>--output<span class="p">|</span><span class="w"> </span>-o<span class="o">]</span><span class="w"> </span>&lt;filename&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -342,34 +286,34 @@ xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Report all the information for a specific device</span>
-xbmgmt examine --device <span class="m">0000</span>:d8:00.0 --report all
+xbmgmt<span class="w"> </span>examine<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:d8:00.0<span class="w"> </span>--report<span class="w"> </span>all
 
 <span class="c1">#Reports platform information in JSON format</span>
-xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform --format JSON --output output.json
+xbmgmt<span class="w"> </span>examine<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.0<span class="w"> </span>--report<span class="w"> </span>platform<span class="w"> </span>--format<span class="w"> </span>JSON<span class="w"> </span>--output<span class="w"> </span>output.json
 </pre></div>
 </div>
 </section>
 <section id="xbmgmt-program">
-<h2>xbmgmt program<a class="headerlink" href="#xbmgmt-program" title="Permalink to this headline">¶</a></h2>
+<h2>xbmgmt program<a class="headerlink" href="#xbmgmt-program" title="Link to this heading">¶</a></h2>
 <p><strong>The supported usecases and their options</strong></p>
 <p>Program the Base partition (applicable for 1RP platform too) <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=193">&lt;video reference&gt;</a></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>program<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span>
 </pre></div>
 </div>
 <p>Program the Base partition when multiple base partitions are installed in the system</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span> <span class="o">[</span>--image<span class="p">|</span>-i<span class="o">]</span> &lt;partition name&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>program<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span><span class="w"> </span><span class="o">[</span>--image<span class="p">|</span>-i<span class="o">]</span><span class="w"> </span>&lt;partition<span class="w"> </span>name&gt;
 </pre></div>
 </div>
 <p>Program the Shell Partition for 2RP platform <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=300">&lt;video reference&gt;</a></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--shell<span class="p">|</span>-s<span class="o">]</span> &lt;shell partition file with path&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>program<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--shell<span class="p">|</span>-s<span class="o">]</span><span class="w"> </span>&lt;shell<span class="w"> </span>partition<span class="w"> </span>file<span class="w"> </span>with<span class="w"> </span>path&gt;
 </pre></div>
 </div>
 <p>Program the user partition with an XCLBIN file</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;XCLBIN file with path&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>program<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span><span class="w"> </span>&lt;XCLBIN<span class="w"> </span>file<span class="w"> </span>with<span class="w"> </span>path&gt;
 </pre></div>
 </div>
 <p>Revert to golden image <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=280">&lt;video reference&gt;</a></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --revert-to-golden
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>program<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;<span class="w"> </span>--revert-to-golden
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -401,24 +345,24 @@ xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform --
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Program the base partition</span>
-xbmgmt program --device <span class="m">0000</span>:d8:00.0 --base
+xbmgmt<span class="w"> </span>program<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:d8:00.0<span class="w"> </span>--base
 
 
 <span class="c1">#Program the base partition</span>
-xbmgmt program --device <span class="m">0000</span>:d8:00.0 --base --image xilinx-u250-gen3x16-base
+xbmgmt<span class="w"> </span>program<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:d8:00.0<span class="w"> </span>--base<span class="w"> </span>--image<span class="w"> </span>xilinx-u250-gen3x16-base
 
 <span class="c1">#Program the shell partition</span>
-xbmgmt program --device <span class="m">0000</span>:d8:00.0 --shell &lt;partition file with path&gt;
+xbmgmt<span class="w"> </span>program<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:d8:00.0<span class="w"> </span>--shell<span class="w"> </span>&lt;partition<span class="w"> </span>file<span class="w"> </span>with<span class="w"> </span>path&gt;
 
-xbmgmt program --device <span class="m">0000</span>:d8:00.0 --revert-to-golden
+xbmgmt<span class="w"> </span>program<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:d8:00.0<span class="w"> </span>--revert-to-golden
 </pre></div>
 </div>
 </section>
 <section id="xbmgmt-reset">
-<h2>xbmgmt reset<a class="headerlink" href="#xbmgmt-reset" title="Permalink to this headline">¶</a></h2>
+<h2>xbmgmt reset<a class="headerlink" href="#xbmgmt-reset" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code> command can be used to reset device .</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>reset<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;management<span class="w"> </span>bdf&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -432,7 +376,7 @@ xbmgmt program --device <span class="m">0000</span>:d8:00.0 --revert-to-golden
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt reset --device <span class="m">0000</span>:65:00.0
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt<span class="w"> </span>reset<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:65:00.0
 </pre></div>
 </div>
 </section>
@@ -451,10 +395,7 @@ xbmgmt program --device <span class="m">0000</span>:d8:00.0 --revert-to-golden
                         }
                   </style>
 				  
-				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="xrt-smi.html" class="btn btn-neutral float-left" title="xrt-smi" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="xbflash2.html" class="btn btn-neutral float-right" title="xbflash2" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+				  <footer>
 
   <hr/>
 

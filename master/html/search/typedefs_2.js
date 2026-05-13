@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['iterator_5fcategory_358',['iterator_category',['../classxrt_1_1xclbin__repository_1_1iterator.html#aa511c3719c208c4fa4557ecac7966e4e',1,'xrt::xclbin_repository::iterator']]]
+  ['export_5fhandle_0',['export_handle',['../classxrt_1_1bo.html#a3dd2f51560ba83e0a8794cdde49e3d21',1,'xrt::bo']]]
 ];

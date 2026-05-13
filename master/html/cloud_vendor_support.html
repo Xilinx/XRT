@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,15 +29,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script src="_static/documentation_options.js?v=b41f9496"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="FPGA device readiness within user VM" href="fpga_device_ready.html" />
-    <link rel="prev" title="Mailbox Inter-domain Communication Protocol" href="mailbox.proto.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -50,7 +47,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
-            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -65,83 +61,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_hip_runtime_api.html">XRT HIP Runtime APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">MSD/MPD and Plugins</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#mailbox-message-service-daemon-msd-and-message-proxy-daemon-mpd">Mailbox, Message Service Daemon(MSD) and Message Proxy Daemon(MPD)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#enhancement-to-mpd">Enhancement to MPD</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#example-mpd-plugin">Example MPD plugin</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#special-case">Special Case</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#note">Note</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Security</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
         </div>
@@ -169,9 +111,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="cloud-vendor-support-rst"></span><section id="msd-mpd-and-plugins">
-<h1>MSD/MPD and Plugins<a class="headerlink" href="#msd-mpd-and-plugins" title="Permalink to this headline">¶</a></h1>
+<h1>MSD/MPD and Plugins<a class="headerlink" href="#msd-mpd-and-plugins" title="Link to this heading">¶</a></h1>
 <section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
 <p>When FPGAs are deployed at cloud vendors, either VM based (IaaS) or container based (PaaS), there are
 some common concerns need to be addressed.</p>
 <ol class="arabic">
@@ -194,7 +136,7 @@ own ways they trust to do this.</p>
 <p>XRT addresses all of these concerns</p>
 </section>
 <section id="mailbox-message-service-daemon-msd-and-message-proxy-daemon-mpd">
-<h2>Mailbox, Message Service Daemon(MSD) and Message Proxy Daemon(MPD)<a class="headerlink" href="#mailbox-message-service-daemon-msd-and-message-proxy-daemon-mpd" title="Permalink to this headline">¶</a></h2>
+<h2>Mailbox, Message Service Daemon(MSD) and Message Proxy Daemon(MPD)<a class="headerlink" href="#mailbox-message-service-daemon-msd-and-message-proxy-daemon-mpd" title="Link to this heading">¶</a></h2>
 <p>The following picture illustrates how a xclbin file is downloaded on baremetal machine</p>
 <img alt="_images/mailbox-msd-mpd-architecture.svg" class="align-center" src="_images/mailbox-msd-mpd-architecture.svg" /><p>As shown by the red arrows in the picture, the flow of the download in this case is as following:</p>
 <ol class="arabic simple">
@@ -221,21 +163,21 @@ xclbin faster</p>
 And this model provides a faster xclbin download, but doesn’t provide xclbin protection</em></p>
 <p>Once the networking connection is setup, the following configurations are also required</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># In host, make sure the IP address configured is the one VM talks to</span>
-Host&gt;$ sudo xbmgmt config --show
+Host&gt;$<span class="w"> </span>sudo<span class="w"> </span>xbmgmt<span class="w"> </span>config<span class="w"> </span>--show
 
 <span class="c1"># If the IP address is not correct, change it by running</span>
-Host&gt;$ sudo xbmgmt config --daemon --host &lt;host-or-ip&gt;
+Host&gt;$<span class="w"> </span>sudo<span class="w"> </span>xbmgmt<span class="w"> </span>config<span class="w"> </span>--daemon<span class="w"> </span>--host<span class="w"> </span>&lt;host-or-ip&gt;
 
 <span class="c1"># Start MSD in host</span>
-Host&gt;$ sudo systemctl start msd
+Host&gt;$<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>msd
 
 <span class="c1"># Start MPD in VM</span>
-VM&gt;$ sudo systemctl start mpd
+VM&gt;$<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>mpd
 
 <span class="c1">#Enable these services If you want them to be in active even after reboot</span>
-Host&gt;$ sudo systemctl <span class="nb">enable</span> msd
+Host&gt;$<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>msd
 
-VM&gt;$ sudo systemctl <span class="nb">enable</span> mpd
+VM&gt;$<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>mpd
 </pre></div>
 </div>
 <p>The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:</p>
@@ -254,7 +196,7 @@ VM&gt;$ sudo systemctl <span class="nb">enable</span> mpd
 <p>The mailbox(HW&amp;SW) and MSD/MPD framework perfectly addresses the 1st concern mentioned above</p>
 </section>
 <section id="enhancement-to-mpd">
-<h2>Enhancement to MPD<a class="headerlink" href="#enhancement-to-mpd" title="Permalink to this headline">¶</a></h2>
+<h2>Enhancement to MPD<a class="headerlink" href="#enhancement-to-mpd" title="Link to this heading">¶</a></h2>
 <p>MSD/MPD are mailbox message centric. They focus on the delivering of the mailbox message and don’t interpret them.
 In order to protect the xclbin file, in which case users feed fake xclbin files to xocl then plugins get real ones
 and re-feed to xclmgmt, MSD/MPD have to interpret and understand the download xclbin message. An enhancement to MPD
@@ -290,7 +232,7 @@ MSD is not being used</em></p>
 <p>The enhancement to the MPD and the plugin address the 2nd and 3rd concerns mentioned above</p>
 </section>
 <section id="example-mpd-plugin">
-<h2>Example MPD plugin<a class="headerlink" href="#example-mpd-plugin" title="Permalink to this headline">¶</a></h2>
+<h2>Example MPD plugin<a class="headerlink" href="#example-mpd-plugin" title="Link to this heading">¶</a></h2>
 <p>The example plugin aims at containers running on top of baremetal machines. In this case, both MGMT PF and USER PF are in the same
 domain, so plugin can call ioctl on xclmgmt directly to program ICAP after it retrieves the real xclbin. This is the use case
 for Nimbix</p>
@@ -303,25 +245,25 @@ real xclbin from fake one, and how to download a protected xclbin, as user’s r
 <p>This plugin can also be used for internal test on the MPD and mailbox</p>
 <p>Example how a ubuntu host of containers configures the plugin</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># install xrt pkg</span>
-$ sudo apt install /opt/xrt_201920.2.3.0_18.04-xrt.deb
+$<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>/opt/xrt_201920.2.3.0_18.04-xrt.deb
 
 <span class="c1"># install xrt pkg</span>
-$ sudo apt install /opt/xrt_201920.2.3.0_18.04-container.deb
+$<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>/opt/xrt_201920.2.3.0_18.04-container.deb
 
 <span class="c1"># config mailbox channel switch</span>
 <span class="c1"># this has to be manually configurated to ensure download xclbin going through SW mailbox</span>
-$ sudo <span class="nb">echo</span> 0x100 &gt; /sys/bus/pci/devices/0000<span class="se">\:</span><span class="m">65</span><span class="se">\:</span><span class="m">00</span>.0/config_mailbox_channel_switch
+$<span class="w"> </span>sudo<span class="w"> </span><span class="nb">echo</span><span class="w"> </span>0x100<span class="w"> </span>&gt;<span class="w"> </span>/sys/bus/pci/devices/0000<span class="se">\:</span><span class="m">65</span><span class="se">\:</span><span class="m">00</span>.0/config_mailbox_channel_switch
 
 <span class="c1"># When cloud vendor (eg. Nimbix) wants to enable its own xclbin protection mechanism, this</span>
 <span class="c1"># plugin needs to be rebuilt and the built &#39;so&#39; needs to be copied to /opt/xilinx/xrt/lib</span>
 <span class="c1"># eg</span>
-$ sudo cp libcontainer_mpd_plugin.so /opt/xilinx/xrt/lib
-$ sudo systemctl restart mpd
+$<span class="w"> </span>sudo<span class="w"> </span>cp<span class="w"> </span>libcontainer_mpd_plugin.so<span class="w"> </span>/opt/xilinx/xrt/lib
+$<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>mpd
 </pre></div>
 </div>
 </section>
 <section id="summary">
-<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">¶</a></h2>
 <p>With the MSD/MPD framework and MPD enhancement,</p>
 <ol class="arabic simple">
 <li><p>Same XRT pkg is installed everywhere, baremetal/IaaS/PaaS/etc. Vendors only need to create/install their
@@ -333,7 +275,7 @@ one or any other kind either</p></li>
 <p>The following picture illustrates how XRT is being deployed in different scenarios at cloud vendors</p>
 <img alt="_images/xrt-deployment-cloud.svg" class="align-center" src="_images/xrt-deployment-cloud.svg" /></section>
 <section id="special-case">
-<h2>Special Case<a class="headerlink" href="#special-case" title="Permalink to this headline">¶</a></h2>
+<h2>Special Case<a class="headerlink" href="#special-case" title="Link to this heading">¶</a></h2>
 <p>There is special case where download xclbin from within user VM is not required.</p>
 <p>In this special case, neither MSD/MPD nor plugins are required since no xclbin download is allowed from guest. xclbins can be preloaded
 either by hypervisor or dom0 type VM where the mgmt PF is assigned. The apps in user VM run without any change, i.e.
@@ -343,7 +285,7 @@ If the uuids don’t match, download request in the guest fails.
 download happening.</p>
 </section>
 <section id="note">
-<h2>Note<a class="headerlink" href="#note" title="Permalink to this headline">¶</a></h2>
+<h2>Note<a class="headerlink" href="#note" title="Link to this heading">¶</a></h2>
 <p>There are some machine configurations which prevents TCP connections. User should update the configurations to allow TCP connections.
 One of the configs is “Firwall” Settings to enable or disable:
 1. firewall disable command: ufw disable
@@ -364,10 +306,7 @@ One of the configs is “Firwall” Settings to enable or disable:
                         }
                   </style>
 				  
-				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="mailbox.proto.html" class="btn btn-neutral float-left" title="Mailbox Inter-domain Communication Protocol" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="fpga_device_ready.html" class="btn btn-neutral float-right" title="FPGA device readiness within user VM" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+				  <footer>
 
   <hr/>
 

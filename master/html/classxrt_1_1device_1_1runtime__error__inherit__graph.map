@@ -1,7 +1,11 @@
 <map id="xrt::device::runtime_error" name="xrt::device::runtime_error">
-<area shape="rect" id="node1" title="The device has encountered a runtime error." alt="" coords="83,169,233,211"/>
-<area shape="rect" id="node5" href="$classxrt_1_1device_1_1oom__error.html" title="The device reported an out of memory error." alt="" coords="75,259,241,285"/>
-<area shape="rect" id="node2" href="$classxrt_1_1device_1_1error.html" title="Exception base class for device errors." alt="" coords="93,95,223,121"/>
-<area shape="rect" id="node3" title=" " alt="" coords="5,5,156,47"/>
-<area shape="rect" id="node4" title=" " alt="" coords="181,13,293,39"/>
+<area shape="rect" id="Node000001" title="The device has encountered a runtime error." alt="" coords="83,167,233,207"/>
+<area shape="rect" id="Node000005" href="$classxrt_1_1device_1_1oom__error.html" title="The device reported an out of memory error." alt="" coords="75,255,241,280"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="161,220,161,254,155,254,155,220"/>
+<area shape="rect" id="Node000002" href="$classxrt_1_1device_1_1error.html" title="Exception base class for device errors." alt="" coords="93,93,223,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="161,132,161,167,155,167,155,132"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,5,156,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="111,53,148,91,145,95,107,57"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="181,13,293,38"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="217,50,172,95,168,91,213,46"/>
 </map>

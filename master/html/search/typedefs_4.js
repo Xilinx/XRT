@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['pointer_360',['pointer',['../classxrt_1_1xclbin__repository_1_1iterator.html#aeed9ee7edb1bccc6c57180cd74c3953a',1,'xrt::xclbin_repository::iterator']]]
+  ['memory_5fgroup_0',['memory_group',['../namespacexrt.html#a0b5c34a203355370d2901d9e6100f287',1,'xrt']]]
 ];

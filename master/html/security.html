@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,15 +29,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script src="_static/documentation_options.js?v=b41f9496"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XRT Python Bindings" href="pyxrt.html" />
-    <link rel="prev" title="Accessing vsec within VM" href="vsec.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -50,7 +47,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
-            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -65,95 +61,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_hip_runtime_api.html">XRT HIP Runtime APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Security</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Security of Alveo Platform</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#shell">Shell</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#pcie-topology">PCIe Topology</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#dynamic-function-exchange">Dynamic Function eXchange</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xclbin-generation">Xclbin Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#signing-of-xclbins">Signing of Xclbins</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#firewall">Firewall</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#pcie-bus-safety">PCIe Bus Safety</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#deployment-models">Deployment Models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#baremetal">Baremetal</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pass-through-virtualization">Pass-through Virtualization</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#summary">Summary</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#mailbox">Mailbox</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#device-reset-and-recovery">Device Reset and Recovery</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#shell-update">Shell Update</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#compute-kernel-execution-models">Compute Kernel Execution Models</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
         </div>
@@ -181,10 +111,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="security-rst"></span><section id="security-of-alveo-platform">
-<h1>Security of Alveo Platform<a class="headerlink" href="#security-of-alveo-platform" title="Permalink to this headline">¶</a></h1>
+<h1>Security of Alveo Platform<a class="headerlink" href="#security-of-alveo-platform" title="Link to this heading">¶</a></h1>
 <figure class="align-center align-default" id="id1">
 <img alt="_images/XSA-shell.svg" src="_images/XSA-shell.svg" /><figcaption>
-<p><span class="caption-text">Alveo shell mgmt and user components, data and control paths</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+<p><span class="caption-text">Alveo shell mgmt and user components, data and control paths</span><a class="headerlink" href="#id1" title="Link to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>Security is built into Alveo platform hardware and software architecture. The platform
@@ -203,7 +133,7 @@ part of <em>Root-of-Trust</em>. The following features reinforce security of the
 <li><p>Treating User partition as untrused partition</p></li>
 </ol>
 <section id="shell">
-<h2>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h2>
+<h2>Shell<a class="headerlink" href="#shell" title="Link to this heading">¶</a></h2>
 <p>The Shell provides core infrastructure to the Alveo platform. It includes <em>hardened</em> PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
 as described in <a class="reference internal" href="platforms.html"><span class="doc">XRT and Vitis™ Platform Overview</span></a>.
@@ -242,16 +172,10 @@ PCIe from non-compliant transfers.</p>
 <p>For shell update see <a class="reference internal" href="#shell-update">Shell Update</a> section below.</p>
 <p>Compatibility enforcement between Shell and User xclbin is described in <span class="xref std std-doc">platform_partitions</span></p>
 <section id="pcie-topology">
-<h3>PCIe Topology<a class="headerlink" href="#pcie-topology" title="Permalink to this headline">¶</a></h3>
+<h3>PCIe Topology<a class="headerlink" href="#pcie-topology" title="Link to this heading">¶</a></h3>
 <p>As mentioned before Alveo platforms have two physical function architecture where each function has its
 own BARs. The table below gives overview of the topology and functionality.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 3%" />
-<col style="width: 4%" />
-<col style="width: 9%" />
-<col style="width: 84%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>PF</p></th>
 <th class="head"><p>BAR</p></th>
@@ -327,7 +251,7 @@ dx4300:~&gt;
 </section>
 </section>
 <section id="dynamic-function-exchange">
-<h2>Dynamic Function eXchange<a class="headerlink" href="#dynamic-function-exchange" title="Permalink to this headline">¶</a></h2>
+<h2>Dynamic Function eXchange<a class="headerlink" href="#dynamic-function-exchange" title="Link to this heading">¶</a></h2>
 <p>User compiled image packaged as xclbin is loaded on the Dynamic Functional eXchange
 partition by the Shell. The image may be signed with a private key and its public
 key registered with Linux kernel keyring. The xclbin signature is validated by
@@ -345,7 +269,7 @@ Bus. Compiled images do have access to device DDR.</p>
 <p>More information on xclbin can be found in <a class="reference internal" href="formats.html"><span class="doc">Binary Formats</span></a>.</p>
 </section>
 <section id="xclbin-generation">
-<h2>Xclbin Generation<a class="headerlink" href="#xclbin-generation" title="Permalink to this headline">¶</a></h2>
+<h2>Xclbin Generation<a class="headerlink" href="#xclbin-generation" title="Link to this heading">¶</a></h2>
 <p>Users compile their Verilog/VHDL/OpenCL/C/C++ design using Vitis™ compiler, v++ which also takes
 the shell specification as a second input. By construction the Vitis™ compiler, v++ generates image
 compatible with User partition of the shell. The compiler uses a technology called <em>PR Verify</em>
@@ -354,7 +278,7 @@ to overwrite portions of the Shell. It also validates that all the IOs between t
 Shell are going through fixed pins exposed by Shell.</p>
 </section>
 <section id="signing-of-xclbins">
-<h2>Signing of Xclbins<a class="headerlink" href="#signing-of-xclbins" title="Permalink to this headline">¶</a></h2>
+<h2>Signing of Xclbins<a class="headerlink" href="#signing-of-xclbins" title="Link to this heading">¶</a></h2>
 <p>xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by
 XRT <strong>xclbinutil</strong> utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
 certificate is then registered with appropriate key-ring. When Linux is running in UEFI secure
@@ -362,7 +286,7 @@ mode, signature verification is enforced using signing certification in <em>syst
 Linux is not running in secure mode there is no such verification).</p>
 </section>
 <section id="firewall">
-<h2>Firewall<a class="headerlink" href="#firewall" title="Permalink to this headline">¶</a></h2>
+<h2>Firewall<a class="headerlink" href="#firewall" title="Link to this heading">¶</a></h2>
 <p>Alveo hardware design uses standard AXI bus. As shown in the figure the control path uses AXI-Lite
 and data path uses AXI4 full. Specialized hardware element called
 <a class="reference external" href="https://www.xilinx.com/support/documentation/ip_documentation/axi_firewall/v1_0/pg293-axi-firewall.pdf">AXI Protocol Firewall</a>
@@ -384,7 +308,7 @@ starting a burst transfer but stalling afterwards, the AXI Firewall (SI) will co
 failing kernel. This protects PCIe from un-correctable errors.</p>
 </section>
 <section id="pcie-bus-safety">
-<h2>PCIe Bus Safety<a class="headerlink" href="#pcie-bus-safety" title="Permalink to this headline">¶</a></h2>
+<h2>PCIe Bus Safety<a class="headerlink" href="#pcie-bus-safety" title="Link to this heading">¶</a></h2>
 <p>As explained in the Firewall section above PCIe bus is protected by AXI Firewalls on both control and data path.
 DFX Isolation only exposes AXI bus (AXI-Lite for control and AXI-Full for data paths) to the Dynamic Region. Kernels
 compiled by user which sit in Dynamic Region do <strong>not have direct access to PCIe bus</strong> and hence cannot generate TLP
@@ -393,10 +317,10 @@ IP ensures that all PCIe transactions mastered by device over P2P, XDMA/QDMA and
 PF1. This is critical for <a class="reference internal" href="#pass-through-virtualization">Pass-through Virtualization</a> where host should not see any transactions initiated by PF1.</p>
 </section>
 <section id="deployment-models">
-<h2>Deployment Models<a class="headerlink" href="#deployment-models" title="Permalink to this headline">¶</a></h2>
+<h2>Deployment Models<a class="headerlink" href="#deployment-models" title="Link to this heading">¶</a></h2>
 <p>In all deployment models PCIe host with access to PF0 is considered part of <em>Root-of-Trust</em>.</p>
 <section id="baremetal">
-<h3>Baremetal<a class="headerlink" href="#baremetal" title="Permalink to this headline">¶</a></h3>
+<h3>Baremetal<a class="headerlink" href="#baremetal" title="Link to this heading">¶</a></h3>
 <p>In Baremetal deployment model, both physical functions are visible to the end user who <em>does not</em>
 have root privileges. End user have access to both XRT <strong>xclmgmt</strong> and XRT <strong>xocl</strong> drivers. The system
 administrator trusts both drivers which provide well defined <a class="reference internal" href="mgmt-ioctl.main.html"><span class="doc">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> and <a class="reference internal" href="xocl_ioctl.main.html"><span class="doc">XOCL (PCIe User Physical Function) Driver Interfaces</span></a>.
@@ -406,7 +330,7 @@ will ensure that only known good xclbins are loaded by end users.</p>
 is loaded on system boot) require root privileges and are effected by xclmgmt driver.</p>
 </section>
 <section id="pass-through-virtualization">
-<h3>Pass-through Virtualization<a class="headerlink" href="#pass-through-virtualization" title="Permalink to this headline">¶</a></h3>
+<h3>Pass-through Virtualization<a class="headerlink" href="#pass-through-virtualization" title="Link to this heading">¶</a></h3>
 <p>In Pass-through Virtualization deployment model, management physical function (PF0) is only visible to the host
 but user physical function (PF1) is visible to the guest VM. Host considers the guest VM a <em>hostile</em> environment.
 End users in guest VM may be root and may be running modified implementation of XRT <strong>xocl</strong> driver – XRT
@@ -426,14 +350,8 @@ drive. xclbins are passed on to the host via a plugin based MPD/MSD framework de
 deployment model for FaaS operators.</p>
 </section>
 <section id="summary">
-<h3>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h3>
+<h3>Summary<a class="headerlink" href="#summary" title="Link to this heading">¶</a></h3>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 31%" />
-<col style="width: 22%" />
-<col style="width: 22%" />
-<col style="width: 25%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head" colspan="2" rowspan="2"><p>Behavior</p></th>
 <th class="head" colspan="2"><p>Deployment Model</p></th>
@@ -481,7 +399,7 @@ can crash PCIe bus</p></td>
 </section>
 </section>
 <section id="mailbox">
-<h2>Mailbox<a class="headerlink" href="#mailbox" title="Permalink to this headline">¶</a></h2>
+<h2>Mailbox<a class="headerlink" href="#mailbox" title="Link to this heading">¶</a></h2>
 <p>Mailbox is used for communication between user physical function driver, xocl and management physical
 function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox handling implementation
 has the ability to throttle requests coming from xocl driver.</p>
@@ -493,7 +411,7 @@ the xclmgmt driver to ignore specific mailbox opcodes.</p>
 <p>Here is an example how System administrator managing the privileged management physical function driver xclmgmt
 can configure the mailbox to ignore specific opcodes using xbmgmt utility.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># In host</span>
-Host&gt;$ sudo xbmgmt dump --config --output /tmp/config.ini -d bdf
+Host&gt;$<span class="w"> </span>sudo<span class="w"> </span>xbmgmt<span class="w"> </span>dump<span class="w"> </span>--config<span class="w"> </span>--output<span class="w"> </span>/tmp/config.ini<span class="w"> </span>-d<span class="w"> </span>bdf
 
 <span class="c1"># Edit the dumped ini file and change the value to key &#39;mailbox_channel_disable&#39;</span>
 <span class="c1"># eg. if both xclbin download and reset are to be disabled, one can set</span>
@@ -518,16 +436,16 @@ Host&gt;$ sudo xbmgmt dump --config --output /tmp/config.ini -d bdf
 <span class="c1"># XCL_MAILBOX_REQ_PROGRAM_SHELL =       14,</span>
 <span class="c1"># XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =   15,</span>
 
-Host&gt;$ vi /tmp/config.ini
+Host&gt;$<span class="w"> </span>vi<span class="w"> </span>/tmp/config.ini
 
 <span class="c1"># Load config</span>
-Host&gt;$ xbmgmt advanced --load-conf --input<span class="o">=</span>/tmp/config.ini -d bdf
+Host&gt;$<span class="w"> </span>xbmgmt<span class="w"> </span>advanced<span class="w"> </span>--load-conf<span class="w"> </span>--input<span class="o">=</span>/tmp/config.ini<span class="w"> </span>-d<span class="w"> </span>bdf
 </pre></div>
 </div>
 <p><a class="reference internal" href="mailbox.main.html"><span class="doc">Mailbox Subdevice Driver</span></a> has details on mailbox usage.</p>
 </section>
 <section id="device-reset-and-recovery">
-<h2>Device Reset and Recovery<a class="headerlink" href="#device-reset-and-recovery" title="Permalink to this headline">¶</a></h2>
+<h2>Device Reset and Recovery<a class="headerlink" href="#device-reset-and-recovery" title="Link to this heading">¶</a></h2>
 <p>Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
 can reset a device by using XRT <strong>xrt-smi</strong> utility. This utility talks to xocl driver which uses the reset
@@ -541,14 +459,14 @@ FPGAs on same board being reset. Both xocl and xclmgmt drivers can identify othe
 and handle the reset accordingly.</p>
 </section>
 <section id="shell-update">
-<h2>Shell Update<a class="headerlink" href="#shell-update" title="Permalink to this headline">¶</a></h2>
+<h2>Shell Update<a class="headerlink" href="#shell-update" title="Link to this heading">¶</a></h2>
 <p>Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
 RPM/DEB package files by Xilinx®. Shells may be upgraded using XRT <strong>xbmgmt</strong> utility by system administrators
 only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
 platform from the updated image.</p>
 </section>
 <section id="compute-kernel-execution-models">
-<h2>Compute Kernel Execution Models<a class="headerlink" href="#compute-kernel-execution-models" title="Permalink to this headline">¶</a></h2>
+<h2>Compute Kernel Execution Models<a class="headerlink" href="#compute-kernel-execution-models" title="Link to this heading">¶</a></h2>
 <p>XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
 interfaces. More details on <a class="reference internal" href="xrt_kernel_executions.html"><span class="doc">XRT Controlled Kernel Execution Models</span></a>. These well understood models do not require
 direct register access from user space. To execute a compute kernel XRT has a well defined <em>exec command buffer</em>
@@ -569,10 +487,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
                         }
                   </style>
 				  
-				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="vsec.html" class="btn btn-neutral float-left" title="Accessing vsec within VM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="pyxrt.html" class="btn btn-neutral float-right" title="XRT Python Bindings" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+				  <footer>
 
   <hr/>
 

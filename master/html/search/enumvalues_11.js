@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['warning_437',['warning',['../namespacexrt_1_1message.html#a6f303f50c0aeef482a843e18a0f24f4ca7b83d3f08fa392b79e3f553b585971cd',1,'xrt::message']]]
+  ['vmr_0',['vmr',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4a64b1714b324eda3928be5f063f7b59',1,'xrt::info']]]
 ];

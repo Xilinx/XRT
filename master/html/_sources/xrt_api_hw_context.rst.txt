@@ -1,0 +1,43 @@
+.. _xrt_api_hw_context:
+
+Hardware context (``xrt::hw_context``)
+=======================================
+
+**Header:** ``xrt/xrt_hw_context.h`` (C++ only)
+
+**Purpose.** Bind an xclbin (or configuration ELF) to device hardware resources. Applications should **register** an xclbin with ``xrt::device::register_xclbin`` before creating a context, then use ``xrt::hw_context`` together with **non-deprecated** ``xrt::kernel`` / ``xrt::graph`` constructors that take ``hw_context``.
+
+**Type aliases**
+
+* ``xrt::hw_context::cfg_param_type`` / ``qos_type`` — string → ``uint32_t`` map for QoS and related knobs (semantics in flux; see header comment).
+
+**``xrt::hw_context::access_mode``**
+
+* ``exclusive`` — legacy-style exclusive CU use
+* ``shared`` — shared access (default in some constructors)
+
+**Constructors (summary)**
+
+* Default — empty, assign-only.
+* From ``device`` + config map + ``access_mode`` — placeholder / QoS without xclbin until config ELF is added.
+* From ``device`` + ``xrt::elf`` + (optional) cfg + mode — ELF-based context.
+* From ``device`` + ``xrt::elf`` (simple) — shared mode default.
+* From ``device`` + ``xclbin`` UUID + cfg, or + mode, or default shared — classic xclbin bind.
+
+**Methods**
+
+* ``add_config(const xrt::elf&)`` — add a configuration ELF to the context
+* ``update_qos`` (conditional / undocumented in header) — **experimental**
+* ``get_device()``, ``get_xclbin_uuid()``, ``get_xclbin()``
+* ``get_mode()``
+* ``get_aie_coredump()`` — AIE array coredump bytes when available
+
+**Destructor** releases context resources.
+
+**Include**
+
+.. code-block:: cpp
+
+   #include <xrt/xrt_hw_context.h>
+   #include <xrt/experimental/xrt_xclbin.h>   // xclbin class, as used with device
+   #include <xrt/experimental/xrt_elf.h>     // if using ELF-based construction

@@ -1,5 +1,7 @@
 <map id="xrt::device::error" name="xrt::device::error">
-<area shape="rect" id="node1" title="Exception base class for device errors." alt="" coords="93,95,223,121"/>
-<area shape="rect" id="node2" title=" " alt="" coords="5,5,156,47"/>
-<area shape="rect" id="node3" title=" " alt="" coords="181,13,293,39"/>
+<area shape="rect" id="Node000001" title="Exception base class for device errors." alt="" coords="93,93,223,119"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,156,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,53,148,91,145,95,107,57"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="181,13,293,38"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="217,50,172,95,168,91,213,46"/>
 </map>

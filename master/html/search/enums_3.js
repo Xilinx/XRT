@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['ip_5ftype_376',['ip_type',['../classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74',1,'xrt::xclbin::ip']]]
+  ['flags_0',['flags',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dd',1,'xrt::bo']]]
 ];
