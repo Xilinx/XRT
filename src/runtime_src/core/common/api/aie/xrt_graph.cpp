@@ -122,9 +122,11 @@ public:
   uint32_t
   gmio_bank_id(const std::string& gmio_name) const
   {
+    if (!hw_ctx)
+      throw std::runtime_error("gmio_bank_id: graph has no hw_context (create graph from hw_context)");
     auto xclbin = hw_ctx.get_xclbin();
     if (!xclbin)
-      throw std::runtime_error("gmio_bank_id: graph has no hw_context with xclbin (create graph from hw_context)");
+      throw std::runtime_error("gmio_bank_id: hw_context has no xclbin");
     int32_t mem_index = xclbin.get_gmio_mem_index(gmio_name);
     return static_cast<uint32_t>(mem_index);
   }
