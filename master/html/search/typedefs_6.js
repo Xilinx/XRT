@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['span_362',['span',['../classxrt_1_1run_1_1aie__error.html#a98494d4f99ad0497239d4d76882b16a5',1,'xrt::run::aie_error']]]
+  ['qos_5ftype_0',['qos_type',['../classxrt_1_1hw__context.html#ae3c315a6cf98c4a50a2d52205b47d631',1,'xrt::hw_context']]]
 ];

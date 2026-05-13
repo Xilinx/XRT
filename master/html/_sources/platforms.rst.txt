@@ -8,7 +8,7 @@
  XRT and Vitis™ Platform Overview
 =================================
 
-`Xilinx Runtime library (XRT) <https://www.xilinx.com/products/design-tools/vitis/xrt.html>`_ is an open-source easy to use software stack that facilitates management and usage of FPGA/ACAP devices. Users use familiar programming languages like C/C++ or Python to write host code which uses XRT to interact with FPGA/ACAP device. XRT exports well defined set of software APIs that work across PCIe based datacenter platforms and ZYNQ UltraScale+ MPSoC/Versal ACAP based embedded platforms. XRT is key component of `Vitis™ <https://www.xilinx.com/products/design-tools/vitis/vitis-platform.html>`_ and `Alveo™ <https://www.xilinx.com/products/boards-and-kits/alveo.html>`_ solutions.
+`FleXible RunTime library (XRT) <https://www.xilinx.com/products/design-tools/vitis/xrt.html>`_ is an open-source easy to use software stack that facilitates management and usage of FPGA/ACAP devices. Users use familiar programming languages like C/C++ or Python to write host code which uses XRT to interact with FPGA/ACAP device. XRT exports well defined set of software APIs that work across PCIe based datacenter platforms and ZYNQ UltraScale+ MPSoC/Versal ACAP based embedded platforms. XRT is key component of `Vitis™ <https://www.xilinx.com/products/design-tools/vitis/vitis-platform.html>`_ and `Alveo™ <https://www.xilinx.com/products/boards-and-kits/alveo.html>`_ solutions.
 
 User Application Compilation
 ============================

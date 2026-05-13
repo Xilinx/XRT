@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['mailbox_313',['mailbox',['../classxrt_1_1mailbox.html#a00f47492d1951c812b54690b0ef26376',1,'xrt::mailbox']]],
-  ['map_314',['map',['../classxrt_1_1bo.html#a7778be10aa42a273b879657c35b81f95',1,'xrt::bo::map()'],['../classxrt_1_1bo.html#a29f0f737099ac69832348f5cee0e980a',1,'xrt::bo::map() const'],['../classxrt_1_1bo.html#a45ad31292051d5d37766b1c635a9dc33',1,'xrt::bo::map()'],['../classxrt_1_1bo.html#ac997cae1f8a0bd27b7b3c2cfe4adafc8',1,'xrt::bo::map() const']]],
-  ['mem_315',['mem',['../classxrt_1_1xclbin_1_1mem.html#a1f5d939413811332d2f7d91e4d861aab',1,'xrt::xclbin::mem::mem()=default'],['../classxrt_1_1xclbin_1_1mem.html#aa42f675b24bef11060db7161a5951a3b',1,'xrt::xclbin::mem::mem(std::shared_ptr&lt; mem_impl &gt; handle)']]]
+  ['load_0',['load',['../classxrt_1_1xclbin__repository.html#ac46e673e144d4d0642ca4a5afe27d509',1,'xrt::xclbin_repository']]],
+  ['load_5fxclbin_1',['load_xclbin',['../classxrt_1_1device.html#a3da36f551e9df2e03022ff783c751365',1,'xrt::device::load_xclbin(const axlf *xclbin)'],['../classxrt_1_1device.html#a87f89d9b835a93363bd62921ff620a3e',1,'xrt::device::load_xclbin(const std::string &amp;xclbin_fnm)'],['../classxrt_1_1device.html#aa8145e572253df58e8572eb22b002fc8',1,'xrt::device::load_xclbin(const xrt::xclbin &amp;xclbin)']]],
+  ['log_2',['log',['../namespacexrt_1_1message.html#a47264e232307117e8b101447e4f118ad',1,'xrt::message']]],
+  ['logf_3',['logf',['../namespacexrt_1_1message.html#aff3846683a57e906e47debebe0a3f97b',1,'xrt::message']]]
 ];

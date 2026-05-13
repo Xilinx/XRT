@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,15 +29,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script src="_static/documentation_options.js?v=b41f9496"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Building the XRT Software Stack" href="build.html" />
-    <link rel="prev" title="XRT and Vitis™ Platform Overview" href="platforms.html" /> 
+    <link rel="prev" title="FleXible RunTime (XRT) Architecture" href="index.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -50,7 +49,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
-            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -65,8 +63,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">System Requirements</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#host-platform-for-amd-npu">Host Platform for AMD NPU</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#host-platform-for-pcie-accelerator-cards">Host Platform for PCIe Accelerator Cards</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xrt-software-stack-for-pcie-accelerator-cards">XRT Software Stack for PCIe Accelerator Cards</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xrt-software-stack-for-embedded-platforms">XRT Software Stack for Embedded Platforms</a></li>
@@ -74,70 +72,26 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_hip_runtime_api.html">XRT HIP Runtime APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Security</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
         </div>
@@ -165,18 +119,25 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="system-requirements-rst"></span><section id="system-requirements">
-<h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
-<section id="host-platform-for-pcie-accelerator-cards">
-<h2>Host Platform for PCIe Accelerator Cards<a class="headerlink" href="#host-platform-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
+<h1>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading">¶</a></h1>
+<section id="host-platform-for-amd-npu">
+<h2>Host Platform for AMD NPU<a class="headerlink" href="#host-platform-for-amd-npu" title="Link to this heading">¶</a></h2>
 <ol class="arabic simple">
-<li><p>x86_64</p></li>
-<li><p>AARCH64</p></li>
-<li><p>PPC64LE</p></li>
+<li><p>Windows or Linux running on x86_64</p></li>
+<li><p>Linux running on aarch64</p></li>
 </ol>
-<p>Supported Xilinx® Accelerator Cards are listed in <a class="reference internal" href="platforms.html"><span class="doc">XRT and Vitis™ Platform Overview</span></a> .</p>
+<p>See <a class="reference external" href="https://www.amd.com/en/developer/resources/ryzen-ai-software.html">AMD Ryzen™ AI Software</a> for more information on AMD NPU.</p>
+</section>
+<section id="host-platform-for-pcie-accelerator-cards">
+<h2>Host Platform for PCIe Accelerator Cards<a class="headerlink" href="#host-platform-for-pcie-accelerator-cards" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Linux running on x86_64</p></li>
+<li><p>Linux running on aarch64</p></li>
+</ol>
+<p>Supported AMD Alveo Accelerator Cards are listed in AMD and Xilinx platform documentation for your card or board.</p>
 </section>
 <section id="xrt-software-stack-for-pcie-accelerator-cards">
-<h2>XRT Software Stack for PCIe Accelerator Cards<a class="headerlink" href="#xrt-software-stack-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
+<h2>XRT Software Stack for PCIe Accelerator Cards<a class="headerlink" href="#xrt-software-stack-for-pcie-accelerator-cards" title="Link to this heading">¶</a></h2>
 <p>XRT software stack requires Linux kernel 3.10+.</p>
 <p>The XRT software stack is tested on RHEL/CentOS and Ubuntu.
 For the detailed list of supported OS, please refer to the specific release versions of <a class="reference external" href="https://www.xilinx.com/support/documentation-navigation/see-all-versions.html?xlnxproducttypes=Design%20Tools&amp;xlnxdocumentid=UG1451">UG1451 XRT Release Notes</a>.</p>
@@ -185,13 +146,13 @@ For the detailed list of supported OS, please refer to the specific release vers
 <p>To build a custom XRT package, please refer to page <a class="reference internal" href="build.html"><span class="doc">Building the XRT Software Stack</span></a>. for dependencies installation steps and building steps.</p>
 </section>
 <section id="xrt-software-stack-for-embedded-platforms">
-<h2>XRT Software Stack for Embedded Platforms<a class="headerlink" href="#xrt-software-stack-for-embedded-platforms" title="Permalink to this headline">¶</a></h2>
+<h2>XRT Software Stack for Embedded Platforms<a class="headerlink" href="#xrt-software-stack-for-embedded-platforms" title="Link to this heading">¶</a></h2>
 <p>XRT software stack requires Linux kernel 3.10+. XRT for embedded platforms is tested with PetaLinux.</p>
 <p>XRT needs to be installed on the development environment (rootfs or sysroot) and deployment environment (rootfs) of embedded platforms.</p>
 <p>If embedded processor native compile is to be used, XRT, xrt-dev and GCC needs to be installed on the target embedded system rootfs.</p>
 <p>If application is developed on a server with cross compiling technique, XRT needs to be installed into sysroot. The application can be cross compiled against the sysroot.
 XRT for server is not required on the cross compile server.</p>
-<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to <a class="reference internal" href="yocto.html"><span class="doc">XRT Setup for Embedded Flow</span></a>.</p>
+<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms, follow the Yocto or PetaLinux-based flow described in AMD embedded documentation for your device.</p>
 </section>
 </section>
 
@@ -209,15 +170,15 @@ XRT for server is not required on the cross compile server.</p>
                   </style>
 				  
 				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="platforms.html" class="btn btn-neutral float-left" title="XRT and Vitis™ Platform Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral float-left" title="FleXible RunTime (XRT) Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="build.html" class="btn btn-neutral float-right" title="Building the XRT Software Stack" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
-      <span class="lastupdated">Last updated on October 7, 2022.
+    <p>&#169; Copyright 2017-2026, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on May 12, 2026.
       </span></p>
   </div>
 

@@ -1,8 +1,7 @@
 var searchData=
 [
-  ['name_417',['name',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab068931cc450442b63f5b3d276ea4297',1,'xrt::info']]],
-  ['nodma_418',['nodma',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa360c16c37a28c145390c2155a4640dde',1,'xrt::info']]],
-  ['none_419',['none',['../classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6a334c4a4c42fdb79d7ebc3e73b517e6f8',1,'xrt::kernel::none()'],['../classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa334c4a4c42fdb79d7ebc3e73b517e6f8',1,'xrt::xclbin::ip::none()'],['../classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a334c4a4c42fdb79d7ebc3e73b517e6f8',1,'xrt::xclbin::kernel::none()']]],
-  ['normal_420',['normal',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddafea087517c26fadd409bd4b9dc642555',1,'xrt::bo']]],
-  ['notice_421',['notice',['../namespacexrt_1_1message.html#a6f303f50c0aeef482a843e18a0f24f4caefd2af60c8501931cb9c736b5ad74f65',1,'xrt::message']]]
+  ['m2m_0',['m2m',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4d65d483f53fd19eea5625721976b41e',1,'xrt::info']]],
+  ['max_5fclock_5ffrequency_5fmhz_1',['max_clock_frequency_mhz',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd6586634142c1d1c7e85e35d96d329f',1,'xrt::info']]],
+  ['mechanical_2',['mechanical',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa7e3fdeae0d52916ea5c86c7e5291f5be',1,'xrt::info']]],
+  ['memory_3',['memory',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd69b4957f06cd818d7bf3d61980e291',1,'xrt::info']]]
 ];

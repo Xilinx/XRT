@@ -1,5 +1,7 @@
-<map id="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/xrt_bo.h" name="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/xrt_bo.h">
-<area shape="rect" id="node1" title=" " alt="" coords="59,5,270,61"/>
-<area shape="rect" id="node2" href="$xrt__kernel_8h.html" title=" " alt="" coords="5,109,193,180"/>
-<area shape="rect" id="node3" href="$xrt__mailbox_8h.html" title=" " alt="" coords="43,228,287,299"/>
+<map id="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/xrt_bo.h" name="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/xrt_bo.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="15,5,214,60"/>
+<area shape="rect" id="Node000002" href="$xrt__kernel_8h.html" title=" " alt="" coords="11,108,219,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="117,74,117,108,112,108,112,74"/>
+<area shape="rect" id="Node000003" href="$experimental_2xrt__kernel_8h.html" title=" " alt="" coords="5,211,224,280"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="117,177,117,210,112,210,112,177"/>
 </map>

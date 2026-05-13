@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,14 +29,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script src="_static/documentation_options.js?v=b41f9496"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="xbmgmt" href="xbmgmt.html" />
+    <link rel="next" title="aiebu" href="aiebu.html" />
     <link rel="prev" title="xclbinutil" href="xclbintools.html" /> 
 </head>
 
@@ -50,7 +49,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
-            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -65,38 +63,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_hip_runtime_api.html">XRT HIP Runtime APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul class="current">
@@ -109,37 +88,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l2"><a class="reference internal" href="#xrt-smi-reset">xrt-smi reset</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Security</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
         </div>
@@ -167,13 +120,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="xbutil-rst"></span><section id="xrt-smi">
-<h1>xrt-smi<a class="headerlink" href="#xrt-smi" title="Permalink to this headline">¶</a></h1>
+<h1>xrt-smi<a class="headerlink" href="#xrt-smi" title="Link to this heading">¶</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code class="docutils literal notranslate"><span class="pre">xbutil</span></code> has been renamed to <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code>.</p>
+<p>For <em>up to date</em> xrt-smi documentation, visit <a class="reference external" href="https://ryzenai.docs.amd.com/en/latest/xrt_smi.html">NPU Management Interface — Ryzen AI Software 1.7.1 documentation</a>
+This details below describe the <strong>legacy</strong> <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code> commands and may not work with the latest xrt-smi.</p>
 </div>
-<p>xbutil is still available in the 2024.2 release, but this alias has been removed in this release. You can still use xbutil in the 2024.2 version of Xilinx Runtime.</p>
-<p>This document describes the latest <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code> commands. These latest commands are default from 21.1 release.</p>
 <p>For an instructive video on xrt-smi commands listed below click <a class="reference external" href="https://www.youtube.com/watch?v=nvU2ZBnAaz4">here</a>.</p>
 <p><strong>Global options</strong>: These are the global options can be used with any command.</p>
 <blockquote>
@@ -197,10 +149,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div></blockquote>
 <p><strong>Note</strong>: For applicable commands, if only one device is present on the system <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is not required. If more than one device is present in the system, <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is required.</p>
 <section id="xrt-smi-program">
-<h2>xrt-smi program<a class="headerlink" href="#xrt-smi-program" title="Permalink to this headline">¶</a></h2>
+<h2>xrt-smi program<a class="headerlink" href="#xrt-smi-program" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">program</span></code> command downloads a specified xclbin binary to the programmable region on the card <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=245">&lt;video reference&gt;</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;xclbin&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>program<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span><span class="w"> </span>&lt;xclbin&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -221,15 +173,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi program --device <span class="m">0000</span>:b3:00.1 --user ./my_kernel.xclbin
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>program<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--user<span class="w"> </span>./my_kernel.xclbin
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-validate">
-<h2>xrt-smi validate<a class="headerlink" href="#xrt-smi-validate" title="Permalink to this headline">¶</a></h2>
+<h2>xrt-smi validate<a class="headerlink" href="#xrt-smi-validate" title="Link to this heading">¶</a></h2>
 <p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">validate</span></code> validates the installed card by running precompiled basic tests <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=110">&lt;video reference&gt;</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi validate <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--run<span class="p">|</span> -r<span class="o">]</span> &lt;test&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt; <span class="o">[</span>--param<span class="o">]</span> &lt;test&gt;:&lt;key&gt;:&lt;value&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>validate<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--run<span class="p">|</span><span class="w"> </span>-r<span class="o">]</span><span class="w"> </span>&lt;test&gt;<span class="w"> </span><span class="o">[</span>--format<span class="p">|</span><span class="w"> </span>-f<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>format&gt;<span class="w"> </span><span class="o">[</span>--output<span class="p">|</span><span class="w"> </span>-o<span class="o">]</span><span class="w"> </span>&lt;filename&gt;<span class="w"> </span><span class="o">[</span>--param<span class="o">]</span><span class="w"> </span>&lt;test&gt;:&lt;key&gt;:&lt;value&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -241,7 +193,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </ul>
 </div></blockquote>
 </li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--run</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) specifies the perticular test(s) to execute</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--run</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) specifies the particular test(s) to execute</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">all</span></code> (<strong>default</strong>): runs all the tests listed below</p></li>
@@ -283,24 +235,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run all the tests</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1
+xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1
 
 <span class="c1"># Run &quot;DMA&quot; test, produce text output in stdout</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA
+xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--run<span class="w"> </span>DMA
 
 <span class="c1"># Run &quot;DMA&quot; and &quot;Validate Kernel&quot; test and generates Json format</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA <span class="s2">&quot;Verify Kernel&quot;</span> --format JSON --output xyz.json
+xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--run<span class="w"> </span>DMA<span class="w"> </span><span class="s2">&quot;Verify Kernel&quot;</span><span class="w"> </span>--format<span class="w"> </span>JSON<span class="w"> </span>--output<span class="w"> </span>xyz.json
 
 <span class="c1"># Pass in a custom block size to dma test</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA --param dma:block-size:1024
+xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--run<span class="w"> </span>DMA<span class="w"> </span>--param<span class="w"> </span>dma:block-size:1024
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-examine">
-<h2>xrt-smi examine<a class="headerlink" href="#xrt-smi-examine" title="Permalink to this headline">¶</a></h2>
+<h2>xrt-smi examine<a class="headerlink" href="#xrt-smi-examine" title="Link to this heading">¶</a></h2>
 <p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">examine</span></code>  can be used to find the details of the specific device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=80">&lt;video reference&gt;</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi examine <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>examine<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--report<span class="p">|</span><span class="w"> </span>-r<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>of<span class="w"> </span>interest&gt;<span class="w"> </span><span class="o">[</span>--format<span class="p">|</span><span class="w"> </span>-f<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>format&gt;<span class="w"> </span><span class="o">[</span>--output<span class="p">|</span><span class="w"> </span>-o<span class="o">]</span><span class="w"> </span>&lt;filename&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -349,21 +301,21 @@ xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA --param 
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Shows ``xrt-smi examine --host``</span>
-xrt-smi examine
+xrt-smi<span class="w"> </span>examine
 
 <span class="c1"># Reports electrical information in the stdout</span>
-xrt-smi examine --device <span class="m">0000</span>:b3:00.1 --report electrical
+xrt-smi<span class="w"> </span>examine<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--report<span class="w"> </span>electrical
 
 <span class="c1"># Reports &quot;electrical&quot; and &quot;firewall&quot; and dump in json format</span>
-xrt-smi examine --device <span class="m">0000</span>:b3:00.1  --report electrical firewall --format JSON --output n.json
+xrt-smi<span class="w"> </span>examine<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w">  </span>--report<span class="w"> </span>electrical<span class="w"> </span>firewall<span class="w"> </span>--format<span class="w"> </span>JSON<span class="w"> </span>--output<span class="w"> </span>n.json
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-configure">
-<h2>xrt-smi configure<a class="headerlink" href="#xrt-smi-configure" title="Permalink to this headline">¶</a></h2>
+<h2>xrt-smi configure<a class="headerlink" href="#xrt-smi-configure" title="Link to this heading">¶</a></h2>
 <p>Command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">configure</span></code> is used to configure specific settings based on the need of user application (requires sudo) <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=280">&lt;video reference&gt;</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi configure <span class="o">[</span> --host-mem <span class="p">|</span> --p2p <span class="p">|</span> --performance <span class="o">]</span> <span class="o">[</span>--help<span class="o">]</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>configure<span class="w"> </span><span class="o">[</span><span class="w"> </span>--host-mem<span class="w"> </span><span class="p">|</span><span class="w"> </span>--p2p<span class="w"> </span><span class="p">|</span><span class="w"> </span>--performance<span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--help<span class="o">]</span>
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -403,27 +355,27 @@ xrt-smi examine --device <span class="m">0000</span>:b3:00.1  --report electrica
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Enable Host-Memory of Size 1 GB</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 1G
+sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--host-mem<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--size<span class="w"> </span>1G
 
 <span class="c1"># Enable Host-Memory of size 256 MB</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 256M
+sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--host-mem<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--size<span class="w"> </span>256M
 
 <span class="c1"># Disable previously enabled Host-Memory</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem disable
+sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--host-mem<span class="w"> </span>disable
 
 <span class="c1"># Enable P2P</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p <span class="nb">enable</span>
+sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--p2p<span class="w"> </span><span class="nb">enable</span>
 
 <span class="c1"># Disable P2P</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p disable
+sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--p2p<span class="w"> </span>disable
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-reset">
-<h2>xrt-smi reset<a class="headerlink" href="#xrt-smi-reset" title="Permalink to this headline">¶</a></h2>
+<h2>xrt-smi reset<a class="headerlink" href="#xrt-smi-reset" title="Link to this heading">¶</a></h2>
 <p>This <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">reset</span></code> command can be used to reset device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=350">&lt;video reference&gt;</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--type<span class="p">|</span> -t<span class="o">]</span> &lt;reset type&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>reset<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--type<span class="p">|</span><span class="w"> </span>-t<span class="o">]</span><span class="w"> </span>&lt;reset<span class="w"> </span>type&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -444,7 +396,7 @@ sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p disabl
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi reset --device <span class="m">0000</span>:65:00.1
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>reset<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:65:00.1
 </pre></div>
 </div>
 </section>
@@ -465,14 +417,14 @@ sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p disabl
 				  
 				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="xclbintools.html" class="btn btn-neutral float-left" title="xclbinutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="xbmgmt.html" class="btn btn-neutral float-right" title="xbmgmt" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="aiebu.html" class="btn btn-neutral float-right" title="aiebu" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
-      <span class="lastupdated">Last updated on October 7, 2022.
+    <p>&#169; Copyright 2017-2026, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on May 12, 2026.
       </span></p>
   </div>
 

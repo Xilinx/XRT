@@ -1,4 +1,5 @@
 <map id="xrt::xclbin::ip" name="xrt::xclbin::ip">
-<area shape="rect" id="node1" title="xrt::xclbin::ip represents a IP in an xclbin." alt="" coords="43,80,150,107"/>
-<area shape="rect" id="node2" title=" " alt="" coords="5,5,188,32"/>
+<area shape="rect" id="Node000001" title="xrt::xclbin::ip represents a IP in an xclbin." alt="" coords="43,79,150,104"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,188,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,44,99,79,94,79,94,44"/>
 </map>

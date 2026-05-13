@@ -1,7 +1,5 @@
 var searchData=
 [
-  ['_7ebo_349',['~bo',['../classxrt_1_1bo.html#ace557ba711faf3962a16f25b6761d56c',1,'xrt::bo']]],
-  ['_7edevice_350',['~device',['../classxrt_1_1device.html#a9e999c6877a04b1770d6fad414faaf2a',1,'xrt::device']]],
-  ['_7ekernel_351',['~kernel',['../classxrt_1_1kernel.html#aac2e083bf7785c93fe5cbd8358985386',1,'xrt::kernel']]],
-  ['_7erun_352',['~run',['../classxrt_1_1run.html#aa51e579cf6d2edab15945b9156022771',1,'xrt::run']]]
+  ['xclbin_0',['xclbin',['../classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a',1,'xrt::xclbin::xclbin()=default'],['../classxrt_1_1xclbin.html#a4c24708c27ac85e382ef026b0dfa2270',1,'xrt::xclbin::xclbin(const std::string &amp;filename)'],['../classxrt_1_1xclbin.html#afc9cd922c779cffa0f87f17fd498143d',1,'xrt::xclbin::xclbin(const std::vector&lt; char &gt; &amp;data)'],['../classxrt_1_1xclbin.html#af623e8d5a59b9b3c287fa3e51df3401e',1,'xrt::xclbin::xclbin(const std::string_view &amp;data)'],['../classxrt_1_1xclbin.html#ad8b24ec146087a16ea963d1a84aed18e',1,'xrt::xclbin::xclbin(const axlf *top)']]],
+  ['xclbin_5frepository_1',['xclbin_repository',['../classxrt_1_1xclbin__repository.html#a83c2ba7979780cf097b1dd8de5ab8ced',1,'xrt::xclbin_repository::xclbin_repository()'],['../classxrt_1_1xclbin__repository.html#a1b7fee270279e733aadbd2093106fa5a',1,'xrt::xclbin_repository::xclbin_repository(const std::string &amp;dir)']]]
 ];

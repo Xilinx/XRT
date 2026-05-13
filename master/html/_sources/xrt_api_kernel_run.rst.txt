@@ -1,0 +1,55 @@
+.. _xrt_api_kernel_run:
+
+Kernels and runs
+================
+
+**Header:** ``xrt/xrt_kernel.h``
+
+**C typedefs**
+
+* ``xrtKernelHandle`` — opened kernel
+* ``xrtRunHandle`` — one execution of a kernel
+
+**``xrt::autostart``**
+
+Struct used with ``xrt::run::operator()`` to specify iteration count for auto-restart kernels. ``iterations == 0`` means run forever (where supported). See header for platform and CU restrictions.
+
+**``xrt::run``**
+
+Represents a single kernel execution (or a chain of iterations when used with autostart).
+
+* **Lifecycle:** default (assign-only), construct from ``xrt::kernel``, copy/move.
+* **Execution:** ``start()``, ``start(autostart)``, ``stop()``, template ``operator()(Args&&...)`` to set all args and start.
+* **Wait:** ``wait()``, ``wait(timeout)``, ``wait2()`` / ``wait2(timeout)`` — stricter completion checking; may throw ``command_error`` or ``aie_error`` (AIE health data via ``aie_error::data()`` where applicable).
+* **State:** ``state()`` (``ert_cmd_state``), ``return_code()`` for PS kernels.
+* **Arguments:** ``set_arg`` (index or name, scalars and ``xrt::bo``), ``update_arg`` (edge async updates), low-level byte APIs.
+* **Callbacks:** ``add_callback`` for managed execution (Alveo-class platforms when supported).
+* **Fences (experimental in header):** ``submit_wait`` / ``submit_signal`` with ``xrt::fence``.
+* **ELF / NPU:** ``get_ctrl_scratchpad_bo()``, ``set_dtrace_control_file()``.
+
+**``xrt::kernel``**
+
+Represents a kernel (one or more compatible CUs) from the loaded xclbin.
+
+* **Construction:** from ``xrt::device`` + ``xclbin`` UUID + name (optionally ``kernel:{cu1,cu2}``), or from ``xrt::hw_context`` + name (preferred path with hardware contexts), with ``cu_access_mode`` (``shared`` / ``exclusive`` / ``none``).
+* **Introspection:** ``group_id(arg)`` for memory group / bank indices, name and symbol accessors as in header.
+* **Execution:** returns ``xrt::run`` from invocation patterns (see header: ``operator()``, etc.).
+
+**Free operators / helpers**
+
+Comparisons and hash support as declared in the header; ``mailbox`` / fence integration for autostart kernels with mailbox, when synthesized.
+
+**C API**
+
+The header includes ``extern "C"`` symbols such as ``xrtKernelOpen``, ``xrtRunStart``, ``xrtRunWait``, etc.—see the end of ``xrt_kernel.h`` for the full list and parameters.
+
+**Related headers**
+
+* ``xrt/experimental/xrt_hw_context.h`` — construct kernels in a hardware context
+* ``xrt/experimental/xrt_fence.h`` — synchronization with runs
+
+**Include**
+
+.. code-block:: cpp
+
+   #include <xrt/xrt_kernel.h>

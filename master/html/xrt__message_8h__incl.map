@@ -1,6 +1,9 @@
-<map id="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/experimental/xrt_message.h" name="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/experimental/xrt_message.h">
-<area shape="rect" id="node1" title=" " alt="" coords="88,5,332,76"/>
-<area shape="rect" id="node2" title=" " alt="" coords="5,124,156,151"/>
-<area shape="rect" id="node3" title=" " alt="" coords="181,124,239,151"/>
-<area shape="rect" id="node4" title=" " alt="" coords="264,124,399,151"/>
+<map id="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/experimental/xrt_message.h" name="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/experimental/xrt_message.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="101,5,319,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,123,156,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="165,77,110,116,107,112,162,73"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="181,123,239,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="213,75,213,109,207,109,207,75"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="264,123,399,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="255,73,307,112,303,116,252,77"/>
 </map>

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['kernel_5ftype_377',['kernel_type',['../classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1',1,'xrt::xclbin::kernel']]]
+  ['ip_5ftype_0',['ip_type',['../classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74',1,'xrt::xclbin::ip']]]
 ];
