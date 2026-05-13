@@ -60,7 +60,7 @@
 /* A low frequence timer per CU to check if CU/command timeout */
 #define CU_TICKS_PER_SEC	2
 #define CU_TIMER		(HZ / CU_TICKS_PER_SEC) /* in jiffies */
-#define CU_EXEC_DEFAULT_TTL	(5UL * CU_TICKS_PER_SEC)
+#define CU_EXEC_DEFAULT_TTL	(1UL * CU_TICKS_PER_SEC)
 /* A customed frequency timer per CU to collect data */
 #define CU_STATS_TICKS_PER_SEC  20
 #define CU_STATS_TIMER          (HZ / CU_STATS_TICKS_PER_SEC) /* in jiffies */
