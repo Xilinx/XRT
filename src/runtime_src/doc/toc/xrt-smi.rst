@@ -11,8 +11,8 @@ xrt-smi
 
 .. note::
 
-   For *up to date* xrt-smi documentation, visit `NPU Management Interface — Ryzen AI Software 1.7.1 documentation <https://ryzenai.docs.amd.com/en/latest/xrt_smi.html>`_
-   This details below describe the **legacy** ``xrt-smi`` commands and may not work with the latest xrt-smi.
+   For **latest** xrt-smi documentation, please visit `NPU Management Interface — Ryzen AI Software 1.7.1 documentation <https://ryzenai.docs.amd.com/en/latest/xrt_smi.html>`_
+   The details below describe the **legacy** ``xrt-smi`` commands which may not work with the latest xrt-smi.
 
 For an instructive video on xrt-smi commands listed below click `here <https://www.youtube.com/watch?v=nvU2ZBnAaz4>`_.
 

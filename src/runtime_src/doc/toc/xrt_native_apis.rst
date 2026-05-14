@@ -58,7 +58,7 @@ The common host code flow using the above data structures is as follows:
 - Open AMD **Device** and load a kernel defined either in **ELF**, **XCLBIN** or combination of both.
 - Create **Buffer** objects to hold data for kernel inputs and outputs
 - If required use the Buffer class member functions for the data transfer between host and device (before and after the kernel execution).
-- Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on FPGA.
+- Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on the device.
 - Release the **Buffer** object and close the **Device**.
 
 
@@ -67,7 +67,8 @@ Below we will walk through the common API usage to accomplish the above tasks.
 Device and Context (NPU Flow)
 -----------------------------
 
-Device and Context classes provide fundamental infrastructure-related interfaces. The primary objectives of the device- and context-related APIs are:
+Device and Context classes provide fundamental infrastructure-related interfaces. The
+primary objectives of the device- and context-related APIs are:
 
 - Open a device and create a context on the device
 - Load a compiled kernel binary (or an elf) onto the device
