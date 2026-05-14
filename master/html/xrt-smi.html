@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,9 +29,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/documentation_options.js?v=b41f9496"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -49,6 +50,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -120,7 +122,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="xbutil-rst"></span><section id="xrt-smi">
-<h1>xrt-smi<a class="headerlink" href="#xrt-smi" title="Link to this heading">¶</a></h1>
+<h1>xrt-smi<a class="headerlink" href="#xrt-smi" title="Permalink to this headline">¶</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>For <em>up to date</em> xrt-smi documentation, visit <a class="reference external" href="https://ryzenai.docs.amd.com/en/latest/xrt_smi.html">NPU Management Interface — Ryzen AI Software 1.7.1 documentation</a>
@@ -149,10 +151,10 @@ This details below describe the <strong>legacy</strong> <code class="docutils li
 </div></blockquote>
 <p><strong>Note</strong>: For applicable commands, if only one device is present on the system <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is not required. If more than one device is present in the system, <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is required.</p>
 <section id="xrt-smi-program">
-<h2>xrt-smi program<a class="headerlink" href="#xrt-smi-program" title="Link to this heading">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">program</span></code> command downloads a specified xclbin binary to the programmable region on the card <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=245">&lt;video reference&gt;</a>.</p>
+<h2>xrt-smi program<a class="headerlink" href="#xrt-smi-program" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">program</span></code> command downloads a specified xclbin binary to the programmable region on the card <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=245">program (video)</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>program<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span><span class="w"> </span>&lt;xclbin&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;xclbin&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -173,15 +175,15 @@ This details below describe the <strong>legacy</strong> <code class="docutils li
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>program<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--user<span class="w"> </span>./my_kernel.xclbin
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi program --device <span class="m">0000</span>:b3:00.1 --user ./my_kernel.xclbin
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-validate">
-<h2>xrt-smi validate<a class="headerlink" href="#xrt-smi-validate" title="Link to this heading">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">validate</span></code> validates the installed card by running precompiled basic tests <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=110">&lt;video reference&gt;</a>.</p>
+<h2>xrt-smi validate<a class="headerlink" href="#xrt-smi-validate" title="Permalink to this headline">¶</a></h2>
+<p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">validate</span></code> validates the installed card by running precompiled basic tests <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=110">validate (video)</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>validate<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--run<span class="p">|</span><span class="w"> </span>-r<span class="o">]</span><span class="w"> </span>&lt;test&gt;<span class="w"> </span><span class="o">[</span>--format<span class="p">|</span><span class="w"> </span>-f<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>format&gt;<span class="w"> </span><span class="o">[</span>--output<span class="p">|</span><span class="w"> </span>-o<span class="o">]</span><span class="w"> </span>&lt;filename&gt;<span class="w"> </span><span class="o">[</span>--param<span class="o">]</span><span class="w"> </span>&lt;test&gt;:&lt;key&gt;:&lt;value&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi validate <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--run<span class="p">|</span> -r<span class="o">]</span> &lt;test&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt; <span class="o">[</span>--param<span class="o">]</span> &lt;test&gt;:&lt;key&gt;:&lt;value&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -235,24 +237,24 @@ This details below describe the <strong>legacy</strong> <code class="docutils li
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run all the tests</span>
-xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1
+xrt-smi validate --device <span class="m">0000</span>:b3:00.1
 
 <span class="c1"># Run &quot;DMA&quot; test, produce text output in stdout</span>
-xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--run<span class="w"> </span>DMA
+xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA
 
 <span class="c1"># Run &quot;DMA&quot; and &quot;Validate Kernel&quot; test and generates Json format</span>
-xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--run<span class="w"> </span>DMA<span class="w"> </span><span class="s2">&quot;Verify Kernel&quot;</span><span class="w"> </span>--format<span class="w"> </span>JSON<span class="w"> </span>--output<span class="w"> </span>xyz.json
+xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA <span class="s2">&quot;Verify Kernel&quot;</span> --format JSON --output xyz.json
 
 <span class="c1"># Pass in a custom block size to dma test</span>
-xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--run<span class="w"> </span>DMA<span class="w"> </span>--param<span class="w"> </span>dma:block-size:1024
+xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA --param dma:block-size:1024
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-examine">
-<h2>xrt-smi examine<a class="headerlink" href="#xrt-smi-examine" title="Link to this heading">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">examine</span></code>  can be used to find the details of the specific device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=80">&lt;video reference&gt;</a>.</p>
+<h2>xrt-smi examine<a class="headerlink" href="#xrt-smi-examine" title="Permalink to this headline">¶</a></h2>
+<p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">examine</span></code>  can be used to find the details of the specific device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=80">examine (video)</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>examine<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--report<span class="p">|</span><span class="w"> </span>-r<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>of<span class="w"> </span>interest&gt;<span class="w"> </span><span class="o">[</span>--format<span class="p">|</span><span class="w"> </span>-f<span class="o">]</span><span class="w"> </span>&lt;report<span class="w"> </span>format&gt;<span class="w"> </span><span class="o">[</span>--output<span class="p">|</span><span class="w"> </span>-o<span class="o">]</span><span class="w"> </span>&lt;filename&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi examine <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -301,21 +303,21 @@ xrt-smi<span class="w"> </span>validate<span class="w"> </span>--device<span cla
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Shows ``xrt-smi examine --host``</span>
-xrt-smi<span class="w"> </span>examine
+xrt-smi examine
 
 <span class="c1"># Reports electrical information in the stdout</span>
-xrt-smi<span class="w"> </span>examine<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--report<span class="w"> </span>electrical
+xrt-smi examine --device <span class="m">0000</span>:b3:00.1 --report electrical
 
 <span class="c1"># Reports &quot;electrical&quot; and &quot;firewall&quot; and dump in json format</span>
-xrt-smi<span class="w"> </span>examine<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w">  </span>--report<span class="w"> </span>electrical<span class="w"> </span>firewall<span class="w"> </span>--format<span class="w"> </span>JSON<span class="w"> </span>--output<span class="w"> </span>n.json
+xrt-smi examine --device <span class="m">0000</span>:b3:00.1  --report electrical firewall --format JSON --output n.json
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-configure">
-<h2>xrt-smi configure<a class="headerlink" href="#xrt-smi-configure" title="Link to this heading">¶</a></h2>
-<p>Command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">configure</span></code> is used to configure specific settings based on the need of user application (requires sudo) <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=280">&lt;video reference&gt;</a>.</p>
+<h2>xrt-smi configure<a class="headerlink" href="#xrt-smi-configure" title="Permalink to this headline">¶</a></h2>
+<p>Command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">configure</span></code> is used to configure specific settings based on the need of user application (requires sudo) <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=280">configure (video)</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>configure<span class="w"> </span><span class="o">[</span><span class="w"> </span>--host-mem<span class="w"> </span><span class="p">|</span><span class="w"> </span>--p2p<span class="w"> </span><span class="p">|</span><span class="w"> </span>--performance<span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--help<span class="o">]</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi configure <span class="o">[</span> --host-mem <span class="p">|</span> --p2p <span class="p">|</span> --performance <span class="o">]</span> <span class="o">[</span>--help<span class="o">]</span>
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -355,27 +357,27 @@ xrt-smi<span class="w"> </span>examine<span class="w"> </span>--device<span clas
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Enable Host-Memory of Size 1 GB</span>
-sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--host-mem<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--size<span class="w"> </span>1G
+sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 1G
 
 <span class="c1"># Enable Host-Memory of size 256 MB</span>
-sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--host-mem<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--size<span class="w"> </span>256M
+sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 256M
 
 <span class="c1"># Disable previously enabled Host-Memory</span>
-sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--host-mem<span class="w"> </span>disable
+sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem disable
 
 <span class="c1"># Enable P2P</span>
-sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--p2p<span class="w"> </span><span class="nb">enable</span>
+sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p <span class="nb">enable</span>
 
 <span class="c1"># Disable P2P</span>
-sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:b3:00.1<span class="w"> </span>--p2p<span class="w"> </span>disable
+sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p disable
 </pre></div>
 </div>
 </section>
 <section id="xrt-smi-reset">
-<h2>xrt-smi reset<a class="headerlink" href="#xrt-smi-reset" title="Link to this heading">¶</a></h2>
-<p>This <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">reset</span></code> command can be used to reset device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=350">&lt;video reference&gt;</a>.</p>
+<h2>xrt-smi reset<a class="headerlink" href="#xrt-smi-reset" title="Permalink to this headline">¶</a></h2>
+<p>This <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">reset</span></code> command can be used to reset device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=350">reset (video)</a>.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>reset<span class="w"> </span><span class="o">[</span>--device<span class="p">|</span><span class="w"> </span>-d<span class="o">]</span><span class="w"> </span>&lt;user<span class="w"> </span>bdf&gt;<span class="w"> </span><span class="o">[</span>--type<span class="p">|</span><span class="w"> </span>-t<span class="o">]</span><span class="w"> </span>&lt;reset<span class="w"> </span>type&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--type<span class="p">|</span> -t<span class="o">]</span> &lt;reset type&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -396,7 +398,7 @@ sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class=
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi<span class="w"> </span>reset<span class="w"> </span>--device<span class="w"> </span><span class="m">0000</span>:65:00.1
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi reset --device <span class="m">0000</span>:65:00.1
 </pre></div>
 </div>
 </section>
@@ -423,8 +425,8 @@ sudo<span class="w"> </span>xrt-smi<span class="w"> </span>configure<span class=
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2017-2026, Advanced Micro Devices, Inc.
-      <span class="lastupdated">Last updated on May 12, 2026.
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 

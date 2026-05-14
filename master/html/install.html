@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,9 +29,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/documentation_options.js?v=b41f9496"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -49,6 +50,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -117,9 +119,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="install-rst"></span><section id="xrt-installation">
-<h1>XRT Installation<a class="headerlink" href="#xrt-installation" title="Link to this heading">¶</a></h1>
+<h1>XRT Installation<a class="headerlink" href="#xrt-installation" title="Permalink to this headline">¶</a></h1>
 <section id="install-xrt-prerequisites-on-deployment-server">
-<h2>Install XRT Prerequisites on Deployment Server<a class="headerlink" href="#install-xrt-prerequisites-on-deployment-server" title="Link to this heading">¶</a></h2>
+<h2>Install XRT Prerequisites on Deployment Server<a class="headerlink" href="#install-xrt-prerequisites-on-deployment-server" title="Permalink to this headline">¶</a></h2>
 <p>XRT requires EPEL to install dependencies during installation process. Please use the following steps to install EPEL on your system if it hasn’t been installed.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -147,7 +149,7 @@ sudo dnf install epel-release
 </div>
 </section>
 <section id="install-xrt-software-stack">
-<h2>Install XRT Software Stack<a class="headerlink" href="#install-xrt-software-stack" title="Link to this heading">¶</a></h2>
+<h2>Install XRT Software Stack<a class="headerlink" href="#install-xrt-software-stack" title="Permalink to this headline">¶</a></h2>
 <p>After XRT installation packages (DEB or RPM) are downloaded from Xilinx website or built from source, please install it with the following command</p>
 <p>Steps for RHEL/CentOS:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo yum install xrt_&lt;version&gt;.rpm
@@ -204,8 +206,8 @@ Please follow method-1 from following page. You do not need to disable secure bo
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2017-2026, Advanced Micro Devices, Inc.
-      <span class="lastupdated">Last updated on May 12, 2026.
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
