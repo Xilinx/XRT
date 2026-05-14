@@ -38,7 +38,7 @@ The C++ Class objects used for the APIs are the following:
 +----------------------+---------------------+------------------------------------------------+
 |   Run-list           | ``xrt::runlist``    |  ``#include <xrt/experimental/xrt_kernel.h>``  |
 +----------------------+---------------------+------------------------------------------------+
-|   Context            | ``xrt::hw_context`` |  ``#include <xrt/xrt_hw_context.h>``  |
+|   Context            | ``xrt::hw_context`` |  ``#include <xrt/xrt_hw_context.h>``           |
 +----------------------+---------------------+------------------------------------------------+
 |   Xclbin             | ``xrt::xclbin``     |  ``#include <xrt/experimental/xrt_xclbin.h>``  |
 +----------------------+---------------------+------------------------------------------------+
@@ -736,6 +736,7 @@ As in the busy-wait example above, ``xrt::graph::wait(0)`` blocks the host threa
 - ``xrt::graph::wait(std::chrono::milliseconds timeout)`` — block until the graph reports **done**, or until **timeout** host-side milliseconds elapse.
 
 - ``xrt::graph::wait(uint64_t cycles)`` — with **non-zero** ``cycles``, wait for that many **AIE cycles** since the last graph start, then **suspend** the graph (used with infinite execution; see :ref:`infinite-graph-execution`).
+
 Example: poll until the graph completes, doing other host work between attempts.
 
 .. code:: c++
