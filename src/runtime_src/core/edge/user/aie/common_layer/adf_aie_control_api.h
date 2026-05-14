@@ -26,8 +26,7 @@ namespace adf
 class config_manager
 {
 public:
-  config_manager(XAie_DevInst* dev_inst, size_t num_reserved_rows, bool broadcast_enable_core,
-                 bool io_uring = false);
+  config_manager(XAie_DevInst* dev_inst, size_t num_reserved_rows, bool broadcast_enable_core);
   XAie_DevInst*
   get_dev()
   {
@@ -46,17 +45,10 @@ public:
     return m_broadcast_enable_core;
   }
 
-  bool
-  get_io_uring() const
-  {
-    return m_io_uring;
-  }
-
 private:
   XAie_DevInst* m_aie_dev;
   size_t m_num_reserved_rows;
   bool m_broadcast_enable_core;
-  bool m_io_uring;
 };
 
 class dma_api
