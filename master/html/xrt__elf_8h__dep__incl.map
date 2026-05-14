@@ -1,9 +1,6 @@
-<map id="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/experimental/xrt_elf.h" name="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/experimental/xrt_elf.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="127,5,345,75"/>
-<area shape="rect" id="Node000002" href="$xrt__hw__context_8h.html" title=" " alt="" coords="137,123,335,192"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="239,89,239,122,233,122,233,89"/>
-<area shape="rect" id="Node000003" href="$xrt__ip_8h.html" title=" " alt="" coords="5,240,224,309"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="192,204,152,242,148,238,189,200"/>
-<area shape="rect" id="Node000004" href="$experimental_2xrt__kernel_8h.html" title=" " alt="" coords="248,240,467,309"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="283,200,324,238,320,242,280,204"/>
+<map id="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/experimental/xrt_elf.h" name="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/experimental/xrt_elf.h">
+<area shape="rect" id="node1" title=" " alt="" coords="139,5,383,76"/>
+<area shape="rect" id="node2" href="$xrt__hw__context_8h.html" title=" " alt="" coords="167,124,355,195"/>
+<area shape="rect" id="node3" href="$experimental_2xrt__kernel_8h.html" title=" " alt="" coords="5,243,249,313"/>
+<area shape="rect" id="node4" href="$xrt__ip_8h.html" title=" " alt="" coords="273,243,517,313"/>
 </map>

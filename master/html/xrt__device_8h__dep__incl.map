@@ -1,13 +1,7 @@
-<map id="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/xrt_device.h" name="/home/sonals/development/git/XRT/src/runtime_src/core/include/xrt/xrt_device.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="85,5,296,60"/>
-<area shape="rect" id="Node000002" href="$xrt__ip_8h.html" title=" " alt="" coords="5,225,224,295"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="119,69,97,87,81,109,73,138,75,168,84,198,96,224,91,226,79,200,70,169,68,137,76,107,94,84,116,65"/>
-<area shape="rect" id="Node000003" href="$xrt__hw__context_8h.html" title=" " alt="" coords="91,108,290,177"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="193,74,193,108,188,108,188,74"/>
-<area shape="rect" id="Node000005" href="$xrt__kernel_8h.html" title=" " alt="" coords="315,115,523,170"/>
-<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="260,64,364,113,362,118,258,69"/>
-<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="163,190,139,227,135,224,159,188"/>
-<area shape="rect" id="Node000004" href="$experimental_2xrt__kernel_8h.html" title=" " alt="" coords="279,225,497,295"/>
-<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="261,182,332,223,329,227,259,187"/>
-<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="411,184,400,226,394,224,406,182"/>
+<map id="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/xrt_device.h" name="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/xrt_device.h">
+<area shape="rect" id="node1" title=" " alt="" coords="217,5,405,76"/>
+<area shape="rect" id="node2" href="$xrt__kernel_8h.html" title=" " alt="" coords="5,124,193,195"/>
+<area shape="rect" id="node4" href="$xrt__hw__context_8h.html" title=" " alt="" coords="217,124,405,195"/>
+<area shape="rect" id="node5" href="$xrt__ip_8h.html" title=" " alt="" coords="301,243,545,313"/>
+<area shape="rect" id="node3" href="$experimental_2xrt__kernel_8h.html" title=" " alt="" coords="15,243,259,313"/>
 </map>

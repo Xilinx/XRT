@@ -1,14 +1,14 @@
 var searchData=
 [
-  ['cacheable_0',['cacheable',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddad11c8d0e0e9aff8112241b7920b24fb2',1,'xrt::bo']]],
-  ['carveout_1',['carveout',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda0e94485671ffa8b04b3f5eeb9b8436e5',1,'xrt::bo']]],
-  ['cfg_5fparam_5ftype_2',['cfg_param_type',['../classxrt_1_1hw__context.html#a3d091f32c0ccc4ea692c9eb29f93b145',1,'xrt::hw_context']]],
-  ['cfg_5ftype_3',['cfg_type',['../classxrt_1_1hw__context.html#a7b88e62f956dc19b38fdf66d0370737f',1,'xrt::hw_context']]],
-  ['chain_4',['chain',['../classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa9951112f8dd2b0e52597c27197f1121c',1,'xrt::xclbin::ip']]],
-  ['command_5ferror_5',['command_error',['../classxrt_1_1run_1_1command__error.html',1,'xrt::run::command_error'],['../classxrt_1_1runlist_1_1command__error.html',1,'xrt::runlist::command_error'],['../classxrt_1_1run_1_1command__error.html#ab37fbc628d3d0286e880b5885a2ebe84',1,'xrt::run::command_error::command_error(ert_cmd_state state, const std::string &amp;what)'],['../classxrt_1_1run_1_1command__error.html#a0419cbaafe8a5b0afdafb8de93b18c74',1,'xrt::run::command_error::command_error(const xrt::run &amp;run, const std::string &amp;what)'],['../classxrt_1_1runlist_1_1command__error.html#a665cde864e1ffb16b979c757c1c41a83',1,'xrt::runlist::command_error::command_error()']]],
-  ['control_5ftype_6',['control_type',['../classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a',1,'xrt::xclbin::ip']]],
-  ['copy_7',['copy',['../classxrt_1_1bo.html#a94050c81c4a3e6a829b1123496f0b3de',1,'xrt::bo::copy(const bo &amp;src, size_t sz, size_t src_offset=0, size_t dst_offset=0)'],['../classxrt_1_1bo.html#a83a679dcf2268388d6dee2c932189ab4',1,'xrt::bo::copy(const bo &amp;src)']]],
-  ['create_5finterrupt_5fnotify_8',['create_interrupt_notify',['../classxrt_1_1ip.html#af6d1043d93745210baa81db9f8d2f065',1,'xrt::ip']]],
-  ['critical_9',['critical',['../namespacexrt_1_1message.html#a6f303f50c0aeef482a843e18a0f24f4ca7e85bcb66fb9a809d5ab4f62a8b8bea8',1,'xrt::message']]],
-  ['cu_5faccess_5fmode_10',['cu_access_mode',['../classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6',1,'xrt::kernel']]]
+  ['cacheable_27',['cacheable',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddad11c8d0e0e9aff8112241b7920b24fb2',1,'xrt::bo']]],
+  ['carveout_28',['carveout',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda0e94485671ffa8b04b3f5eeb9b8436e5',1,'xrt::bo']]],
+  ['cfg_5fparam_5ftype_29',['cfg_param_type',['../classxrt_1_1hw__context.html#a3d091f32c0ccc4ea692c9eb29f93b145',1,'xrt::hw_context']]],
+  ['cfg_5ftype_30',['cfg_type',['../classxrt_1_1hw__context.html#a7b88e62f956dc19b38fdf66d0370737f',1,'xrt::hw_context']]],
+  ['chain_31',['chain',['../classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa9951112f8dd2b0e52597c27197f1121c',1,'xrt::xclbin::ip']]],
+  ['command_5ferror_32',['command_error',['../classxrt_1_1run_1_1command__error.html#ab37fbc628d3d0286e880b5885a2ebe84',1,'xrt::run::command_error::command_error(ert_cmd_state state, const std::string &amp;what)'],['../classxrt_1_1run_1_1command__error.html#a0419cbaafe8a5b0afdafb8de93b18c74',1,'xrt::run::command_error::command_error(const xrt::run &amp;run, const std::string &amp;what)'],['../classxrt_1_1runlist_1_1command__error.html#a665cde864e1ffb16b979c757c1c41a83',1,'xrt::runlist::command_error::command_error()'],['../classxrt_1_1run_1_1command__error.html',1,'xrt::run::command_error'],['../classxrt_1_1runlist_1_1command__error.html',1,'xrt::runlist::command_error']]],
+  ['control_5ftype_33',['control_type',['../classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a',1,'xrt::xclbin::ip']]],
+  ['copy_34',['copy',['../classxrt_1_1bo.html#a94050c81c4a3e6a829b1123496f0b3de',1,'xrt::bo::copy(const bo &amp;src, size_t sz, size_t src_offset=0, size_t dst_offset=0)'],['../classxrt_1_1bo.html#a83a679dcf2268388d6dee2c932189ab4',1,'xrt::bo::copy(const bo &amp;src)']]],
+  ['create_5finterrupt_5fnotify_35',['create_interrupt_notify',['../classxrt_1_1ip.html#af6d1043d93745210baa81db9f8d2f065',1,'xrt::ip']]],
+  ['critical_36',['critical',['../namespacexrt_1_1message.html#a6f303f50c0aeef482a843e18a0f24f4ca7e85bcb66fb9a809d5ab4f62a8b8bea8',1,'xrt::message']]],
+  ['cu_5faccess_5fmode_37',['cu_access_mode',['../classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6',1,'xrt::kernel']]]
 ];

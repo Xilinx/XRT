@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,9 +29,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/documentation_options.js?v=b41f9496"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -49,6 +50,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -121,12 +123,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="xclbintools-rst"></span><section id="xclbinutil">
-<h1>xclbinutil<a class="headerlink" href="#xclbinutil" title="Link to this heading">¶</a></h1>
+<h1>xclbinutil<a class="headerlink" href="#xclbinutil" title="Permalink to this headline">¶</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> can create, modify and report xclbin content information.</p>
 <section id="common-use-cases">
-<h2>Common Use Cases<a class="headerlink" href="#common-use-cases" title="Link to this heading">¶</a></h2>
+<h2>Common Use Cases<a class="headerlink" href="#common-use-cases" title="Permalink to this headline">¶</a></h2>
 <section id="get-information-from-xclbin-file">
-<h3>Get information from xclbin file<a class="headerlink" href="#get-information-from-xclbin-file" title="Link to this heading">¶</a></h3>
+<h3>Get information from xclbin file<a class="headerlink" href="#get-information-from-xclbin-file" title="Permalink to this headline">¶</a></h3>
 <p>Various information can be obtained through the –info option, including information on the creation date, hardware platform, clocks, memory configuration, kernel, tool generation options, and etc. Note that optionally an output file can be specified. If none is specified, then the output will go to the console.</p>
 <blockquote>
 <div><p>Getting Information from xclbin</p>
@@ -136,7 +138,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div></blockquote>
 </section>
 <section id="xclbin-sections-controlling">
-<h3>Xclbin sections controlling<a class="headerlink" href="#xclbin-sections-controlling" title="Link to this heading">¶</a></h3>
+<h3>Xclbin sections controlling<a class="headerlink" href="#xclbin-sections-controlling" title="Permalink to this headline">¶</a></h3>
 <p>This include various operations on xclbin sections, like extracting the bitstream image, extracting the build metadata, removing a section and so on.</p>
 <blockquote>
 <div><p>Extracting the bitstream image</p>
@@ -154,7 +156,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div></blockquote>
 </section>
 <section id="migrate-xclbin-file-forward-from-older-version">
-<h3>Migrate xclbin file forward from older version<a class="headerlink" href="#migrate-xclbin-file-forward-from-older-version" title="Link to this heading">¶</a></h3>
+<h3>Migrate xclbin file forward from older version<a class="headerlink" href="#migrate-xclbin-file-forward-from-older-version" title="Permalink to this headline">¶</a></h3>
 <p>This is to migrate an older xclbin binary format (via the mirror JSON data) forward to the current binary format (compatible with new xclbin.h).</p>
 <blockquote>
 <div><p>Migrating forward</p>
@@ -188,8 +190,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2017-2026, Advanced Micro Devices, Inc.
-      <span class="lastupdated">Last updated on May 12, 2026.
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 

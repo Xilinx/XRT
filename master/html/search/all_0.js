@@ -2,7 +2,7 @@ var searchData=
 [
   ['abort_0',['abort',['../classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd',1,'xrt::run']]],
   ['access_5fmode_1',['access_mode',['../classxrt_1_1hw__context.html#a19f423638bdf9bad7d9a9b0e08ecf290',1,'xrt::hw_context']]],
-  ['add_2',['add',['../classxrt_1_1runlist.html#a1e6c03ad37939b553932cb1a6a46f79e',1,'xrt::runlist::add(xrt::run &amp;&amp;run)'],['../classxrt_1_1runlist.html#ac44fd2f9b72b35e128f09667fc62612d',1,'xrt::runlist::add(const xrt::run &amp;run)']]],
+  ['add_2',['add',['../classxrt_1_1runlist.html#ac44fd2f9b72b35e128f09667fc62612d',1,'xrt::runlist::add(const xrt::run &amp;run)'],['../classxrt_1_1runlist.html#a1e6c03ad37939b553932cb1a6a46f79e',1,'xrt::runlist::add(xrt::run &amp;&amp;run)']]],
   ['add_5fcallback_3',['add_callback',['../classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628',1,'xrt::run']]],
   ['add_5fconfig_4',['add_config',['../classxrt_1_1hw__context.html#a1f6b1f193d4285577ddcf5a18b834e7b',1,'xrt::hw_context']]],
   ['address_5',['address',['../classxrt_1_1bo.html#a2b1832f158dd96cf86fe6dd72c6be9fd',1,'xrt::bo']]],
@@ -13,13 +13,13 @@ var searchData=
   ['aie4_10',['aie4',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caafef83cb1bb9cc1e3dc04f8345e1d74ab',1,'xrt::elf']]],
   ['aie4a_11',['aie4a',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caa562ed4779836e2771f299282c5315423',1,'xrt::elf']]],
   ['aie4z_12',['aie4z',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caaf911bec001593beccb28c97b86613f4e',1,'xrt::elf']]],
-  ['aie_5ferror_13',['aie_error',['../classxrt_1_1run_1_1aie__error.html#aab492bee48c20f31213f78f6c0020873',1,'xrt::run::aie_error::aie_error()'],['../classxrt_1_1runlist_1_1aie__error.html#a4576866c9965d0fbcac74b551bb6f9e9',1,'xrt::runlist::aie_error::aie_error()'],['../classxrt_1_1runlist_1_1aie__error.html',1,'xrt::runlist::aie_error'],['../classxrt_1_1run_1_1aie__error.html',1,'xrt::run::aie_error']]],
+  ['aie_5ferror_13',['aie_error',['../classxrt_1_1run_1_1aie__error.html#aab492bee48c20f31213f78f6c0020873',1,'xrt::run::aie_error::aie_error()'],['../classxrt_1_1runlist_1_1aie__error.html#a4576866c9965d0fbcac74b551bb6f9e9',1,'xrt::runlist::aie_error::aie_error()'],['../classxrt_1_1run_1_1aie__error.html',1,'xrt::run::aie_error'],['../classxrt_1_1runlist_1_1aie__error.html',1,'xrt::runlist::aie_error']]],
   ['aie_5fmem_14',['aie_mem',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aaaa35fcd8711c5cb0eb6d5c51f1c8b221',1,'xrt::info']]],
   ['aie_5fshim_15',['aie_shim',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa81f8fb4ba59f55acb77c9927bb79df08',1,'xrt::info']]],
   ['alert_16',['alert',['../namespacexrt_1_1message.html#a6f303f50c0aeef482a843e18a0f24f4ca7ed21143076d0cca420653d4345baa2f',1,'xrt::message']]],
   ['are_17',['are',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa4015e9ce43edfb0668ddaa973ebc7e87',1,'xrt::xclbin::mem']]],
-  ['arg_18',['arg',['../classxrt_1_1xclbin_1_1arg.html',1,'xrt::xclbin::arg'],['../classxrt_1_1xclbin_1_1arg.html#ace0c1022e0b56765d9bfb8c4a887b24c',1,'xrt::xclbin::arg::arg()=default'],['../classxrt_1_1xclbin_1_1arg.html#a8026afcbfc713a2c5abaef57b126ad82',1,'xrt::xclbin::arg::arg(std::shared_ptr&lt; arg_impl &gt; handle)']]],
+  ['arg_18',['arg',['../classxrt_1_1xclbin_1_1arg.html#ace0c1022e0b56765d9bfb8c4a887b24c',1,'xrt::xclbin::arg::arg()=default'],['../classxrt_1_1xclbin_1_1arg.html#a8026afcbfc713a2c5abaef57b126ad82',1,'xrt::xclbin::arg::arg(std::shared_ptr&lt; arg_impl &gt; handle)'],['../classxrt_1_1xclbin_1_1arg.html',1,'xrt::xclbin::arg']]],
   ['async_19',['async',['../classxrt_1_1bo.html#a1c360b1550ef213cc59d5920b0febf5e',1,'xrt::bo::async(xclBOSyncDirection dir, size_t sz, size_t offset)'],['../classxrt_1_1bo.html#a7d4aea62bbe1c6ac33f71d2ccf84b06f',1,'xrt::bo::async(xclBOSyncDirection dir)']]],
-  ['async_5fhandle_20',['async_handle',['../classxrt_1_1bo_1_1async__handle.html',1,'xrt::bo::async_handle'],['../classxrt_1_1bo_1_1async__handle.html#a2b6ac7716242ebe5f1767b711cdbcf4c',1,'xrt::bo::async_handle::async_handle()']]],
+  ['async_5fhandle_20',['async_handle',['../classxrt_1_1bo_1_1async__handle.html#a2b6ac7716242ebe5f1767b711cdbcf4c',1,'xrt::bo::async_handle::async_handle()'],['../classxrt_1_1bo_1_1async__handle.html',1,'xrt::bo::async_handle']]],
   ['autostart_21',['autostart',['../structxrt_1_1autostart.html',1,'xrt']]]
 ];

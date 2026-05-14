@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
@@ -29,9 +29,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/documentation_options.js?v=b41f9496"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -49,6 +50,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
             <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -122,11 +124,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
            <div itemprop="articleBody">
              
   <span class="target" id="build-rst"></span><section id="building-the-xrt-software-stack">
-<h1>Building the XRT Software Stack<a class="headerlink" href="#building-the-xrt-software-stack" title="Link to this heading">¶</a></h1>
+<h1>Building the XRT Software Stack<a class="headerlink" href="#building-the-xrt-software-stack" title="Permalink to this headline">¶</a></h1>
 <section id="building-the-xrt-installation-package">
-<h2>Building the XRT Installation Package<a class="headerlink" href="#building-the-xrt-installation-package" title="Link to this heading">¶</a></h2>
+<h2>Building the XRT Installation Package<a class="headerlink" href="#building-the-xrt-installation-package" title="Permalink to this headline">¶</a></h2>
 <section id="installing-building-dependencies">
-<h3>Installing Building Dependencies<a class="headerlink" href="#installing-building-dependencies" title="Link to this heading">¶</a></h3>
+<h3>Installing Building Dependencies<a class="headerlink" href="#installing-building-dependencies" title="Permalink to this headline">¶</a></h3>
 <p>XRT requires C++14 compiler and a few development libraries bundled
 with modern Linux distribution. Please install the necessary tools and
 dependencies using the provided <code class="docutils literal notranslate"><span class="pre">xrtdeps.sh</span></code>.</p>
@@ -151,7 +153,7 @@ On the deployment system, XRT will try to find the ERT firmware in <code class="
 If it’s not available, errors will be reported.</p>
 </section>
 <section id="building-the-xrt-runtime">
-<h3>Building the XRT Runtime<a class="headerlink" href="#building-the-xrt-runtime" title="Link to this heading">¶</a></h3>
+<h3>Building the XRT Runtime<a class="headerlink" href="#building-the-xrt-runtime" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build
 ./build.sh
 </pre></div>
@@ -163,7 +165,7 @@ running <code class="docutils literal notranslate"><span class="pre">build.sh</s
 <p>Please check ERT firmware is built properly at <code class="docutils literal notranslate"><span class="pre">build/Release/opt/xilinx/xrt/share/fw/sched*.bin</span></code>.</p>
 </section>
 <section id="packaging-rpm-on-rhel-centos-or-deb-on-ubuntu">
-<h3>Packaging RPM on RHEL/CentOS or DEB on Ubuntu<a class="headerlink" href="#packaging-rpm-on-rhel-centos-or-deb-on-ubuntu" title="Link to this heading">¶</a></h3>
+<h3>Packaging RPM on RHEL/CentOS or DEB on Ubuntu<a class="headerlink" href="#packaging-rpm-on-rhel-centos-or-deb-on-ubuntu" title="Permalink to this headline">¶</a></h3>
 <p>The package is automatically built for the <code class="docutils literal notranslate"><span class="pre">Release</span></code>
 version but not for the <code class="docutils literal notranslate"><span class="pre">Debug</span></code> version:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build/Release
@@ -175,7 +177,7 @@ make package
 </section>
 </section>
 <section id="building-the-xrt-documentation">
-<h2>Building the XRT Documentation<a class="headerlink" href="#building-the-xrt-documentation" title="Link to this heading">¶</a></h2>
+<h2>Building the XRT Documentation<a class="headerlink" href="#building-the-xrt-documentation" title="Permalink to this headline">¶</a></h2>
 <p>XRT Documentation can be built automatically using <code class="docutils literal notranslate"><span class="pre">Sphinx</span></code> doc builder
 together with Linux kernel based <code class="docutils literal notranslate"><span class="pre">kernel-doc</span></code> utility.</p>
 <p>To compile and install the documentation into the <code class="docutils literal notranslate"><span class="pre">doc</span></code> directory at
@@ -210,8 +212,8 @@ xdg-open Release/runtime_src/doc/html/index.html
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2017-2026, Advanced Micro Devices, Inc.
-      <span class="lastupdated">Last updated on May 12, 2026.
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
