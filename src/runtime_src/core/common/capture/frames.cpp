@@ -5,21 +5,46 @@
 #include "xrt/experimental/xrt_kernel.h"
 
 #include "core/common/debug.h"
+#include "core/common/api/elf_int.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/common/api/kernel_int.h"
+#include "core/common/api/xclbin_int.h"
+#include "core/common/json/nlohmann/json.hpp"
 
 #include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <set>
 #include <string>
 #include <variant>
 #include <vector>
 
 namespace {
 
+template <typename T>
+using span = xrt::detail::span<T>;
+
+using json = nlohmann::json;
+
+inline void
+insert_json_object(json& dest, const json& src)
+{
+  if (src.empty())
+    return;
+
+  if (src.is_object()) {
+    dest.insert(src.begin(), src.end());
+    return;
+  }
+
+  if (src.is_array())
+    dest = src;
+}
+
 static uint64_t
-to_uint64(xrt::detail::span<const uint8_t> data)
+to_uint64(span<const uint8_t> data)
 {
   if (data.size() > 8)
     throw std::runtime_error("Wrong data size");
@@ -27,6 +52,12 @@ to_uint64(xrt::detail::span<const uint8_t> data)
   uint64_t value = 0;
   std::memcpy(&value, data.data(), data.size());
   return value;
+}
+
+static std::string
+to_string(void* v)
+{
+  return std::to_string(reinterpret_cast<uintptr_t>(v));
 }
 
 } // namespace
@@ -72,6 +103,18 @@ class frames
 
       m_args[argidx] = value;
     }
+
+    xrt::run
+    get_xrt_run() const
+    {
+      return m_run;
+    }
+
+    xrt::hw_context
+    get_xrt_hwctx() const
+    {
+      return xrt_core::kernel_int::get_hw_ctx(m_run);
+    }
   };
 
   // class runlist - user create runlists
@@ -109,6 +152,10 @@ class frames
   std::vector<frame> m_frames;
 
   frames() = default;
+  ~frames()
+  {
+    build_recipe();
+  }
 
   // create_run_if_new() - get capture::run for hdl
   // Return existing run or create new run
@@ -133,6 +180,63 @@ class frames
     return m_runlists[hdl];
   }
 
+  ////////////////////////////////////////////////////////////////
+  // Inspectors for recipe builder
+  ////////////////////////////////////////////////////////////////
+  std::set<xrt::hw_context>
+  get_hwctxs() const
+  {
+    std::set<xrt::hw_context> hwctxs;
+    for (const auto& [rhdl, run] : m_runs)
+      hwctxs.insert(run.get_xrt_hwctx());
+
+    return hwctxs;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Recipe writer functions
+  ////////////////////////////////////////////////////////////////
+  json
+  recipe_resource_hwctx(const xrt::hw_context& hwctx) const
+  {
+    json j = json::object();
+    j["name"] = to_string(hwctx.get_handle().get());
+    j["qos"] = hw_context_int::get_cfg_map(hwctx);
+    if (!hw_context_int::get_elf_flow(hwctx))
+      j["xclbin"] = xclbin_int::get_xclbin_fnm(hwctx.get_xclbin());
+    else {
+      j["programs"] = json::array();
+      for (const auto& elf : hw_context_int::get_config_elfs(hwctx))
+        j["programs"].push_back(elf_int::get_filename(elf.get_handle().get()));
+    }
+    
+    return j;
+  }
+  
+  json
+  recipe_resources_hwctxs() const
+  {
+    json j = json::array();
+    for (auto& hwctx : get_hwctxs())
+      j.push_back(recipe_resource_hwctx(hwctx));
+
+    return j;
+  }
+
+  json
+  recipe_resources() const
+  {
+    json resources = json::object();
+    insert_json_object(resources["resources"]["hwctxs"], recipe_resources_hwctxs());
+    return resources;
+  }
+
+  json
+  recipe_execution() const
+  {
+    return json::object();
+  }
+
 public:
   // Singleton instance
   static frames&
@@ -142,6 +246,9 @@ public:
     return cap;
   }
 
+  ////////////////////////////////////////////////////////////////
+  // Collector functions
+  ////////////////////////////////////////////////////////////////
   // set_run_arg() - set run argument at index
   template <typename ArgType>
   void
@@ -176,13 +283,28 @@ public:
     std::lock_guard lk(m_mutex);
     m_frames.push_back(&m_runlists.at(hdl));
   }
+
+  ////////////////////////////////////////////////////////////////
+  // Recipe writer functions
+  ////////////////////////////////////////////////////////////////
+  json
+  build_recipe() const
+  {
+    json recipe = json::object();
+    recipe["version"] = "1.0";
+    insert_json_object(recipe, recipe_resources());
+    insert_json_object(recipe, recipe_execution());
+
+    std::cout << recipe.dump(2) << "\n";
+    return recipe;
+  }
 };
 
 ////////////////////////////////////////////////////////////////
 // Global capture function used by XRT_RECIPE_CAPTURE
 ////////////////////////////////////////////////////////////////
 void
-run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, xrt::detail::span<const uint8_t> value)
+run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, span<const uint8_t> value)
 {
   XRT_PRINTF("run_set_arg_index() rhdl(0x%x) arg(%d) value(%d)\n", rhdl, argidx, to_uint64(value));
   frames::instance().set_run_arg(rhdl, argidx, to_uint64(value));
