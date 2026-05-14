@@ -3,59 +3,64 @@
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
    comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-
+   comment:: Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 XRT Native APIs
 ===============
 
-From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor. 
+XRT exposes host-side APIs in C++ and Python.
 
-To use the native XRT APIs, the host application must link with the **xrt_coreutil** library. 
-Compiling host code with XRT native C++ API requires C++ standard with -std=c++17 (or newer). 
+Native XRT host code must link against the **xrt_coreutil** library.
+C++ examples in this guide assume a compiler with **ISO C++17** or newer (for example ``-std=c++17``).
 
-Example g++ command
+Example ``g++`` invocation:
 
 .. code-block:: shell
 
     g++ -g -std=c++17 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 
 
-The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc:`xrt_native.main`.
+For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc:`xrt_native.main`.
 
 
-The C++ Class objects used for the APIs are 
+The C++ Class objects used for the APIs are the following:
 
-+----------------------+-------------------+------------------------------------------------+
-|                      |   C++ Class       |  Header files                                  |
-+======================+===================+================================================+
-|   Device             | ``xrt::device``   |  ``#include <xrt/xrt_device.h>``               |
-+----------------------+-------------------+------------------------------------------------+
-|   XCLBIN             | ``xrt::xclbin``   |  ``#include <experimental/xrt_xclbin.h>``      |
-+----------------------+-------------------+------------------------------------------------+
-|   Buffer             | ``xrt::bo``       |  ``#include <xrt/xrt_bo.h>``                   |
-+----------------------+-------------------+------------------------------------------------+
-|   Kernel             | ``xrt::kernel``   |  ``#include <xrt/xrt_kernel.h>``               |
-+----------------------+-------------------+------------------------------------------------+
-|   Run                | ``xrt::run``      |  ``#include <xrt/xrt_kernel.h>``               |
-+----------------------+-------------------+------------------------------------------------+
-| User-managed Kernel  | ``xrt::ip``       |  ``#include <experimental/xrt_ip.h>``          |
-+----------------------+-------------------+------------------------------------------------+
-|   Graph              | ``xrt::graph``    |  ``#include <experimental/aie.h>``             |
-|                      |                   |                                                |
-|                      |                   |  ``#include <experimental/graph.h>``           |
-+----------------------+-------------------+------------------------------------------------+
++----------------------+---------------------+------------------------------------------------+
+| Core Object          |   C++ Class         |  Header Files                                  |
++======================+=====================+================================================+
+|   Device             | ``xrt::device``     |  ``#include <xrt/xrt_device.h>``               |
++----------------------+---------------------+------------------------------------------------+
+|   Buffer             | ``xrt::bo``         |  ``#include <xrt/xrt_bo.h>``                   |
++----------------------+---------------------+------------------------------------------------+
+|   Kernel             | ``xrt::kernel``     |  ``#include <xrt/xrt_kernel.h>``               |
++----------------------+---------------------+------------------------------------------------+
+|   Run                | ``xrt::run``        |  ``#include <xrt/xrt_kernel.h>``               |
++----------------------+---------------------+------------------------------------------------+
+|   Run-list           | ``xrt::runlist``    |  ``#include <xrt/experimental/xrt_kernel.h>``  |
++----------------------+---------------------+------------------------------------------------+
+|   Context            | ``xrt::hw_context`` |  ``#include <xrt/xrt_hw_context.h>``           |
++----------------------+---------------------+------------------------------------------------+
+|   Xclbin             | ``xrt::xclbin``     |  ``#include <xrt/experimental/xrt_xclbin.h>``  |
++----------------------+---------------------+------------------------------------------------+
+|   Control code (ELF) | ``xrt::elf``        |  ``#include <xrt/experimental/xrt_elf.h>``     |
++----------------------+---------------------+------------------------------------------------+
+| User-managed Kernel  | ``xrt::ip``         |  ``#include <xrt/experimental/xrt_ip.h>``      |
++----------------------+---------------------+------------------------------------------------+
+|   AIE Graph          | ``xrt::graph``      |  ``#include <xrt/xrt_aie.h>``                  |
+|                      |                     |                                                |
+|                      |                     |  ``#include <xrt/xrt_graph.h>``                |
++----------------------+---------------------+------------------------------------------------+
 
-Majority of the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. Few newer features such as ``xrt::ip``, ``xrt::aie`` related header files are inside ``$XILINX_XRT/include/experimental`` directory. The API interfaces that are in the experimental folder are subject to breaking changes. 
+The majority of core data structures are defined in the header files under ``$XILINX_XRT/include/xrt/``. Newer features such as ``xrt::ip``, ``xrt::runlist``, ``xrt::elf``, and related types live under ``$XILINX_XRT/include/xrt/experimental/``. APIs in that experimental area are subject to breaking changes.
 
-The common host code flow using the above data structures is as below
-   
-- Open Xilinx **Device** and Load the **XCLBIN**
-- Create **Buffer** objects to transfer data to kernel inputs and outputs
-- Use the Buffer class member functions for the data transfer between host and device (before and after the kernel execution).
-- Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on FPGA. 
-       
-      
-Below we will walk through the common API usage to accomplish the above tasks. 
+The common host code flow using the above data structures is as follows:
+
+- Open AMD **Device** and load a kernel defined either in **ELF**, **XCLBIN** or combination of both.
+- Create **Buffer** objects to hold data for kernel inputs and outputs
+- If required use the Buffer class member functions for the data transfer between host and device (before and after the kernel execution).
+- Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on FPGA.
+
+Below we will walk through the common API usage to accomplish the above tasks.
 
 Device and XCLBIN
 -----------------
@@ -588,6 +593,7 @@ As in the busy-wait example above, ``xrt::graph::wait(0)`` blocks the host threa
 - ``xrt::graph::wait(std::chrono::milliseconds timeout)`` — block until the graph reports **done**, or until **timeout** host-side milliseconds elapse.
 
 - ``xrt::graph::wait(uint64_t cycles)`` — with **non-zero** ``cycles``, wait for that many **AIE cycles** since the last graph start, then **suspend** the graph (used with infinite execution; see :ref:`infinite-graph-execution`).
+
 Example: poll until the graph completes, doing other host work between attempts.
 
 .. code:: c++

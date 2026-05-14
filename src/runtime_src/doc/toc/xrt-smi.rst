@@ -7,10 +7,12 @@
 
 
 xrt-smi
-======
+=======
+
 .. note::
-	``xbutil`` has been renamed to ``xrt-smi``.
-xbutil is still available in the 2024.2 release, but this alias has been removed in this release. You can still use xbutil in the 2024.2 version of Xilinx Runtime.
+
+   ``xbutil`` has been renamed to ``xrt-smi``.
+   xbutil is still available in the 2024.2 release, but this alias has been removed in this release. You can still use xbutil in the 2024.2 version of Xilinx Runtime.
 
 This document describes the latest ``xrt-smi`` commands. These latest commands are default from 21.1 release.  
 
@@ -38,9 +40,9 @@ Currently supported ``xrt-smi`` commands are
 
 
 xrt-smi program
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
-The ``xrt-smi program`` command downloads a specified xclbin binary to the programmable region on the card `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=245>`_.
+The ``xrt-smi program`` command downloads a specified xclbin binary to the programmable region on the card `program (video) <https://youtu.be/nvU2ZBnAaz4?t=245>`__.
 
 **The supported options**
 
@@ -70,9 +72,9 @@ The ``xrt-smi program`` command downloads a specified xclbin binary to the progr
  
 
 xrt-smi validate
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
-The command ``xrt-smi validate`` validates the installed card by running precompiled basic tests `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=110>`_.
+The command ``xrt-smi validate`` validates the installed card by running precompiled basic tests `validate (video) <https://youtu.be/nvU2ZBnAaz4?t=110>`__.
 
 **The supported options**
 
@@ -139,10 +141,10 @@ The command ``xrt-smi validate`` validates the installed card by running precomp
     xrt-smi validate --device 0000:b3:00.1 --run DMA --param dma:block-size:1024
 
 
-xrt-smi examine 
-~~~~~~~~~~~~~~
+xrt-smi examine
+~~~~~~~~~~~~~~~
 
-The command ``xrt-smi examine``  can be used to find the details of the specific device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=80>`_.
+The command ``xrt-smi examine``  can be used to find the details of the specific device `examine (video) <https://youtu.be/nvU2ZBnAaz4?t=80>`__.
 
 
 **The supported options**
@@ -209,8 +211,8 @@ The command ``xrt-smi examine``  can be used to find the details of the specific
  
  
 xrt-smi configure
-~~~~~~~~~~~~~~~~
-Command ``xrt-smi configure`` is used to configure specific settings based on the need of user application (requires sudo) `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=280>`_.
+~~~~~~~~~~~~~~~~~
+Command ``xrt-smi configure`` is used to configure specific settings based on the need of user application (requires sudo) `configure (video) <https://youtu.be/nvU2ZBnAaz4?t=280>`__.
 
 
 **The supported options**
@@ -264,8 +266,8 @@ Command ``xrt-smi configure`` is used to configure specific settings based on th
 
 
 xrt-smi reset
-~~~~~~~~~~~~
-This ``xrt-smi reset`` command can be used to reset device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=350>`_.
+~~~~~~~~~~~~~
+This ``xrt-smi reset`` command can be used to reset device `reset (video) <https://youtu.be/nvU2ZBnAaz4?t=350>`__.
 
 **The supported options**
 

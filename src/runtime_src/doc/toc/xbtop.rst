@@ -16,14 +16,15 @@ The command has the following option:
 
 The command ``xbtop`` shows the following reports in multiple pages (pages can be changed by entering ``n`` or ``p`` key in the terminal window)
 
-Page 1: Memory
+**Page 1: Memory**
 
-   - Device Memory Usage
-   - Memory Topology
-   - DMA Transfer Metrics
-Page 2: Dynamic Region
-   
-   - Compute Usage
-Page 3: Power
+- Device Memory Usage
+- Memory Topology
+- DMA Transfer Metrics
 
+**Page 2: Dynamic Region**
+
+- Compute Usage
+
+**Page 3: Power**
 
