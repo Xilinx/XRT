@@ -33,7 +33,7 @@ Currently supported ``xbmgmt`` commands are
 
 
 xbmgmt configure
-~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 The ``xbmgmt configure`` command provides advanced options for configuring a device's memory, clock, and DDR memory retention settings. A .ini file input is required for configuration except for DDR memory retention. The .ini file can be located in a directory of your choosing with the path specified in the command.
 
@@ -166,7 +166,7 @@ Dumping the output of programmed system image
 xbmgmt examine
 ~~~~~~~~~~~~~~
 
-The ``xbmgmt examine`` command reports detail status information of the specified device `<video reference> <https://youtu.be/ORYSrYegX_g?t=137>`_.
+The ``xbmgmt examine`` command reports detail status information of the specified device `examine (video) <https://youtu.be/ORYSrYegX_g?t=137>`__.
 
 **The supported options**
 
@@ -219,7 +219,7 @@ xbmgmt program
 
 **The supported usecases and their options**
 
-Program the Base partition (applicable for 1RP platform too) `<video reference> <https://youtu.be/ORYSrYegX_g?t=193>`_
+Program the Base partition (applicable for 1RP platform too) `program base (video) <https://youtu.be/ORYSrYegX_g?t=193>`__.
 
 .. code-block:: shell
 
@@ -231,7 +231,7 @@ Program the Base partition when multiple base partitions are installed in the sy
 
     xbmgmt program [--device|-d] <management bdf> [--base|-b] [--image|-i] <partition name>
 
-Program the Shell Partition for 2RP platform `<video reference> <https://youtu.be/ORYSrYegX_g?t=300>`_
+Program the Shell Partition for 2RP platform `program shell (video) <https://youtu.be/ORYSrYegX_g?t=300>`__.
 
 .. code-block:: shell
 
@@ -245,7 +245,7 @@ Program the user partition with an XCLBIN file
     xbmgmt program [--device| -d] <management bdf> [--user|-u] <XCLBIN file with path>  
 
 
-Revert to golden image `<video reference> <https://youtu.be/ORYSrYegX_g?t=280>`_
+Revert to golden image `golden image (video) <https://youtu.be/ORYSrYegX_g?t=280>`__.
 
 .. code-block:: shell
 

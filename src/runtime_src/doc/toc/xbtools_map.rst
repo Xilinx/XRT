@@ -16,7 +16,7 @@ This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xrt-sm
 You may refer the documentation of the new tools in the following links :doc:`xrt-smi` and :doc:`xbmgmt` . 
 
 xrt-smi
-~~~~~~
+~~~~~~~
 
 +------------+-------------+-------------------+----------------------+
 |Subcommand  | Subcommand  |Option             |Option                |
