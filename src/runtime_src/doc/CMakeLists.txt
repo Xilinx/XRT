@@ -194,7 +194,6 @@ else ()
     COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*
     COMMAND cp -rf ${XRT_DOC_TOC_DIR}/* ${DOC_TOC_DIR}
-    COMMAND bash ${XRT_DOC_TOC_DIR}/fix_kerneldoc_rst.sh ${CMAKE_CURRENT_BINARY_DIR}/core
     COMMAND ${SPHINX_EXECUTABLE} -a ${DOC_TOC_DIR} html
     )
 endif ()
