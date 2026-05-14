@@ -581,7 +581,14 @@ Let's review the below example
 
 **Timeout wait scheme**
 
-As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by ``xrt::graph::wait(std::chrono::milliseconds)`` which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below
+As in the busy-wait example above, ``xrt::graph::wait(0)`` blocks the host thread until that graph run completes.
+
+``xrt::graph`` provides **two** ``wait`` overloads:
+
+- ``xrt::graph::wait(std::chrono::milliseconds timeout)`` — block until the graph reports **done**, or until **timeout** host-side milliseconds elapse.
+
+- ``xrt::graph::wait(uint64_t cycles)`` — with **non-zero** ``cycles``, wait for that many **AIE cycles** since the last graph start, then **suspend** the graph (used with infinite execution; see :ref:`infinite-graph-execution`).
+Example: poll until the graph completes, doing other host work between attempts.
 
 .. code:: c++
       :number-lines: 35
@@ -591,28 +598,27 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
            
            // run the graph for 100 iteration
            graph.run(100);
-           
-            while (1) {
-                          
-              try {
-                 graph.wait(5);
-              }
-              catch (const std::system_error& ex) {
-            
-                 if (ex.code().value() == ETIME) {          
-                   
-                    std::cout << "Timeout, reenter......" << std::endl;
-                    // Do something
-             
-                 } 
+
+           while (true) {
+             try {
+               graph.wait(std::chrono::milliseconds(100));
+               break;  // returned: graph completed
              }
-            
-             
+             catch (const std::system_error& ex) {
+               if (ex.code().value() == ETIME) {
+                 std::cout << "Timeout, do other work and retry..." << std::endl;
+                 // DO Something
+               }
+             }
+           }
+
+
+.. _infinite-graph-execution:
 
 Infinite Graph Execution
 ************************
 
-The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argument 0. While a graph running infinitely the APIs ``xrt::graph::wait()``, ``xrt::graph::suspend()`` and ``xrt::graph::end()`` can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrt::graph::resume()`` is used to execute the infinitely running graph again. 
+The graph runs indefinitely if ``xrt::graph::run()`` is called with an iteration count of ``0``. While the graph is running in that mode, ``xrt::graph::wait(uint64_t)``, ``xrt::graph::suspend()``, and ``xrt::graph::end(uint64_t)`` can suspend or end execution after a given number of **AIE cycles**. ``xrt::graph::resume()`` continues a suspended graph.
 
 
 .. code:: c
