@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#include "artifacts.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/experimental/xrt_kernel.h"
 
+#include "core/common/config_reader.h"
 #include "core/common/debug.h"
 #include "core/common/api/elf_int.h"
 #include "core/common/api/hw_context_int.h"
@@ -115,6 +117,27 @@ class frames
     {
       return xrt_core::kernel_int::get_hw_ctx(m_run);
     }
+
+    xrt::kernel
+    get_xrt_kernel() const
+    {
+      return xrt_core::kernel_int::get_kernel(m_run);
+    }
+
+    std::vector<xrt::bo>
+    get_xrt_bo_args() const
+    {
+      std::vector<xrt::bo> bos;
+      for (auto& arg : m_args) {
+        std::visit([&bos](const auto& v) {
+          using T = std::decay_t<decltype(v)>;
+          if constexpr (std::is_same_v<T, xrt::bo>) {
+            bos.push_back(v);
+          }
+        }, arg);
+      }
+      return bos;
+    }
   };
 
   // class runlist - user create runlists
@@ -151,7 +174,17 @@ class frames
   using frame = std::variant<run*, runlist*>;
   std::vector<frame> m_frames;
 
-  frames() = default;
+  // ELFIO cannot be dumped post creation, so capture as created
+  // along with the data used to create ELF
+  std::map<const xrt::elf_impl*, std::vector<char>> m_elfs;
+
+  // Artifacts are written to configurable directory
+  mutable artifacts m_artifacts;
+
+  frames()
+    : m_artifacts{xrt_core::config::get_capture_dir()}
+  {}
+
   ~frames()
   {
     build_recipe();
@@ -193,6 +226,27 @@ class frames
     return hwctxs;
   }
 
+  std::set<xrt::bo>
+  get_buffers() const
+  {
+    std::set<xrt::bo> bos;
+    for (const auto& [rhdl, run] : m_runs) {
+      auto run_bos = run.get_xrt_bo_args();
+      bos.insert(run_bos.begin(), run_bos.end());
+    }
+    return bos;
+  }
+
+  std::set<xrt::kernel>
+  get_kernels() const
+  {
+    std::set<xrt::kernel> kernels;
+    for (const auto& [rhdl, run] : m_runs)
+      kernels.insert(run.get_xrt_kernel());
+
+    return kernels;
+  }
+
   ////////////////////////////////////////////////////////////////
   // Recipe writer functions
   ////////////////////////////////////////////////////////////////
@@ -202,12 +256,16 @@ class frames
     json j = json::object();
     j["name"] = to_string(hwctx.get_handle().get());
     j["qos"] = hw_context_int::get_cfg_map(hwctx);
-    if (!hw_context_int::get_elf_flow(hwctx))
-      j["xclbin"] = xclbin_int::get_xclbin_fnm(hwctx.get_xclbin());
+    if (!hw_context_int::get_elf_flow(hwctx)) {
+      auto xclbin_data = xclbin_int::get_xclbin_data(hwctx.get_xclbin());
+      j["xclbin"] = m_artifacts.dump(xclbin_data);
+    }      
     else {
       j["programs"] = json::array();
-      for (const auto& elf : hw_context_int::get_config_elfs(hwctx))
-        j["programs"].push_back(elf_int::get_filename(elf.get_handle().get()));
+      for (const auto& elf : hw_context_int::get_config_elfs(hwctx)) {
+        auto& elf_data = m_elfs.at(elf.get_handle().get());
+        j["programs"].push_back(m_artifacts.dump({elf_data.data(), elf_data.size()}));
+      }
     }
     
     return j;
@@ -224,10 +282,61 @@ class frames
   }
 
   json
+  recipe_resource_buffer(const xrt::bo& bo) const
+  {
+    json j = json::object();
+    // The name here implies that when buffer data is dumped to disk,
+    // it is must use the name assigned to the bo.  There is no data
+    // sharing even if two bos refer to same data.
+    j["name"] = to_string(bo.get_handle().get());
+    j["size"] = bo.size();
+    j["type"] = "inout";  // no idea what the actual type is
+    return j;
+  }
+
+  json
+  recipe_resource_buffers() const
+  {
+    json j = json::array();
+    for (auto& bo : get_buffers())
+      j.push_back(recipe_resource_buffer(bo));
+
+    return j;
+  }
+
+  json
+  recipe_resource_kernel(const xrt::kernel& kernel) const
+  {
+    json j = json::object();
+    j["name"] = to_string(kernel.get_handle().get());
+    j["instance"] = kernel_int::get_instance_name(kernel);
+    auto hwctx = kernel_int::get_hw_ctx(kernel);
+    j["hwctx"] = to_string(hwctx.get_handle().get());
+    if (!hw_context_int::get_elf_flow(hwctx)) {
+      auto elf = kernel_int::get_ctrlcode(kernel);
+      auto& elf_data = m_elfs.at(elf.get_handle().get());
+      j["ctrlcode"] = m_artifacts.dump({elf_data.data(), elf_data.size()});
+    }
+    return j;
+  }
+
+  json
+  recipe_resource_kernels() const
+  {
+    json j = json::array();
+    for (auto& krnl : get_kernels())
+      j.push_back(recipe_resource_kernel(krnl));
+
+    return j;
+  }
+
+  json
   recipe_resources() const
   {
     json resources = json::object();
     insert_json_object(resources["resources"]["hwctxs"], recipe_resources_hwctxs());
+    insert_json_object(resources["buffers"], recipe_resource_buffers());
+    insert_json_object(resources["kernels"], recipe_resource_kernels());
     return resources;
   }
 
@@ -284,6 +393,15 @@ public:
     m_frames.push_back(&m_runlists.at(hdl));
   }
 
+  // capture_elf() - capture elf data for recipe reference
+  // ELFIO objects cannot be dumped, so capture when creating
+  void
+  capture_elf(const xrt::elf_impl* hdl, std::vector<char>&& elf_data)
+  {
+    std::lock_guard lk(m_mutex);
+    m_elfs.emplace(hdl, std::move(elf_data));
+  }
+
   ////////////////////////////////////////////////////////////////
   // Recipe writer functions
   ////////////////////////////////////////////////////////////////
@@ -336,6 +454,35 @@ start_frame(const xrt::runlist_impl* rlhdl)
 {
   XRT_PRINTF("start_frame rlhdl(0x%x)\n", rlhdl);
   frames::instance().start(rlhdl);
+}
+
+void
+elf_ctor(const xrt::elf_impl* hdl, const void* data, size_t size)
+{
+  XRT_PRINTF("elf_ctor(0x%x, 0x%x, %d)\n", hdl, data, size);
+  auto cdata = static_cast<const char*>(data);
+  frames::instance().capture_elf(hdl, {cdata, cdata + size});
+}
+
+void
+elf_ctor(const xrt::elf_impl* hdl, std::istream& istr)
+{
+  auto pos = istr.tellg();
+  istr.seekg(0, std::ios::end);
+  auto size = istr.tellg();
+  istr.seekg(0, std::ios::beg);
+
+  std::vector<char> data(size);
+  istr.read(data.data(), size);
+  istr.seekg(pos);
+  frames::instance().capture_elf(hdl, std::move(data));
+}
+
+void
+elf_ctor(const xrt::elf_impl* hdl, const std::string& fnm)
+{
+  std::ifstream istr(fnm, std::ios::binary | std::ios::ate);
+  elf_ctor(hdl, istr);
 }
 
 } // namespace xrt_core::capture

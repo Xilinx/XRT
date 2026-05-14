@@ -24,7 +24,7 @@ namespace xrt_core::xdp {
 struct xrt_kernel_data;
 }
 
-namespace xrt_core { namespace kernel_int {
+namespace xrt_core::kernel_int {
 
 // Provide access to kdma command based BO copy Used by xrt::bo::copy.
 // Arguably this should implemented by by shim->copy_bo, but must wait
@@ -88,13 +88,23 @@ XRT_CORE_COMMON_EXPORT
 size_t
 get_regmap_size(const xrt::kernel& kernel);
 
+std::string
+get_instance_name(const xrt::kernel&);
+
 // Get hw ctx using which this kernel is created
 xrt::hw_context
 get_hw_ctx(const xrt::kernel& kernel);
 
+xrt::elf
+get_ctrlcode(const xrt::kernel&);
+
 // Get hw ctx using which this kernel is created
 xrt::hw_context
 get_hw_ctx(const xrt::run&);
+
+// Get xrt::kernel fron which run was created
+xrt::kernel
+get_kernel(const xrt::run&);
 
 // Allows the creation of the kernel object from a kernel_impl pointer
 // This is used for logging usage mertrics
@@ -116,6 +126,6 @@ XRT_CORE_COMMON_EXPORT
 void
 set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path);
 
-}} // kernel_int, xrt_core
+} // xrt_core::kernel_int
 
 #endif

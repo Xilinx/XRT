@@ -31,6 +31,15 @@ runlist_add_run(const xrt::runlist_impl*, const xrt::run_impl*);
 void
 start_frame(const xrt::runlist_impl*);
 
+void
+elf_ctor(const xrt::elf_impl* hdl, const void* data, size_t size);
+
+void
+elf_ctor(const xrt::elf_impl* hdl, std::istream& istr);
+
+void
+elf_ctor(const xrt::elf_impl* hdl, const std::string& fnm);
+
 } // namespace
 
 #endif

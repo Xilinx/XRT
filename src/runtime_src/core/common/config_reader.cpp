@@ -205,15 +205,18 @@ get_bool_value(const char* key, bool default_value)
     return is_true(env);
 
   key::lock(key);
-  return tree::instance()->m_tree.get<bool>(key,default_value);
+  return tree::instance()->m_tree.get<bool>(key, default_value);
 }
 
 std::string
 get_string_value(const char* key, const std::string& default_value)
 {
+  if (auto env = get_env_value(key))
+    return env;
+      
   std::string val = default_value;
   try {
-    val = tree::instance()->m_tree.get<std::string>(key,default_value);
+    val = tree::instance()->m_tree.get<std::string>(key, default_value);
     // Although INI file entries are not supposed to have quotes around strings
     // but we want to be cautious
     if (!val.empty() && (val.front() == '"') && (val.back() == '"')) {
@@ -231,6 +234,14 @@ get_string_value(const char* key, const std::string& default_value)
 unsigned int
 get_uint_value(const char* key, unsigned int default_value)
 {
+  if (auto env = get_env_value(key)) {
+    try {
+      return static_cast<unsigned int>(std::stoul(env));
+    }
+    catch (const std::exception&) {
+    }
+  }
+      
   unsigned int val = default_value;
   try {
     val = tree::instance()->m_tree.get<unsigned int>(key,default_value);

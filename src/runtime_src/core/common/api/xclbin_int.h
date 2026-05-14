@@ -11,6 +11,8 @@
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"
 
+#include "xrt/detail/span.h"
+
 #include <cstring>
 #include <string>
 #include <vector>
@@ -19,6 +21,9 @@
 // to end users via xrt::xclbin.   These functions are used by
 // XRT core implementation.
 namespace xrt_core { namespace xclbin_int {
+
+template<typename T>
+using span = xrt::detail::span<T>;
 
 // get_axlf() - Retrieve complete axlf from handle
 const axlf*
@@ -41,8 +46,14 @@ get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
 std::vector<char>
 read_xclbin(const std::string& fnm);
 
+// get_xclbin_fnm() - Name of file from which xclbin was loaded
+// Empty if xclbin was created from in-memory data.
 std::string
 get_xclbin_fnm(const xrt::xclbin&);
+
+// get_xclbin_data() - Access raw xclbin data
+span<const char>
+get_xclbin_data(const xrt::xclbin&);
 
 // get_properties() - Get kernel properties
 XRT_CORE_COMMON_EXPORT

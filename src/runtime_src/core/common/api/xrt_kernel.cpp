@@ -14,6 +14,7 @@
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_mailbox.h"
 #include "core/include/xrt/experimental/xrt_module.h"
@@ -1560,7 +1561,7 @@ public:
 
 private:
   std::string name;                           // kernel name
-  std::string m_full_name;                    // full "kernel:instance" string, empty if no instance
+  std::string m_full_name;                    // full "kernel:instance" string
   std::shared_ptr<device_type> device;        // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
   xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
@@ -2061,6 +2062,12 @@ public:
   get_full_name() const
   {
     return m_full_name;
+  }
+
+  xrt::elf
+  get_ctrlcode_elf() const
+  {
+    return xrt::elf{xrt_core::module_int::get_elf_handle(m_module)};
   }
 
   uint32_t
@@ -4436,10 +4443,28 @@ get_hw_ctx(const xrt::kernel& kernel)
   return kernel.get_handle()->get_hw_context();
 }
 
+std::string
+get_instance_name(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_full_name();
+}
+
+xrt::elf
+get_ctrlcode(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_ctrlcode_elf();
+}  
+
 xrt::hw_context
 get_hw_ctx(const xrt::run& run)
 {
   return run.get_handle()->get_kernel()->get_hw_context();
+}
+
+xrt::kernel
+get_kernel(const xrt::run& run)
+{
+  return run.get_handle()->get_kernel()->get_shared_ptr();
 }
 
 xrt::kernel

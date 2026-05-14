@@ -486,6 +486,10 @@ get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
 std::string
 get_filename(const xrt::elf_impl* elf_impl);
 
+// save_elf() - Save underlying ELF to stream
+void
+save_elf(const xrt::elf& elf, std::ostream& ostr);
+
 } // namespace xrt_core::elf_int
 
 #endif

@@ -353,7 +353,7 @@ class recipe
       static bool
       is_external(type t)
       {
-        return t == type::input || t == type::output || t == type::weight;
+        return t == type::input || t == type::output || t == type::weight || t == type::inout;
       }
 
       static xrt::bo

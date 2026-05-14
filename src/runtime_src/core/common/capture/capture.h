@@ -11,7 +11,7 @@ namespace xrt_core::capture {
 inline bool
 is_enabled()
 {
-  static bool enabled = xrt_core::config::get_feature_toggle("Runtime.capture_frames");
+  static auto enabled = xrt_core::config::get_capture_frames();
   return enabled;
 }
 
