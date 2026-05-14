@@ -350,12 +350,11 @@ add_thermal_info(const xrt_core::device* device, ptree_type& pt)
   try {
     ptree_type thermals_pt = xrt_core::sensor::read_thermals(device);
     const ptree_type& thermals = thermals_pt.get_child("thermals");
-    for (const auto& kv : thermals) {
-      const ptree_type& pt_temp = kv.second;
-      if (!pt_temp.get<bool>("is_present", false))
+    for (const auto& [key, child] : thermals) {
+      if (!child.get<bool>("is_present", false))
         continue;
       ptree_type thermal;
-      thermal.put("temp_C", pt_temp.get<std::string>("temp_C", "N/A"));
+      thermal.put("temp_C", child.get<std::string>("temp_C", "N/A"));
       pt.put_child("thermal", thermal);
       break;
     }
