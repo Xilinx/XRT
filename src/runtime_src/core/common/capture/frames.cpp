@@ -467,6 +467,8 @@ elf_ctor(const xrt::elf_impl* hdl, const void* data, size_t size)
 void
 elf_ctor(const xrt::elf_impl* hdl, std::istream& istr)
 {
+  istr.clear();  // clear EOF if set
+  
   auto pos = istr.tellg();
   istr.seekg(0, std::ios::end);
   auto size = istr.tellg();

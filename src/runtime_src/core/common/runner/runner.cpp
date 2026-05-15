@@ -183,20 +183,32 @@ struct streambuf : public std::streambuf
   std::streampos
   seekpos(std::streampos pos, std::ios_base::openmode which) override
   {
+    if (pos < 0 || pos > (egptr() - eback()))
+      return std::streampos(std::streamoff(-1));
+    
     setg(eback(), eback() + pos, egptr());
-    return gptr() - eback();
+    return pos;
   }
 
   std::streampos
   seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode which) override
   {
+    char* new_gptr = nullptr;
+  
     if (way == std::ios_base::cur)
-      gbump(static_cast<int>(off));
+      new_gptr = gptr() + off;
     else if (way == std::ios_base::end)
-      setg(eback(), egptr() + off, egptr());
+      new_gptr = egptr() + off;
     else if (way == std::ios_base::beg)
-      setg(eback() + off, gptr(), egptr());
-    return gptr() - eback();
+      new_gptr = eback() + off;
+    else
+      return std::streampos(std::streamoff(-1));
+  
+    if (new_gptr < eback() || new_gptr > egptr())
+      return std::streampos(std::streamoff(-1));
+  
+    setg(eback(), new_gptr, egptr());
+    return std::streampos(new_gptr - eback());
   }
 };
 
