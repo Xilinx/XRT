@@ -1,9 +1,8 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
- */
-#ifndef _XRT_COMMON_XCLBIN_INT_H_
-#define _XRT_COMMON_XCLBIN_INT_H_
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_COMMON_XCLBIN_INT_H_
+#define XRT_COMMON_XCLBIN_INT_H_
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/xrt/experimental/xrt_xclbin.h"
@@ -45,11 +44,6 @@ get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
 // read_xclbin() - Read specified xclbin file
 std::vector<char>
 read_xclbin(const std::string& fnm);
-
-// get_xclbin_fnm() - Name of file from which xclbin was loaded
-// Empty if xclbin was created from in-memory data.
-std::string
-get_xclbin_fnm(const xrt::xclbin&);
 
 // get_xclbin_data() - Access raw xclbin data
 span<const char>

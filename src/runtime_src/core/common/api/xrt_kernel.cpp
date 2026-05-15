@@ -147,6 +147,9 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 
 namespace {
 
+template <typename T>
+using span = xrt::detail::span<T>;
+
 constexpr size_t mailbox_input_write = 1;
 constexpr size_t mailbox_output_read = 1;
 constexpr size_t mailbox_input_ack = (1 << 1);
@@ -378,7 +381,8 @@ uc_idle_status_flags_to_string(uint32_t idle_status)
 template <typename ValueType>
 class arg_range
 {
-  const ValueType* uval;
+  using value_type = ValueType;
+  const value_type* uval;
   size_t words;
 
   // Number of bytes must multiple of sizeof(ValueType)
@@ -396,13 +400,13 @@ public:
     , words(validate_bytes(bytes) / sizeof(ValueType))
   {}
 
-  const ValueType*
+  const value_type*
   begin() const
   {
     return uval;
   }
 
-  const ValueType*
+  const value_type*
   end() const
   {
     return uval + words;
@@ -417,16 +421,16 @@ public:
   size_t
   bytes() const
   {
-    return words * sizeof(ValueType);
+    return words * sizeof(value_type);
   }
 
-  const ValueType*
+  const value_type*
   data() const
   {
     return uval;
   }
 
-  const xrt::detail::span<const ValueType>
+  const span<const value_type>
   data_as_span() const
   {
     return {uval, words};
@@ -2433,17 +2437,17 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   }
 
   void
-  bind_arg_at_index(size_t index, const arg_range<uint8_t>& value)
-  {
-    XRT_RECIPE_CAPTURE(run_set_arg_at_index, this, index, value.data_as_span());
-    // cmd are not binding scalar values
-  }
-
-  void
   bind_arg_at_index(size_t index, const xrt::bo& bo)
   {
     XRT_RECIPE_CAPTURE(run_set_arg_at_index, this, index, bo);
     cmd->bind_arg_at_index(index, bo);
+  }
+
+  void
+  bind_arg_at_index(size_t index, const arg_range<uint8_t>& value)
+  {
+    XRT_RECIPE_CAPTURE(run_set_arg_at_index, this, index, value.data_as_span());
+    // cmd are not binding scalar values
   }
 
   bool
@@ -4437,12 +4441,6 @@ get_regmap_size(const xrt::kernel& kernel)
     return kernel.get_handle()->get_regmap_size();
 }
 
-xrt::hw_context
-get_hw_ctx(const xrt::kernel& kernel)
-{
-  return kernel.get_handle()->get_hw_context();
-}
-
 std::string
 get_instance_name(const xrt::kernel& kernel)
 {
@@ -4456,7 +4454,13 @@ get_ctrlcode(const xrt::kernel& kernel)
 }  
 
 xrt::hw_context
-get_hw_ctx(const xrt::run& run)
+get_hwctx(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_hw_context();
+}
+
+xrt::hw_context
+get_hwctx(const xrt::run& run)
 {
   return run.get_handle()->get_kernel()->get_hw_context();
 }
@@ -4468,7 +4472,7 @@ get_kernel(const xrt::run& run)
 }
 
 xrt::kernel
-create_kernel_from_impl(const xrt::kernel_impl* kernel_impl)
+get_kernel_from_impl(const xrt::kernel_impl* kernel_impl)
 {
   if (!kernel_impl)
     throw std::runtime_error("Invalid kernel context implementation.");
@@ -4477,7 +4481,7 @@ create_kernel_from_impl(const xrt::kernel_impl* kernel_impl)
 }
 
 xrt::run
-create_run_from_impl(const xrt::run_impl* run_impl)
+get_run_from_impl(const xrt::run_impl* run_impl)
 {
   return xrt::run{const_cast<xrt::run_impl*>(run_impl)->get_shared_ptr()}; // NOLINT
 }

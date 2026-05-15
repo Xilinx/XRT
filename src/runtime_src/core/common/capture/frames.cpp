@@ -93,7 +93,7 @@ class frames
 
   public:
     run(const xrt::run_impl* hdl)
-      : m_run{xrt_core::kernel_int::create_run_from_impl(hdl)}
+      : m_run{xrt_core::kernel_int::get_run_from_impl(hdl)}
     {}
 
     template <typename ArgType>
@@ -115,7 +115,7 @@ class frames
     xrt::hw_context
     get_xrt_hwctx() const
     {
-      return xrt_core::kernel_int::get_hw_ctx(m_run);
+      return xrt_core::kernel_int::get_hwctx(m_run);
     }
 
     xrt::kernel
@@ -310,7 +310,7 @@ class frames
     json j = json::object();
     j["name"] = to_string(kernel.get_handle().get());
     j["instance"] = kernel_int::get_instance_name(kernel);
-    auto hwctx = kernel_int::get_hw_ctx(kernel);
+    auto hwctx = kernel_int::get_hwctx(kernel);
     j["hwctx"] = to_string(hwctx.get_handle().get());
     if (!hw_context_int::get_elf_flow(hwctx)) {
       auto elf = kernel_int::get_ctrlcode(kernel);
@@ -331,6 +331,23 @@ class frames
   }
 
   json
+  recipe_execution_run(const frame& frame) const
+  {
+    json j = json::object();
+    return j;
+  }
+
+  json
+  recipe_execution_runs() const
+  {
+    json j = json::array();
+    for (auto& frame : m_frames)
+      j.push_back(recipe_execution_run(frame));
+
+    return j;
+  }
+
+  json
   recipe_resources() const
   {
     json resources = json::object();
@@ -343,7 +360,9 @@ class frames
   json
   recipe_execution() const
   {
-    return json::object();
+    json execution = json::object();
+    insert_json_object(execution["runs"], recipe_execution_runs());
+    return execution;
   }
 
 public:

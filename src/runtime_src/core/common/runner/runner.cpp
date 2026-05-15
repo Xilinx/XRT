@@ -1196,7 +1196,7 @@ public:
       xrt::hw_context
       get_xrt_hwctx() const
       {
-        return xrt_core::kernel_int::get_hw_ctx(get_xrt_run());
+        return xrt_core::kernel_int::get_hwctx(get_xrt_run());
       }
 
       xrt::run

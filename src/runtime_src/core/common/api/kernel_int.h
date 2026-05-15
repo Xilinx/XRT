@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Xilinx Runtime (XRT) Experimental APIs
 
@@ -88,32 +88,38 @@ XRT_CORE_COMMON_EXPORT
 size_t
 get_regmap_size(const xrt::kernel& kernel);
 
+// get_instance_name() - Get the kernel instance name
+// Return the name used to create the kernel before it is stripped to
+// remove instance identifier part.  On Alveo, this name is not
+// necessarily an instance name, but in ELF flow it uniquely
+// identifies a kernel instance.
 std::string
 get_instance_name(const xrt::kernel&);
 
 // Get hw ctx using which this kernel is created
 xrt::hw_context
-get_hw_ctx(const xrt::kernel& kernel);
+get_hwctx(const xrt::kernel& kernel);
 
 xrt::elf
 get_ctrlcode(const xrt::kernel&);
 
 // Get hw ctx using which this kernel is created
 xrt::hw_context
-get_hw_ctx(const xrt::run&);
+get_hwctx(const xrt::run&);
 
 // Get xrt::kernel fron which run was created
 xrt::kernel
 get_kernel(const xrt::run&);
 
-// Allows the creation of the kernel object from a kernel_impl pointer
-// This is used for logging usage mertrics
+// get_kernel_from_impl() - wrap impl in an xrt::kernel
+// Returns xrt::kernel created from shared kernel_impl.
 xrt::kernel
-create_kernel_from_impl(const xrt::kernel_impl* kernel_impl);
+get_kernel_from_impl(const xrt::kernel_impl* kernel_impl);
 
-// Allows the creation of an xrt::run object from a run_impl pointer
+// get_run_from_impl() - wrap impl in an xrt::run
+// Returns xrt::run created from shared run_impl.
 xrt::run
-create_run_from_impl(const xrt::run_impl*);
+get_run_from_impl(const xrt::run_impl*);
 
 // Fill XDP kernel data from a run_impl pointer for profiling hooks
 XRT_CORE_COMMON_EXPORT

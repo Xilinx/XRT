@@ -16,8 +16,11 @@ class runlist_impl;
 
 namespace xrt_core::capture {
 
+template <typename T>
+using span = xrt::detail::span<T>;
+
 void
-run_set_arg_at_index(const xrt::run_impl*, size_t, xrt::detail::span<const uint8_t>);
+run_set_arg_at_index(const xrt::run_impl*, size_t, span<const uint8_t>);
 
 void
 run_set_arg_at_index(const xrt::run_impl*, size_t, const xrt::bo&);

@@ -211,7 +211,6 @@ load_elfio(const std::string& fnm)
     std::string message = "Loaded elf file " + fnm;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_elf", message);
   }
-
   return elfio;
 }
 
@@ -1662,15 +1661,6 @@ get_filename(const xrt::elf_impl* elf_impl)
   return elf_impl
     ? elf_impl->get_filename()
     : "";
-}
-
-void
-save_elf(const xrt::elf& elf, std::ostream& ostr)
-{
-  auto& elfio = elf.get_handle()->get_elfio();
-  // apparently save is not const as it needs to update some
-  // internal data structure sizes before saving??
-  const_cast<ELFIO::elfio&>(elfio).save(ostr);
 }
 
 } // xrt_core::elf_int

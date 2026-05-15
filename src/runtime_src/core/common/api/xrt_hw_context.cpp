@@ -91,6 +91,7 @@ to_cfg_param_type(const xrt::hw_context::cfg_type& cfg)
   return out;
 }
 
+// Convert cfg_param_type scalar map to cfg_type string map
 static xrt::hw_context::cfg_type
 to_cfg_type(const xrt::hw_context::cfg_param_type& cfg)
 {
@@ -115,7 +116,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   using access_mode = xrt::hw_context::access_mode;
   using cfg_storage = std::variant<cfg_param_type, cfg_type>;
 
-  // Get the effective configuration parameters based on the storage type
+  // Get the effective configuration parameters as cfg_param_type
   static cfg_param_type
   effective_cfg_param(const cfg_storage& st)
   {
@@ -128,6 +129,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }, st);
   }
 
+  // Get the effective configuration parameters as cfg_type
   static cfg_type
   effective_cfg_type(const cfg_storage& st)
   {
@@ -542,6 +544,7 @@ public:
     throw std::runtime_error("no ELF found with given kernel name in ctx");
   }
 
+  // Return unique set of configuration elf used by this hwctx
   std::vector<xrt::elf>
   get_config_elfs() const
   {
