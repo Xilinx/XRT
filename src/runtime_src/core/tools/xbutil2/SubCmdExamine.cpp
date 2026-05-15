@@ -314,7 +314,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("         - %s\n") % report;
 
       // Print available devices
-      const auto dev_pt = XBU::get_available_devices(true);
+      const auto dev_pt = XBU::get_available_bdfs(true);
       if(dev_pt.empty())
         std::cout << "0 devices found" << std::endl;
       else
