@@ -57,7 +57,7 @@ to_uint64(span<const uint8_t> data)
 }
 
 static std::string
-to_string(void* v)
+to_string(const void* v)
 {
   return std::to_string(reinterpret_cast<uintptr_t>(v));
 }
@@ -133,6 +133,12 @@ class frames
         }, arg);
       }
       return bos;
+    }
+
+    std::string
+    get_kernel_name() const
+    {
+      return to_string(get_xrt_kernel().get_handle().get());
     }
 
     const std::vector<arg_type>&
@@ -228,6 +234,24 @@ class frames
       : m_frame(std::move(ft))
     {
       capture_frame_data(ft, repo);
+    }
+
+    const run*
+    get_run_or_null() const
+    {
+      if (auto v_ptr = std::get_if<run*>(&m_frame))
+        return *v_ptr;
+
+      return nullptr;
+    }
+
+    const runlist*
+    get_runlist_or_null() const
+    {
+      if (auto v_ptr = std::get_if<runlist*>(&m_frame))
+        return *v_ptr;
+
+      return nullptr;
     }
   };
 
@@ -398,30 +422,49 @@ class frames
     return j;
   }
 
+#if 0
   json
-  recipe_execution_run(const frame& frame) const
+  recipe_resource_run(const frame& frame) const
   {
     json j = json::object();
+    if (auto run = frame.get_run_or_null())
+      insert_json_object(j, recipe_resource_run(frame, run));
+    else if (auto runlist = frame.get_runlist_or_null())
+      for (auto run : runlist->get_runs())
+        insert_json_object(j, recipe_resource_run(frame, run));
+
+    return j;
+  }
+#endif
+
+  json
+  recipe_resource_run(const xrt::run_impl* rhdl, const run& run) const
+  {
+    json j = json::object();
+    j["name"] = to_string(rhdl);
+    j["kernel"] = run.get_kernel_name();
     return j;
   }
 
   json
-  recipe_execution_runs() const
+  recipe_resource_runs() const
   {
     json j = json::array();
-    for (auto& frame : m_frames)
-      j.push_back(recipe_execution_run(frame));
+    for (const auto& [rhdl, run] : m_runs)
+      j.push_back(recipe_resource_run(rhdl, run));
 
     return j;
   }
+
 
   json
   recipe_resources() const
   {
     json resources = json::object();
     insert_json_object(resources["resources"]["hwctxs"], recipe_resources_hwctxs());
-    insert_json_object(resources["buffers"], recipe_resource_buffers());
-    insert_json_object(resources["kernels"], recipe_resource_kernels());
+    insert_json_object(resources["resources"]["buffers"], recipe_resource_buffers());
+    insert_json_object(resources["resources"]["kernels"], recipe_resource_kernels());
+    insert_json_object(resources["resources"]["runs"], recipe_resource_runs());
     return resources;
   }
 
@@ -429,7 +472,7 @@ class frames
   recipe_execution() const
   {
     json execution = json::object();
-    insert_json_object(execution["runs"], recipe_execution_runs());
+    //insert_json_object(execution["runs"], recipe_execution_runs());
     return execution;
   }
 
