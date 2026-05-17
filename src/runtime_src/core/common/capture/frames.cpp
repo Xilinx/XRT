@@ -102,6 +102,12 @@ class frames
       m_args[argidx] = value;
     }
 
+    std::string
+    get_name() const
+    {
+      return to_string(m_run.get_handle().get());
+    }
+
     xrt::run
     get_xrt_run() const
     {
@@ -191,7 +197,9 @@ class frames
     frame_type m_frame;
 
     using fnm_type = std::string;
+  public:
     using arg_type = std::variant<uint64_t, fnm_type>;
+  private:
     std::map<const run*, std::vector<arg_type>> m_run2args;
 
     // Captures the argument data associated with the current state of
@@ -252,6 +260,12 @@ class frames
         return *v_ptr;
 
       return nullptr;
+    }
+
+    const std::vector<arg_type>&
+    get_args(const run& run) const
+    {
+      return m_run2args.at(&run);
     }
   };
 
@@ -422,27 +436,35 @@ class frames
     return j;
   }
 
-#if 0
   json
-  recipe_resource_run(const frame& frame) const
-  {
-    json j = json::object();
-    if (auto run = frame.get_run_or_null())
-      insert_json_object(j, recipe_resource_run(frame, run));
-    else if (auto runlist = frame.get_runlist_or_null())
-      for (auto run : runlist->get_runs())
-        insert_json_object(j, recipe_resource_run(frame, run));
 
+  recipe_resource_run_constants(const std::vector<run::arg_type>& args) const
+  {
+    json j = json::array();
+    size_t argidx = 0;
+    for (const auto& arg : args) {
+      std::visit([&j, argidx](const auto& v) {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, uint64_t>) {
+          json a = json::object();
+          a["value"] = v;
+          a["argidx"] = std::to_string(argidx);
+          a["type"] = "int";
+          j.push_back(a);
+        }
+      }, arg);
+      ++argidx;
+    };
     return j;
   }
-#endif
 
   json
-  recipe_resource_run(const xrt::run_impl* rhdl, const run& run) const
+  recipe_resource_run(const run& run) const
   {
     json j = json::object();
-    j["name"] = to_string(rhdl);
+    j["name"] = run.get_name();
     j["kernel"] = run.get_kernel_name();
+    j["constants"] = recipe_resource_run_constants(run.get_args());
     return j;
   }
 
@@ -451,8 +473,8 @@ class frames
   {
     json j = json::array();
     for (const auto& [rhdl, run] : m_runs)
-      j.push_back(recipe_resource_run(rhdl, run));
-
+      j.push_back(recipe_resource_run(run));
+    
     return j;
   }
 
@@ -469,10 +491,62 @@ class frames
   }
 
   json
+  recipe_execution_frame_arguments(const std::vector<frame::arg_type>& args) const
+  {
+    json j = json::array();
+    size_t argidx = 0;
+    for (const auto& arg : args) {
+      std::visit([&j, argidx](const auto& v) {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, std::string>) {
+          json a = json::object();
+          a["name"] = v;
+          a["argidx"] = std::to_string(argidx);
+          j.push_back(a);
+        }
+      }, arg);
+      ++argidx;
+    };
+    return j;
+  }
+
+  json
+  recipe_execution_frame(const frame& frame, const run& run) const
+  {
+    json j = json::object();
+    j["run"] = run.get_name();
+    j["arguments"] = recipe_execution_frame_arguments(frame.get_args(run));
+    return j;
+  }
+
+  json
+  recipe_execution_frame(const frame& frame) const
+  {
+    json j = json::object();
+    if (auto run = frame.get_run_or_null())
+      insert_json_object(j, recipe_execution_frame(frame, *run));
+    else if (auto runlist = frame.get_runlist_or_null())
+      for (auto run : runlist->get_runs())
+        insert_json_object(j, recipe_execution_frame(frame, *run));
+
+    return j;
+  }
+
+  json
+  recipe_execution_frames() const
+  {
+    json j = json::array();
+    for (const auto& frame : m_frames)
+      j.push_back(recipe_execution_frame(frame));
+
+    return j;
+  }
+
+  json
   recipe_execution() const
   {
     json execution = json::object();
-    //insert_json_object(execution["runs"], recipe_execution_runs());
+    insert_json_object(execution["execution"]["frames"], recipe_execution_frames());
     return execution;
   }
 
