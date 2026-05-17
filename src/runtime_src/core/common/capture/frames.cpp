@@ -75,19 +75,15 @@ namespace xrt_core::capture {
 // but the singleton is instantiated only if capturing is enabled.
 class frames
 {
-  // struct run - user created run objects and args
+  // struct run - user created xrt::run objects and args
   // 
-  // Data is retrieved from the xrt::run along with the arguments to
-  // the run.  The capture only needs to intercept set_arg() and
-  // start().  Presumably it is an error when start interception
-  // doesn't find a corresponding capture run with arguments set.
-  // 
-  // If an xrt::run object is explicitly started then it represents a
-  // frame boundary of exactly one run.  If a frame is multiple runs
-  // then the application should use an xrt::runlist.
+  // A run is created when arguments to the run are captured as part
+  // of application calling xrt::run::set_arg().
   class run
   {
+  public:
     using arg_type = std::variant<uint64_t, xrt::bo>;
+  private:
     std::vector<arg_type> m_args;
     xrt::run m_run;
 
@@ -138,16 +134,24 @@ class frames
       }
       return bos;
     }
+
+    const std::vector<arg_type>&
+    get_args() const
+    {
+      return m_args;
+    }
+
+    size_t
+    get_num_args() const
+    {
+      return m_args.size();
+    }
   };
 
   // class runlist - user create runlists
   //
-  // Data is retrieved from the xrt::runlist only when xrt::run
-  // objects are added to the runlist.
-  //
-  // The runlist represents a frame boundary regardless of the
-  // number of runs in the runlist.  One execution of a runlist
-  // is one frame.
+  // A runlist is created when an xrt::run object is added to an
+  // xrt::runlist.
   class runlist
   {
     // Pointer to run is safe since the run lifetime is tied to a
@@ -160,6 +164,71 @@ class frames
     {
       m_runs.push_back(&r);
     }
+
+    const std::vector<const run*>&
+    get_runs() const
+    {
+      return m_runs;
+    }
+  };
+
+  // class frame -
+  //
+  // A frame is a single run object or a runlist that is bounded by
+  // xrt::run::start() or xrt::runlist::execute().  The same run or
+  // runlist can be used by multiple frames but the data used to
+  // execute a frame is captured immediately when the call to start()
+  // or execute() itself is captured.
+  class frame
+  {
+    using frame_type = std::variant<run*, runlist*>;
+    frame_type m_frame;
+
+    using fnm_type = std::string;
+    using arg_type = std::variant<uint64_t, fnm_type>;
+    std::map<const run*, std::vector<arg_type>> m_run2args;
+
+    // Captures the argument data associated with the current state of
+    // the run. If a given run is used by subsequent frames, its
+    // argument data may be different between the frames, not only if
+    // set_arg was called in between, but also if data of bo args was
+    // changed prior to the second run.
+    //
+    // This function captures 
+    void
+    capture_frame_data(const run* run, artifacts& repo)
+    {
+      // Arguments to be populated for this run and frame
+      auto& args = m_run2args[run];
+      args.reserve(run->get_num_args());
+
+      // Process current run args.  Dump data if arg is a bo.
+      for (auto& rarg : run->get_args()) {
+        std::visit([&args, &repo] (auto& v) {
+          using T = std::decay_t<decltype(v)>;
+          if constexpr (std::is_same_v<T, xrt::bo>) {
+            args.push_back(repo.dump({v.template map<const char*>(), v.size()}));
+          }
+          else if constexpr (std::is_same_v<T, uint64_t>)
+            args.push_back(v);
+        }, rarg);
+      }
+    }
+      
+    void
+    capture_frame_data(const runlist* runlist, artifacts& repo)
+    {
+      for (auto run : runlist->get_runs())
+        capture_frame_data(run, repo);
+    }
+
+  public:
+    template <typename FrameType>
+    frame(FrameType ft, artifacts& repo)
+      : m_frame(std::move(ft))
+    {
+      capture_frame_data(ft, repo);
+    }
   };
 
   // Track xrt::run and xrt::runlist objects created by application
@@ -171,7 +240,6 @@ class frames
   // execution of a runlist with multiple run objects. A frame
   // is a pointer to an object stored in a std::map, vector can
   // resize by pointers remain valid.
-  using frame = std::variant<run*, runlist*>;
   std::vector<frame> m_frames;
 
   // ELFIO cannot be dumped post creation, so capture as created
@@ -401,7 +469,7 @@ public:
   start(const xrt::run_impl* hdl)
   {
     std::lock_guard lk(m_mutex);
-    m_frames.push_back(&m_runs.at(hdl));
+    m_frames.emplace_back(&m_runs.at(hdl), m_artifacts);
   }
 
   // start() - start a frame represented by a runlist
@@ -409,7 +477,7 @@ public:
   start(const xrt::runlist_impl* hdl)
   {
     std::lock_guard lk(m_mutex);
-    m_frames.push_back(&m_runlists.at(hdl));
+    m_frames.emplace_back(&m_runlists.at(hdl), m_artifacts);
   }
 
   // capture_elf() - capture elf data for recipe reference
