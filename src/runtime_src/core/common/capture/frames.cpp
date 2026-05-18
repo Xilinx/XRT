@@ -270,7 +270,7 @@ class frames
   };
 
   // Track xrt::run and xrt::runlist objects created by application
-  std::mutex m_mutex;
+  mutable std::mutex m_mutex;
   std::map<const xrt::run_impl*, run> m_runs;
   std::map<const xrt::runlist_impl*, runlist> m_runlists;
 
@@ -293,7 +293,7 @@ class frames
 
   ~frames()
   {
-    build_recipe();
+    build_replay_script();
   }
 
   // create_run_if_new() - get capture::run for hdl
@@ -357,7 +357,7 @@ class frames
   // Recipe writer functions
   ////////////////////////////////////////////////////////////////
   json
-  recipe_resource_hwctx(const xrt::hw_context& hwctx) const
+  replay_resource_hwctx(const xrt::hw_context& hwctx) const
   {
     json j = json::object();
     j["name"] = to_string(hwctx.get_handle().get());
@@ -378,17 +378,17 @@ class frames
   }
   
   json
-  recipe_resources_hwctxs() const
+  replay_resources_hwctxs() const
   {
     json j = json::array();
     for (auto& hwctx : get_hwctxs())
-      j.push_back(recipe_resource_hwctx(hwctx));
+      j.push_back(replay_resource_hwctx(hwctx));
 
     return j;
   }
 
   json
-  recipe_resource_buffer(const xrt::bo& bo) const
+  replay_resource_buffer(const xrt::bo& bo) const
   {
     json j = json::object();
     // The name here implies that when buffer data is dumped to disk,
@@ -401,17 +401,17 @@ class frames
   }
 
   json
-  recipe_resource_buffers() const
+  replay_resource_buffers() const
   {
     json j = json::array();
     for (auto& bo : get_buffers())
-      j.push_back(recipe_resource_buffer(bo));
+      j.push_back(replay_resource_buffer(bo));
 
     return j;
   }
 
   json
-  recipe_resource_kernel(const xrt::kernel& kernel) const
+  replay_resource_kernel(const xrt::kernel& kernel) const
   {
     json j = json::object();
     j["name"] = to_string(kernel.get_handle().get());
@@ -427,18 +427,17 @@ class frames
   }
 
   json
-  recipe_resource_kernels() const
+  replay_resource_kernels() const
   {
     json j = json::array();
     for (auto& krnl : get_kernels())
-      j.push_back(recipe_resource_kernel(krnl));
+      j.push_back(replay_resource_kernel(krnl));
 
     return j;
   }
 
   json
-
-  recipe_resource_run_constants(const std::vector<run::arg_type>& args) const
+  replay_resource_run_constants(const std::vector<run::arg_type>& args) const
   {
     json j = json::array();
     size_t argidx = 0;
@@ -459,39 +458,39 @@ class frames
   }
 
   json
-  recipe_resource_run(const run& run) const
+  replay_resource_run(const run& run) const
   {
     json j = json::object();
     j["name"] = run.get_name();
     j["kernel"] = run.get_kernel_name();
-    j["constants"] = recipe_resource_run_constants(run.get_args());
+    j["constants"] = replay_resource_run_constants(run.get_args());
     return j;
   }
 
   json
-  recipe_resource_runs() const
+  replay_resource_runs() const
   {
     json j = json::array();
     for (const auto& [rhdl, run] : m_runs)
-      j.push_back(recipe_resource_run(run));
+      j.push_back(replay_resource_run(run));
     
     return j;
   }
 
 
   json
-  recipe_resources() const
+  replay_resources() const
   {
     json resources = json::object();
-    insert_json_object(resources["resources"]["hwctxs"], recipe_resources_hwctxs());
-    insert_json_object(resources["resources"]["buffers"], recipe_resource_buffers());
-    insert_json_object(resources["resources"]["kernels"], recipe_resource_kernels());
-    insert_json_object(resources["resources"]["runs"], recipe_resource_runs());
+    insert_json_object(resources["resources"]["hwctxs"], replay_resources_hwctxs());
+    insert_json_object(resources["resources"]["buffers"], replay_resource_buffers());
+    insert_json_object(resources["resources"]["kernels"], replay_resource_kernels());
+    insert_json_object(resources["resources"]["runs"], replay_resource_runs());
     return resources;
   }
 
   json
-  recipe_execution_frame_arguments(const std::vector<frame::arg_type>& args) const
+  replay_execution_frame_arguments(const std::vector<frame::arg_type>& args) const
   {
     json j = json::array();
     size_t argidx = 0;
@@ -511,42 +510,42 @@ class frames
   }
 
   json
-  recipe_execution_frame(const frame& frame, const run& run) const
+  replay_execution_frame(const frame& frame, const run& run) const
   {
     json j = json::object();
     j["run"] = run.get_name();
-    j["arguments"] = recipe_execution_frame_arguments(frame.get_args(run));
+    j["arguments"] = replay_execution_frame_arguments(frame.get_args(run));
     return j;
   }
 
   json
-  recipe_execution_frame(const frame& frame) const
+  replay_execution_frame(const frame& frame) const
   {
     json j = json::object();
     if (auto run = frame.get_run_or_null())
-      insert_json_object(j, recipe_execution_frame(frame, *run));
+      insert_json_object(j, replay_execution_frame(frame, *run));
     else if (auto runlist = frame.get_runlist_or_null())
       for (auto run : runlist->get_runs())
-        insert_json_object(j, recipe_execution_frame(frame, *run));
+        insert_json_object(j, replay_execution_frame(frame, *run));
 
     return j;
   }
 
   json
-  recipe_execution_frames() const
+  replay_execution_frames() const
   {
     json j = json::array();
     for (const auto& frame : m_frames)
-      j.push_back(recipe_execution_frame(frame));
+      j.push_back(replay_execution_frame(frame));
 
     return j;
   }
 
   json
-  recipe_execution() const
+  replay_execution() const
   {
     json execution = json::object();
-    insert_json_object(execution["execution"]["frames"], recipe_execution_frames());
+    insert_json_object(execution["execution"]["frames"], replay_execution_frames());
     return execution;
   }
 
@@ -557,6 +556,14 @@ public:
   {
     static frames cap;
     return cap;
+  }
+
+  bool
+  is_enabled() const
+  {
+    static auto frames = xrt_core::config::get_capture_frames();
+    std::lock_guard lk(m_mutex);
+    return (m_frames.size() < frames);
   }
 
   ////////////////////////////////////////////////////////////////
@@ -610,12 +617,12 @@ public:
   // Recipe writer functions
   ////////////////////////////////////////////////////////////////
   json
-  build_recipe() const
+  build_replay_script() const
   {
     json recipe = json::object();
     recipe["version"] = "1.0";
-    insert_json_object(recipe, recipe_resources());
-    insert_json_object(recipe, recipe_execution());
+    insert_json_object(recipe, replay_resources());
+    insert_json_object(recipe, replay_execution());
 
     std::cout << recipe.dump(2) << "\n";
     return recipe;
@@ -623,8 +630,18 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////
-// Global capture function used by XRT_RECIPE_CAPTURE
+// Global capture function used by XRT_REPLAY_CAPTURE
 ////////////////////////////////////////////////////////////////
+bool
+is_enabled()
+{
+  static auto frames = xrt_core::config::get_capture_frames();
+  if (!frames)
+    return false;
+  
+  return frames::instance().is_enabled();
+}
+
 void
 run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, span<const uint8_t> value)
 {

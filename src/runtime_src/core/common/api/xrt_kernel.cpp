@@ -2439,14 +2439,14 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   void
   bind_arg_at_index(size_t index, const xrt::bo& bo)
   {
-    XRT_RECIPE_CAPTURE(run_set_arg_at_index, this, index, bo);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, index, bo);
     cmd->bind_arg_at_index(index, bo);
   }
 
   void
   bind_arg_at_index(size_t index, const arg_range<uint8_t>& value)
   {
-    XRT_RECIPE_CAPTURE(run_set_arg_at_index, this, index, value.data_as_span());
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, index, value.data_as_span());
     // cmd are not binding scalar values
   }
 
@@ -2994,7 +2994,7 @@ public:
     // sending state as ERT_CMD_STATE_NEW for kernel start
     m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
     cmd->run();
-    XRT_RECIPE_CAPTURE(start_frame, this);
+    XRT_REPLAY_CAPTURE(start_frame, this);
   }
 
   void
@@ -3968,7 +3968,7 @@ public:
     m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
     m_bos.push_back(run_bo);              // ptr noexcept
 
-    XRT_RECIPE_CAPTURE(runlist_add_run, this, run_impl.get());
+    XRT_REPLAY_CAPTURE(runlist_add_run, this, run_impl.get());
   }
 
   void
@@ -3994,7 +3994,7 @@ public:
     // things failed.
     try {
       submit();
-      XRT_RECIPE_CAPTURE(start_frame, this);
+      XRT_REPLAY_CAPTURE(start_frame, this);
     }
     catch (const std::exception&) {
       m_state = state::running;

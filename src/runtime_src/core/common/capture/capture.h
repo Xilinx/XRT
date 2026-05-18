@@ -8,6 +8,9 @@
 
 namespace xrt_core::capture {
 
+bool
+is_enabled();
+
 inline bool
 is_enabled()
 {
@@ -16,7 +19,7 @@ is_enabled()
 }
 
 // No-op when disabled, actual capture when enabled
-#define XRT_RECIPE_CAPTURE(fn, ...) \
+#define XRT_REPLAY_CAPTURE(fn, ...) \
   do { if (XRT_UNLIKELY(xrt_core::capture::is_enabled())) { \
       xrt_core::capture::fn(__VA_ARGS__);           \
     } } while(0)

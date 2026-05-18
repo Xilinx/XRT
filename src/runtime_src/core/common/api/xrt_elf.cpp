@@ -1517,7 +1517,7 @@ elf(const std::string& fnm)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(fnm), fnm)}
 {
   // ELFIO cannot be post dumped. Track elf_impl to elf data
-  XRT_RECIPE_CAPTURE(elf_ctor, handle.get(), fnm);
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), fnm);
 }
 
 elf::
@@ -1525,7 +1525,7 @@ elf(std::istream& stream)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(stream))}
 {
   // ELFIO cannot be post dumped. Track elf_impl to elf data
-  XRT_RECIPE_CAPTURE(elf_ctor, handle.get(), stream);
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), stream);
 }
 
 elf::
@@ -1533,7 +1533,7 @@ elf(const void* data, size_t size)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(data, size))}
 {
   // ELFIO cannot be post dumped. Track elf_impl to elf data
-  XRT_RECIPE_CAPTURE(elf_ctor, handle.get(), data, size);
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), data, size);
 }
 
 elf::
@@ -1541,7 +1541,7 @@ elf(const std::string_view& sv)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(sv.data(), sv.size()))}
 {
   // ELFIO cannot be post dumped. Track elf_impl to elf data
-  XRT_RECIPE_CAPTURE(elf_ctor, handle.get(), sv.data(), sv.size());
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), sv.data(), sv.size());
 }
 
 xrt::uuid
