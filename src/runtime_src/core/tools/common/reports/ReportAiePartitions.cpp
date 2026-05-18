@@ -131,7 +131,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
     // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
     Table2D hw_table(7);
-    hw_table.setStackedHeaders({
+    hw_table.set_stacked_headers({
       {"PID", "Ctx ID", "Submissions", "Migrations", "Frame Evts", "Err", "Priority"},
       {"Process Name", "Status", "Completions", "Suspensions", "Layer Evts", "", "GOPS"},
       {"Memory Usage", "Instr BO", "", "", "", "", "FPS"},
@@ -141,7 +141,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree)) {
       const auto& hw_context = pt_hw_context.second;
 
-      hw_table.addStackedEntry({
+      hw_table.add_stacked_entry({
         {
           std::to_string(hw_context.get<int>("pid")),
           hw_context.get<std::string>("context_id"),
@@ -171,10 +171,10 @@ writeReport(const xrt_core::device* /*_pDevice*/,
           hw_context.get<std::string>("latency"),
         },
       });
-      hw_table.addStackedSeparator();
+      hw_table.add_stacked_separator();
     }
 
-    _output << hw_table.stackedToString("      ");
+    _output << hw_table.stacked_to_string("      ");
   }
 
   if (XBUtilities::getVerbose()) {

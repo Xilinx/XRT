@@ -30,14 +30,14 @@ Table2D::Table2D(size_t column_count, Justification justification)
 }
 
 void
-Table2D::updateStackedColumnWidth(size_t column_index, const std::string& data)
+Table2D::update_stacked_column_width(size_t column_index, const std::string& data)
 {
   auto& column = m_table[column_index];
   column.max_element_size = std::max(column.max_element_size, data.size());
 }
 
 void
-Table2D::validateStackedRow(const std::vector<std::string>& row, const char* context) const
+Table2D::validate_stacked_row(const std::vector<std::string>& row, const char* context) const
 {
   if (!m_stacked_mode)
     throw std::runtime_error(boost::str(boost::format("Table2D - %s requires a stacked table.\n") % context));
@@ -51,33 +51,33 @@ Table2D::validateStackedRow(const std::vector<std::string>& row, const char* con
 }
 
 void
-Table2D::setStackedHeaders(const std::vector<std::vector<std::string>>& header_rows)
+Table2D::set_stacked_headers(const std::vector<std::vector<std::string>>& header_rows)
 {
   if (!m_stacked_mode)
-    throw std::runtime_error("Table2D - setStackedHeaders requires a stacked table.\n");
+    throw std::runtime_error("Table2D - set_stacked_headers requires a stacked table.\n");
 
   if (header_rows.empty())
-    throw std::runtime_error("Table2D - setStackedHeaders requires at least one header row.\n");
+    throw std::runtime_error("Table2D - set_stacked_headers requires at least one header row.\n");
 
   m_stacked_header_rows.clear();
   for (const auto& row : header_rows) {
-    validateStackedRow(row, "setStackedHeaders");
+    validate_stacked_row(row, "set_stacked_headers");
     m_stacked_header_rows.push_back(row);
     for (size_t col = 0; col < row.size(); ++col)
-      updateStackedColumnWidth(col, row[col]);
+      update_stacked_column_width(col, row[col]);
   }
 }
 
 void
-Table2D::addStackedEntry(const std::vector<std::vector<std::string>>& entry_rows)
+Table2D::add_stacked_entry(const std::vector<std::vector<std::string>>& entry_rows)
 {
   if (entry_rows.empty())
-    throw std::runtime_error("Table2D - addStackedEntry requires at least one entry row.\n");
+    throw std::runtime_error("Table2D - add_stacked_entry requires at least one entry row.\n");
 
   for (const auto& row : entry_rows) {
-    validateStackedRow(row, "addStackedEntry");
+    validate_stacked_row(row, "add_stacked_entry");
     for (size_t col = 0; col < row.size(); ++col)
-      updateStackedColumnWidth(col, row[col]);
+      update_stacked_column_width(col, row[col]);
   }
 
   StackedBlock block;
@@ -87,10 +87,10 @@ Table2D::addStackedEntry(const std::vector<std::vector<std::string>>& entry_rows
 }
 
 void
-Table2D::addStackedSeparator()
+Table2D::add_stacked_separator()
 {
   if (!m_stacked_mode)
-    throw std::runtime_error("Table2D - addStackedSeparator requires a stacked table.\n");
+    throw std::runtime_error("Table2D - add_stacked_separator requires a stacked table.\n");
 
   StackedBlock block;
   block.kind = StackedBlockKind::separator;
@@ -98,7 +98,7 @@ Table2D::addStackedSeparator()
 }
 
 void
-Table2D::formatDataRow(std::string& output_line, const std::string& prefix, const std::vector<std::string>& row) const
+Table2D::format_data_row(std::string& output_line, const std::string& prefix, const std::vector<std::string>& row) const
 {
   const auto space_suffix = std::string(m_inter_entry_padding, ' ');
   for (size_t col = 0; col < m_table.size(); ++col) {
@@ -111,7 +111,7 @@ Table2D::formatDataRow(std::string& output_line, const std::string& prefix, cons
 }
 
 void
-Table2D::formatSeparatorRow(std::string& output_line, const std::string& prefix) const
+Table2D::format_separator_row(std::string& output_line, const std::string& prefix) const
 {
   const auto dash_suffix = std::string(m_inter_entry_padding, '-');
   for (size_t col = 0; col < m_table.size(); ++col) {
@@ -125,21 +125,21 @@ Table2D::formatSeparatorRow(std::string& output_line, const std::string& prefix)
 }
 
 std::string
-Table2D::stackedToString(const std::string& prefix) const
+Table2D::stacked_to_string(const std::string& prefix) const
 {
   if (!m_stacked_mode)
-    throw std::runtime_error("Table2D - stackedToString requires a stacked table.\n");
+    throw std::runtime_error("Table2D - stacked_to_string requires a stacked table.\n");
 
   std::stringstream os;
   for (const auto& header_row : m_stacked_header_rows) {
     std::string output_line;
-    formatDataRow(output_line, prefix, header_row);
+    format_data_row(output_line, prefix, header_row);
     os << output_line;
   }
 
   if (!m_stacked_header_rows.empty()) {
     std::string separator_line;
-    formatSeparatorRow(separator_line, prefix);
+    format_separator_row(separator_line, prefix);
     os << separator_line;
   }
 
@@ -148,14 +148,14 @@ Table2D::stackedToString(const std::string& prefix) const
       case StackedBlockKind::entry:
         for (const auto& row : block.rows) {
           std::string output_line;
-          formatDataRow(output_line, prefix, row);
+          format_data_row(output_line, prefix, row);
           os << output_line;
         }
         break;
       case StackedBlockKind::separator:
         {
           std::string separator_line;
-          formatSeparatorRow(separator_line, prefix);
+          format_separator_row(separator_line, prefix);
           os << separator_line;
         }
         break;

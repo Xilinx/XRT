@@ -32,8 +32,8 @@ class Table2D {
     /**
      * @brief Construct a table for stacked (multi-row) headers and entries.
      *
-     * Each logical row of the table has one string per column. Use setStackedHeaders(),
-     * addStackedEntry(), addStackedSeparator(), and stackedToString() for this layout.
+     * Each logical row of the table has one string per column. Use set_stacked_headers(),
+     * add_stacked_entry(), add_stacked_separator(), and stacked_to_string() for this layout.
      *
      * @param column_count Number of columns in the table
      * @param justification Column alignment for all columns
@@ -48,7 +48,7 @@ class Table2D {
      *
      * @param header_rows Stacked header rows, one vector of cell values per row
      */
-    void setStackedHeaders(const std::vector<std::vector<std::string>>& header_rows);
+    void set_stacked_headers(const std::vector<std::vector<std::string>>& header_rows);
 
     /**
      * @brief Add a stacked entry (multiple table rows sharing the same column widths).
@@ -58,24 +58,24 @@ class Table2D {
      *
      * @param entry_rows Stacked data rows for this entry
      */
-    void addStackedEntry(const std::vector<std::vector<std::string>>& entry_rows);
+    void add_stacked_entry(const std::vector<std::vector<std::string>>& entry_rows);
 
     /**
      * @brief Insert a separator line after the most recently added stacked entry.
      */
-    void addStackedSeparator();
+    void add_stacked_separator();
 
     /**
      * @brief Format a stacked table (headers, entries, and separators) as a string.
      *
      * @param prefix Leading whitespace before the first column delimiter on each row
      */
-    std::string stackedToString(const std::string& prefix = "") const;
+    std::string stacked_to_string(const std::string& prefix = "") const;
 
     /**
      * @return Number of columns in the table
      */
-    size_t columnCount() const
+    size_t column_count() const
     {
       return m_table.size();
     }
@@ -83,7 +83,7 @@ class Table2D {
     /**
      * @return true if the stacked table has no entries (headers may still be set)
      */
-    bool stackedEmpty() const
+    bool stacked_empty() const
     {
       return m_stacked_blocks.empty();
     }
@@ -140,10 +140,10 @@ class Table2D {
     void getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_blanks, size_t& right_blanks) const;
     void addHeader(const HeaderData& header);
     void appendToOutput(std::string& output, const std::string& prefix, const std::string& suffix, const ColumnData& column, const std::string& data) const;
-    void updateStackedColumnWidth(size_t column_index, const std::string& data);
-    void validateStackedRow(const std::vector<std::string>& row, const char* context) const;
-    void formatDataRow(std::string& output_line, const std::string& prefix, const std::vector<std::string>& row) const;
-    void formatSeparatorRow(std::string& output_line, const std::string& prefix) const;
+    void update_stacked_column_width(size_t column_index, const std::string& data);
+    void validate_stacked_row(const std::vector<std::string>& row, const char* context) const;
+    void format_data_row(std::string& output_line, const std::string& prefix, const std::vector<std::string>& row) const;
+    void format_separator_row(std::string& output_line, const std::string& prefix) const;
 
  public:
     friend std::ostream&
