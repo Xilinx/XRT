@@ -519,10 +519,25 @@ class frames
     return j;
   }
 
+#if 0
   json
   replay_execution_frame(const frame& frame) const
   {
     json j = json::object();
+    if (auto run = frame.get_run_or_null())
+      insert_json_object(j, replay_execution_frame(frame, *run));
+    else if (auto runlist = frame.get_runlist_or_null())
+      for (auto runrl : runlist->get_runs())
+        insert_json_object(j, replay_execution_frame(frame, *runrl));
+
+    return j;
+  }
+#endif
+
+  json
+  replay_execution_frame(const frame& frame) const
+  {
+    json j = json::array();
     if (auto run = frame.get_run_or_null())
       insert_json_object(j, replay_execution_frame(frame, *run));
     else if (auto runlist = frame.get_runlist_or_null())
