@@ -49,8 +49,8 @@
 
 #ifdef _WIN32
 # define XRT_CORE_UNUSED
-# define XRT_LIKELY(x)
-# define XRT_UNLIKELY(x)
+# define XRT_LIKELY(x) (x)
+# define XRT_UNLIKELY(x) (x)
 #endif
 
 #endif

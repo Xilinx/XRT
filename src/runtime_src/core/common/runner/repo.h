@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_COMMON_RUNNER_ARTIFACTS_REPOSITORY_H
 #define XRT_COMMON_RUNNER_ARTIFACTS_REPOSITORY_H
-
 #include "xrt/detail/config.h"
 #include "xrt/detail/pimpl.h"
 #include "xrt/detail/span.h"
@@ -171,6 +170,7 @@ public:
    * data.  If not present, then the key is treated as identifying a a
    * file, which is added to the repo under the specified hint mode.
    */
+  XRT_API_EXPORT
   span<char>
   get(const std::string& key, file_mode hint);
 };

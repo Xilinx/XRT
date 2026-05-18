@@ -526,8 +526,8 @@ class frames
     if (auto run = frame.get_run_or_null())
       insert_json_object(j, replay_execution_frame(frame, *run));
     else if (auto runlist = frame.get_runlist_or_null())
-      for (auto run : runlist->get_runs())
-        insert_json_object(j, replay_execution_frame(frame, *run));
+      for (auto runrl : runlist->get_runs())
+        insert_json_object(j, replay_execution_frame(frame, *runrl));
 
     return j;
   }
@@ -559,12 +559,11 @@ public:
     return cap;
   }
 
-  bool
-  is_enabled() const
+  size_t
+  num_frames() const
   {
-    static auto frames = xrt_core::config::get_capture_frames();
     std::lock_guard lk(m_mutex);
-    return (m_frames.size() < frames);
+    return m_frames.size();
   }
 
   ////////////////////////////////////////////////////////////////
@@ -638,14 +637,10 @@ public:
 ////////////////////////////////////////////////////////////////
 // Global capture function used by XRT_REPLAY_CAPTURE
 ////////////////////////////////////////////////////////////////
-bool
-is_enabled()
+size_t
+num_frames()
 {
-  static auto frames = xrt_core::config::get_capture_frames();
-  if (!frames)
-    return false;
-  
-  return frames::instance().is_enabled();
+  return frames::instance().num_frames();
 }
 
 void

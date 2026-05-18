@@ -75,7 +75,7 @@ struct streambuf : public std::streambuf
   {}
 
   std::streampos
-  seekpos(std::streampos pos, std::ios_base::openmode which) override
+  seekpos(std::streampos pos, std::ios_base::openmode) override
   {
     if (pos < 0 || pos > (egptr() - eback()))
       return std::streampos(std::streamoff(-1));
@@ -85,7 +85,7 @@ struct streambuf : public std::streambuf
   }
 
   std::streampos
-  seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode which) override
+  seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode) override
   {
     char* new_gptr = nullptr;
   
@@ -250,7 +250,7 @@ struct replayer
     }
 
     xrt::run
-    create_run(const xrt::kernel& kernel, const json& run_object, const repo_type& repo)
+    create_run(const xrt::kernel& kernel, const json& run_object, const repo_type&)
     {
       xrt::run run{kernel};
 
@@ -282,7 +282,7 @@ struct replayer
     }
 
     kernel_map
-    create_kernels(const xrt::device& device, const json& kernel_array, const repo_type& repo)
+    create_kernels(const xrt::device&, const json& kernel_array, const repo_type& repo)
     {
       kernel_map kernels;
       for (const auto& j : kernel_array)
@@ -293,7 +293,7 @@ struct replayer
     }
 
     run_map
-    create_runs(const xrt::device& device, const json& run_array, const repo_type& repo)
+    create_runs(const xrt::device&, const json& run_array, const repo_type& repo)
     {
       run_map runs;
       for (const auto& j : run_array)

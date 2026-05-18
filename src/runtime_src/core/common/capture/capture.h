@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_COMMON_CAPTURE_CAPTURE_H_
@@ -8,14 +9,17 @@
 
 namespace xrt_core::capture {
 
-bool
-is_enabled();
+size_t
+num_frames();
 
 inline bool
 is_enabled()
 {
-  static auto enabled = xrt_core::config::get_capture_frames();
-  return enabled;
+  static auto frames = xrt_core::config::get_capture_frames();
+  if (!frames)
+    return false;
+
+  return num_frames() < frames;
 }
 
 // No-op when disabled, actual capture when enabled
