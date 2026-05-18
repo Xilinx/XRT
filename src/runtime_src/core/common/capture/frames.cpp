@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -293,7 +294,7 @@ class frames
 
   ~frames()
   {
-    build_replay_script();
+    save_replay_script();
   }
 
   // create_run_if_new() - get capture::run for hdl
@@ -616,8 +617,8 @@ public:
   ////////////////////////////////////////////////////////////////
   // Recipe writer functions
   ////////////////////////////////////////////////////////////////
-  json
-  build_replay_script() const
+  void
+  save_replay_script() const
   {
     json recipe = json::object();
     recipe["version"] = "1.0";
@@ -625,7 +626,12 @@ public:
     insert_json_object(recipe, replay_execution());
 
     std::cout << recipe.dump(2) << "\n";
-    return recipe;
+
+    std::filesystem::path path = xrt_core::config::get_capture_dir();
+    path /= "replay.json";
+    std::ofstream ostr(path, std::ios::binary);
+    if (ostr)
+      ostr << std::setw(2) << recipe;
   }
 };
 
