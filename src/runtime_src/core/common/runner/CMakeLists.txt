@@ -15,11 +15,16 @@ xrt_configure_version_file(xrt-runner APP)
 add_executable(xrt-runner xrt-runner-version.rc main.cpp)
 target_link_libraries(xrt-runner PRIVATE xrt_coreutil)
 
+xrt_configure_version_file(xrt-replay APP)
+add_executable(xrt-replay xrt-replay-version.rc replay.cpp)
+target_link_libraries(xrt-replay PRIVATE xrt_coreutil)
+
 if (NOT WIN32)
+  target_link_libraries(xrt-replay PRIVATE pthread)
   target_link_libraries(xrt-runner PRIVATE pthread)
 endif()
 
-install(TARGETS xrt-runner
+install(TARGETS xrt-replay xrt-runner
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 
 
