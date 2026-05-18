@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -11,6 +11,7 @@
 #include "tools/common/XBUtilitiesCore.h"
 
 #include <map>
+#include <string>
 #include <vector>
 
 // Populate the AIE Mem tile information from the input XRT device
@@ -128,54 +129,52 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     _output << boost::str(boost::format("    Columns: [%s]\n") % column_string);
     _output << "    HW Contexts:\n";
 
-    const std::vector<std::string> headers = {
-      "      |PID                 |Ctx ID     |Submissions |Migrations  |Frame Evts  |Err  |Priority |",
-      "      |Process Name        |Status     |Completions |Suspensions |Layer Evts  |     |GOPS     |",
-      "      |Memory Usage        |Instr BO   |            |            |            |     |FPS      |",
-      "      |                    |           |            |            |            |     |Latency  |",
-      "      |====================|===========|============|============|============|=====|=========|"
-    };
+    // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
+    Table2D hw_table(7);
+    hw_table.setStackedHeaders({
+      {"PID", "Ctx ID", "Submissions", "Migrations", "Frame Evts", "Err", "Priority"},
+      {"Process Name", "Status", "Completions", "Suspensions", "Layer Evts", "", "GOPS"},
+      {"Memory Usage", "Instr BO", "", "", "", "", "FPS"},
+      {"", "", "", "", "", "", "Latency"},
+    });
 
-    for (const auto& header : headers) {
-      _output << header << "\n";
-    }
-
-    std::vector<uint64_t> errors;
     for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree)) {
       const auto& hw_context = pt_hw_context.second;
 
-      std::vector<boost::format> row_data;
-      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|%-12s|%-5s|%-9s|")
-                   % hw_context.get<int>("pid")
-                   % hw_context.get<std::string>("context_id")
-                   % hw_context.get<uint64_t>("command_submissions")
-                   % hw_context.get<uint64_t>("migrations")
-                   % hw_context.get<uint64_t>("preemption_frame_event")
-                   % hw_context.get<uint64_t>("errors")
-                   % hw_context.get<std::string>("priority"));
-
-      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|%-12s|     |%-9s|")
-                   % hw_context.get<std::string>("process_name")
-                   % hw_context.get<std::string>("status")
-                   % hw_context.get<uint64_t>("command_completions")
-                   % hw_context.get<uint64_t>("suspensions")
-                   % hw_context.get<uint64_t>("preemption_layer_event")
-                   % hw_context.get<std::string>("gops"));
-
-      row_data.emplace_back(boost::format("      |%-20s|%-11s|            |            |            |     |%-9s|")
-                   % hw_context.get<std::string>("memory_usage")
-                   % hw_context.get<std::string>("instr_bo_mem")
-                   % hw_context.get<std::string>("fps"));
-
-      row_data.emplace_back(boost::format("      |                    |           |            |            |            |     |%-9s|")
-                   % hw_context.get<std::string>("latency"));
-
-      row_data.emplace_back(boost::format("      |--------------------|-----------|------------|------------|------------|-----|---------|"));
-
-      for (const auto& row : row_data) {
-        _output << row << "\n";
-      }
+      hw_table.addStackedEntry({
+        {
+          std::to_string(hw_context.get<int>("pid")),
+          hw_context.get<std::string>("context_id"),
+          std::to_string(hw_context.get<uint64_t>("command_submissions")),
+          std::to_string(hw_context.get<uint64_t>("migrations")),
+          std::to_string(hw_context.get<uint64_t>("preemption_frame_event")),
+          std::to_string(hw_context.get<uint64_t>("errors")),
+          hw_context.get<std::string>("priority"),
+        },
+        {
+          hw_context.get<std::string>("process_name"),
+          hw_context.get<std::string>("status"),
+          std::to_string(hw_context.get<uint64_t>("command_completions")),
+          std::to_string(hw_context.get<uint64_t>("suspensions")),
+          std::to_string(hw_context.get<uint64_t>("preemption_layer_event")),
+          "",
+          hw_context.get<std::string>("gops"),
+        },
+        {
+          hw_context.get<std::string>("memory_usage"),
+          hw_context.get<std::string>("instr_bo_mem"),
+          "", "", "", "",
+          hw_context.get<std::string>("fps"),
+        },
+        {
+          "", "", "", "", "", "",
+          hw_context.get<std::string>("latency"),
+        },
+      });
+      hw_table.addStackedSeparator();
     }
+
+    _output << hw_table.stackedToString("      ");
   }
 
   if (XBUtilities::getVerbose()) {
