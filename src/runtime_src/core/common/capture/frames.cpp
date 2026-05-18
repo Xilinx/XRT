@@ -361,7 +361,7 @@ class frames
   {
     json j = json::object();
     j["name"] = to_string(hwctx.get_handle().get());
-    j["qos"] = hw_context_int::get_cfg_map(hwctx);
+    j["cfg"] = hw_context_int::get_cfg_map(hwctx);
     if (!hw_context_int::get_elf_flow(hwctx)) {
       auto xclbin_data = xclbin_int::get_xclbin_data(hwctx.get_xclbin());
       j["xclbin"] = m_artifacts.dump(xclbin_data);
