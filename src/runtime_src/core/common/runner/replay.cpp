@@ -298,7 +298,7 @@ struct replayer
       run_map runs;
       for (const auto& j : run_array)
         runs.emplace(j.at("name").get<std::string>(),
-          create_run(m_kernels.at(j.at("kernel")), j, repo));
+          create_run(m_kernels.at(j.at("kernel").get<std::string>()), j, repo));
       
       return runs;
     }
@@ -347,6 +347,8 @@ struct replayer
       bos.push_back(create_and_set_frame_bo_args(run, arg));
     }
 
+    static auto count = 0;
+    XRT_PRINTF("Executon frame #%d\n", count++);
     run.start();
     run.wait2();
   }
@@ -354,7 +356,7 @@ struct replayer
   void
   run()
   {
-    for (const auto& frame : m_replay.at("frames"))
+    for (const auto& frame : m_replay.at("execution").at("frames"))
       run(frame);
   }
 };
@@ -393,6 +395,7 @@ run(int argc, char* argv[])
   auto json = load_json(script);
   auto repo = xrt_core::artifacts::repository{dir};
   replayer replay(load_json(script), xrt_core::artifacts::repository{dir});
+  replay.run();
 }
 
   

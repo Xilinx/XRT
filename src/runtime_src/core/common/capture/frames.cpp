@@ -448,7 +448,7 @@ class frames
         if constexpr (std::is_same_v<T, uint64_t>) {
           json a = json::object();
           a["value"] = v;
-          a["argidx"] = std::to_string(argidx);
+          a["argidx"] = argidx;
           a["type"] = "int";
           j.push_back(a);
         }
@@ -501,7 +501,7 @@ class frames
         if constexpr (std::is_same_v<T, std::string>) {
           json a = json::object();
           a["name"] = v;
-          a["argidx"] = std::to_string(argidx);
+          a["argidx"] = argidx;
           j.push_back(a);
         }
       }, arg);
