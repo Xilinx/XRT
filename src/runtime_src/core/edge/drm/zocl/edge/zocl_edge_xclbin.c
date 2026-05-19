@@ -317,17 +317,20 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	zocl_xclbin_set_uuid(zdev, slot, &axlf_head.m_header.uuid);
 
-	/* Destroy the CUs specific for this slot */
-	zocl_destroy_cu_slot(zdev, slot->slot_idx);
+	/* Skip creating CUs for AIE only xclbin */
+	if (!zocl_xclbin_is_aie_only(axlf)) {
+		/* Destroy the CUs specific for this slot */
+		zocl_destroy_cu_slot(zdev, slot->slot_idx);
 
-	/* Create the CUs for this slot */
-	ret = zocl_create_cu(zdev, slot);
-	if (ret)
-		goto out0;
+		/* Create the CUs for this slot */
+		ret = zocl_create_cu(zdev, slot);
+		if (ret)
+			goto out0;
 
-	ret = zocl_kds_update(zdev, slot, &axlf_obj->kds_cfg);
-	if (ret)
-		goto out0;
+		ret = zocl_kds_update(zdev, slot, &axlf_obj->kds_cfg);
+		if (ret)
+			goto out0;
+	}
 
 	DRM_INFO("xclbin %pUb successfully loaded to slot %d\n",
 			zocl_xclbin_get_uuid(slot), slot_id);
