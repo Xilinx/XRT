@@ -345,6 +345,26 @@ add_electrical_info(const xrt_core::device* device, ptree_type& pt)
 }
 
 void
+add_thermal_info(const xrt_core::device* device, ptree_type& pt)
+{
+  try {
+    ptree_type thermals_pt = xrt_core::sensor::read_thermals(device);
+    const ptree_type& thermals = thermals_pt.get_child("thermals");
+    for (const auto& [key, child] : thermals) {
+      if (!child.get<bool>("is_present", false))
+        continue;
+      ptree_type thermal;
+      thermal.put("temp_C", child.get<std::string>("temp_C", "N/A"));
+      pt.put_child("thermal", thermal);
+      break;
+    }
+  }
+  catch (const xq::exception&) {
+    // ignoring if not available
+  }
+}
+
+void
 add_mac_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_mac;
@@ -410,6 +430,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   case xrt_core::query::device_class::type::ryzen:
   {
     add_electrical_info(device, pt_platform);
+    add_thermal_info(device, pt_platform);
     break;
   }
   default:
