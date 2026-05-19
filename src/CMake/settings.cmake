@@ -69,10 +69,12 @@ endif (NOT CMAKE_BUILD_TYPE)
 # --- version settings ---
 # XRT-2.21 is branched at 2.21
 # vai-6.1 branched at 2.22
-# Version adjusted to 2.23 for 2026.1
-set(XRT_VERSION_RELEASE 202610)
+# 2026.1 is 2.23
+# vai_6.2 is 2.24
+# Version adjusted to 2.25 for 2026.2
+set(XRT_VERSION_RELEASE 202620)
 set(XRT_VERSION_MAJOR 2)
-set(XRT_VERSION_MINOR 23)
+set(XRT_VERSION_MINOR 25)
 
 # Upstream builds cannot set XRT_VERSION_PATCH directory as it is
 # reset by project(xrt).  Instead upstream builds sets
