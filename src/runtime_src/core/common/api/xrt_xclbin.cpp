@@ -1748,10 +1748,15 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
       const std::string& xsaname = xclbin->get_xsa_name();
       // populate ret_size if memory is allocated
       if (ret_size)
-        *ret_size = xsaname.size();
+        *ret_size = xsaname.size() + 1;
       // populate name if memory is allocated
-      if (name)
-        std::strncpy(name, xsaname.c_str(), size);
+      if (!name || size == 0)
+        return 0;
+
+      auto cp_len = std::min(size - 1, static_cast<int>(xsaname.size()));
+      std::memcpy(name, xsaname.c_str(), cp_len);
+      name[cp_len] = 0;
+
       return 0;
     });
   }
