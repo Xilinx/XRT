@@ -29,6 +29,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/str_wrapper.h"
 #include "core/common/query_requests.h"
 
 #include <boost/format.hpp>
@@ -350,11 +351,7 @@ xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, si
         return 0;
 
       auto cp_len = std::min(len-1, str.size());
-#ifdef _WIN32
-      strncpy_s(out, len, str.c_str(), cp_len);
-#else
-      std::strncpy(out, str.c_str(), cp_len);
-#endif
+      xrt_core::str_wrapper::strncpy(out, str.c_str(), cp_len);
       out[cp_len] = 0;
 
       return 0;
