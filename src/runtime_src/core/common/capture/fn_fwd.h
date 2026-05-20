@@ -20,6 +20,9 @@ template <typename T>
 using span = xrt::detail::span<T>;
 
 void
+bo_sync(const xrt::bo_impl*, xclBOSyncDirection);
+
+void
 run_set_arg_at_index(const xrt::run_impl*, size_t, span<const uint8_t>);
 
 void

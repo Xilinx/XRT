@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef _XRT_COMMON_BO_INT_H_
-#define _XRT_COMMON_BO_INT_H_
+#ifndef XRT_COMMON_BO_INT_H_
+#define XRT_COMMON_BO_INT_H_
 
 // This file defines implementation extensions to the XRT BO APIs.
 #include "core/common/config.h"
@@ -96,6 +96,9 @@ config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes,
 XRT_CORE_COMMON_EXPORT
 void
 unconfig_bo(const xrt::bo& bo, const xrt_core::hwctx_handle* ctx_handle = nullptr);
+
+xrt::bo
+get_bo_from_impl(const xrt::bo_impl*);
 
 } // bo_int, xrt_core
 

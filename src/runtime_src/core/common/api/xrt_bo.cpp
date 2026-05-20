@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT BO APIs as declared in
 // core/include/experimental/xrt_bo.h
@@ -30,6 +30,7 @@
 #include "core/common/unistd.h"
 #include "core/common/xclbin_parser.h"
 
+#include "core/common/capture/capture.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/shared_handle.h"
 
@@ -199,7 +200,7 @@ namespace xrt {
 //
 // Life time of buffers are managed through shared pointers.
 // A buffer is freed when last references is released.
-class bo_impl
+class bo_impl : public std::enable_shared_from_this<bo_impl>
 {
 public:
   using export_handle = xrt_core::shared_handle::export_handle;
@@ -245,6 +246,18 @@ public:
   explicit bo_impl(size_t sz)
     : size(sz)
   {}
+
+  std::shared_ptr<bo_impl>
+  get_shared_ptr()
+  {
+    return shared_from_this();
+  }
+
+  std::shared_ptr<bo_impl>
+  get_mutable_shared_ptr() const
+  {
+    return std::const_pointer_cast<bo_impl>(shared_from_this());
+  }
 
   // Managed handle shared with another bo_impl
   bo_impl(device_type dev, std::shared_ptr<xrt_core::buffer_handle> bhdl, size_t sz)
@@ -482,6 +495,8 @@ public:
     // if (get_flags() != bo::flags::host_only)
     handle->sync(static_cast<xrt_core::buffer_handle::direction>(dir), sz, offset);
     m_usage_logger->log_buffer_sync(device->get_device_id(), device.get_hwctx_handle(), sz, dir);
+
+    XRT_REPLAY_CAPTURE(bo_sync, this, dir);
   }
 
   virtual uint64_t
@@ -957,6 +972,8 @@ public:
 
     // sync through parent buffer, which handles nodma case also
     m_parent->sync(dir, sz, off);
+
+    XRT_REPLAY_CAPTURE(bo_sync, this, dir);
   }
 };
 
@@ -1803,6 +1820,13 @@ unconfig_bo(const xrt::bo& bo, const xrt_core::hwctx_handle* ctx_handle)
     ? bo_impl->get_handle()->unconfig(ctx_handle)
     : bo_impl->get_handle()->unconfig(bo_impl->get_hwctx_handle());
 }
+
+xrt::bo
+get_bo_from_impl(const xrt::bo_impl* bo_impl)
+{
+  return bo_impl->get_mutable_shared_ptr();
+}
+  
 
 } // xrt_core::bo_int
 

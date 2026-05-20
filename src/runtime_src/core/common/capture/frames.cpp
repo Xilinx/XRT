@@ -7,6 +7,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/debug.h"
+#include "core/common/api/bo_int.h"
 #include "core/common/api/elf_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/api/kernel_int.h"
@@ -76,6 +77,82 @@ namespace xrt_core::capture {
 // but the singleton is instantiated only if capturing is enabled.
 class frames
 {
+  class run;
+  
+  // class bo - captured xrt::bo objects used by xrt::run objects
+  //
+  // This class is an attempt to avoid recreating run arguments unless
+  // data has changed.  A data change for an argument is reflected
+  // through sync->device, so we capture all xrt::bo::sync()
+  // operations and store bo data here.
+  //
+  // frames <>--* run <>--* bo
+  class bo
+  {
+    // Set of runs that are valid with this bo.  Cleared when
+    // bo is synced.
+    mutable std::set<const run*> m_runs;
+    xrt::bo m_bo;
+    
+  public:
+    bo(xrt::bo bo)
+      : m_bo(std::move(bo))
+    {}
+
+    std::string
+    get_name() const
+    {
+      return to_string(m_bo.get_handle().get());
+    }
+
+    xrt::bo
+    get_xrt_bo() const
+    {
+      return m_bo;
+    }
+
+    // sync() - Capture that this bo is synced to device
+    //
+    // Dump bo content to disk, clear all existing runs to
+    // note that they are out-of-sync wrt this bo so that
+    // when frame start is captured, it records that this bo
+    // must be restored from disk during replay
+    void
+    sync(artifacts& repo)
+    {
+      // Note that frame runs are invalid wrt this bo'
+      // When a frame is captured, it must this bo as an argument
+      // to be restored from disk
+      m_runs.clear();
+    }
+
+    // set_run() - Note that run is in sync with this bo
+    //
+    // When frame start is captured, it is not necessary to restore
+    // this bo from disk if no sync has has changed the bo data.
+    void
+    set_run(const run* run) const
+    {
+      m_runs.insert(run);
+    }
+
+    // is_valid() - Check if argument run is in sync with this bo
+    //
+    // When frame start is captured, it is not necessary to restore
+    // this bo from disk if it is valid wrt the bo.
+    bool
+    is_valid(const run* run) const
+    {
+      return (m_runs.find(run) != m_runs.end());
+    }
+
+    std::string
+    dump(artifacts& repo) const
+    {
+      return repo.dump({m_bo.template map<const char*>(), m_bo.size()});
+    }
+  };
+
   // struct run - user created xrt::run objects and args
   // 
   // A run is created when arguments to the run are captured as part
@@ -83,7 +160,7 @@ class frames
   class run
   {
   public:
-    using arg_type = std::variant<uint64_t, xrt::bo>;
+    using arg_type = std::variant<uint64_t, const bo*>;
   private:
     std::vector<arg_type> m_args;
     xrt::run m_run;
@@ -93,14 +170,22 @@ class frames
       : m_run{xrt_core::kernel_int::get_run_from_impl(hdl)}
     {}
 
-    template <typename ArgType>
     void
-    set_arg(size_t argidx, ArgType value)
+    set_arg(size_t argidx, uint64_t value)
     {
       if (argidx >= m_args.size())
         m_args.resize(argidx + 1);
 
       m_args[argidx] = value;
+    }
+
+    void
+    set_arg(size_t argidx, const bo& bo)
+    {
+      if (argidx >= m_args.size())
+        m_args.resize(argidx + 1);
+
+      m_args[argidx] = &bo;
     }
 
     std::string
@@ -134,12 +219,18 @@ class frames
       for (auto& arg : m_args) {
         std::visit([&bos](const auto& v) {
           using T = std::decay_t<decltype(v)>;
-          if constexpr (std::is_same_v<T, xrt::bo>) {
-            bos.push_back(v);
+          if constexpr (std::is_same_v<T, const bo*>) {
+            bos.push_back(v->get_xrt_bo());
           }
         }, arg);
       }
       return bos;
+    }
+
+    const bo*
+    get_bo_arg(size_t argidx) const
+    {
+      return std::get<const bo*>(m_args.at(argidx));
     }
 
     std::string
@@ -159,7 +250,7 @@ class frames
     {
       return m_args.size();
     }
-  };
+  }; // class run
 
   // class runlist - user create runlists
   //
@@ -203,46 +294,80 @@ class frames
   private:
     std::map<const run*, std::vector<arg_type>> m_run2args;
 
+    ////////////////////////////////////////////////////////////////
+    // Capture frame data immediately when a frame starts executing.
+    // Note, that it is not possible to capture frame data accurately
+    // upon completion of a frame.  This is because multiple frames
+    // may be queued up in a hwqueue and application doesn't
+    // necessarily call wait() in between executing frames.
+    //
+    // This leads to a problem for replay, which must set frame data
+    // prior to executing a frame. 
+    ////////////////////////////////////////////////////////////////
+    // capture_frame_start_data() - for a run object
+    //
     // Captures the argument data associated with the current state of
     // the run. If a given run is used by subsequent frames, its
     // argument data may be different between the frames, not only if
     // set_arg was called in between, but also if data of bo args was
     // changed prior to the second run.
     //
-    // This function captures 
+    // This function captures the current data associated with the
+    // run arguments and saves to disk.  The function is called as
+    // part of xrt::run::start() or xrt::runlist::execute()
     void
-    capture_frame_data(const run* run, artifacts& repo)
+    capture_frame_start_data(const run* run, artifacts& repo)
     {
+      XRT_PRINTF("-> capture_frame_start(run:0x%x)\n", run);
       // Arguments to be populated for this run and frame
       auto& args = m_run2args[run];
       args.reserve(run->get_num_args());
 
       // Process current run args.  Dump data if arg is a bo.
       for (auto& rarg : run->get_args()) {
-        std::visit([&args, &repo] (auto& v) {
+        std::visit([&args, &repo, run] (auto& v) {
           using T = std::decay_t<decltype(v)>;
-          if constexpr (std::is_same_v<T, xrt::bo>) {
-            args.push_back(repo.dump({v.template map<const char*>(), v.size()}));
+          if constexpr (std::is_same_v<T, const bo*>) {
+            if (!v->is_valid(run)) {
+              auto fnm = v->dump(repo);
+              XRT_PRINTF("- invalid bo:0x%x data dumped to:%s\n", v, fnm.c_str());
+              args.push_back(std::move(fnm));
+ 
+              // The bo is now valid wrt to this run, any subsequent
+              // sync of bo will invalidate the runs for this bo, and
+              // frame start will refresh bo data from disk.
+              v->set_run(run);
+            }
           }
           else if constexpr (std::is_same_v<T, uint64_t>)
             args.push_back(v);
         }, rarg);
       }
+      XRT_PRINTF("<- capture_frame_start(run:0x%x)\n", run);
     }
-      
+
+    // capture_frame_start_data() - for a runlist with corresponding xrt::runlist
+    //
+    // This function captures the current data associated with each
+    // run in the runlist.  The function is called as part of
+    // xrt::runlist::execute().
     void
-    capture_frame_data(const runlist* runlist, artifacts& repo)
+    capture_frame_start_data(const runlist* runlist, artifacts& repo)
     {
       for (auto run : runlist->get_runs())
-        capture_frame_data(run, repo);
+        capture_frame_start_data(run, repo);
     }
 
   public:
+    // ctor - FrameType is is run* or runlist*
+    //
+    // Record a frame as it is started through corresponding xrt::run
+    // or xrt::runlist
     template <typename FrameType>
     frame(FrameType ft, artifacts& repo)
       : m_frame(std::move(ft))
     {
-      capture_frame_data(ft, repo);
+      capture_frame_start_data(ft, repo);
     }
 
     const run*
@@ -272,6 +397,7 @@ class frames
 
   // Track xrt::run and xrt::runlist objects created by application
   mutable std::mutex m_mutex;
+  std::map<const xrt::bo_impl*, bo> m_bos;
   std::map<const xrt::run_impl*, run> m_runs;
   std::map<const xrt::runlist_impl*, runlist> m_runlists;
 
@@ -318,6 +444,18 @@ class frames
       return (*itr).second;
 
     return m_runlists[hdl];
+  }
+
+  // create_bo_if_new()
+  bo&
+  create_bo_if_new(const xrt::bo& xbo)
+  {
+    auto hdl = xbo.get_handle().get();
+    if (auto itr = m_bos.find(hdl); itr != m_bos.end())
+      return (*itr).second;
+
+    auto [itr, inserted] = m_bos.emplace(hdl, xbo);
+    return (*itr).second;
   }
 
   ////////////////////////////////////////////////////////////////
@@ -438,6 +576,27 @@ class frames
   }
 
   json
+  replay_resource_run_arguments(const std::vector<run::arg_type>& args) const
+  {
+    json j = json::array();
+    size_t argidx = 0;
+    for (const auto& arg : args) {
+      std::visit([&j, argidx](const auto& v) {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, const bo*>) {
+          json a = json::object();
+          a["bo"] = v->get_name();
+          a["argidx"] = argidx;
+          a["type"] = "inout";
+          j.push_back(a);
+        }
+      }, arg);
+      ++argidx;
+    };
+    return j;
+  }
+
+  json
   replay_resource_run_constants(const std::vector<run::arg_type>& args) const
   {
     json j = json::array();
@@ -464,6 +623,7 @@ class frames
     json j = json::object();
     j["name"] = run.get_name();
     j["kernel"] = run.get_kernel_name();
+    j["arguments"] = replay_resource_run_arguments(run.get_args());
     j["constants"] = replay_resource_run_constants(run.get_args());
     return j;
   }
@@ -491,17 +651,19 @@ class frames
   }
 
   json
-  replay_execution_frame_arguments(const std::vector<frame::arg_type>& args) const
+  replay_execution_frame_arguments(const frame& frame, const run& run) const
   {
     json j = json::array();
     size_t argidx = 0;
-    for (const auto& arg : args) {
-      std::visit([&j, argidx](const auto& v) {
+    for (const auto& arg : frame.get_args(run)) {
+      std::visit([&j, argidx, &run](const auto& v) {
         using T = std::decay_t<decltype(v)>;
         if constexpr (std::is_same_v<T, std::string>) {
           json a = json::object();
-          a["name"] = v;
           a["argidx"] = argidx;
+          a["bo"] = run.get_bo_arg(argidx)->get_name();
+          a["fnm"] = v;
+            
           j.push_back(a);
         }
       }, arg);
@@ -515,34 +677,19 @@ class frames
   {
     json j = json::object();
     j["run"] = run.get_name();
-    j["arguments"] = replay_execution_frame_arguments(frame.get_args(run));
+    j["arguments"] = replay_execution_frame_arguments(frame, run);
     return j;
   }
-
-#if 0
-  json
-  replay_execution_frame(const frame& frame) const
-  {
-    json j = json::object();
-    if (auto run = frame.get_run_or_null())
-      insert_json_object(j, replay_execution_frame(frame, *run));
-    else if (auto runlist = frame.get_runlist_or_null())
-      for (auto runrl : runlist->get_runs())
-        insert_json_object(j, replay_execution_frame(frame, *runrl));
-
-    return j;
-  }
-#endif
 
   json
   replay_execution_frame(const frame& frame) const
   {
     json j = json::array();
     if (auto run = frame.get_run_or_null())
-      insert_json_object(j, replay_execution_frame(frame, *run));
+      j.push_back(replay_execution_frame(frame, *run));
     else if (auto runlist = frame.get_runlist_or_null())
       for (auto runrl : runlist->get_runs())
-        insert_json_object(j, replay_execution_frame(frame, *runrl));
+        j.push_back(replay_execution_frame(frame, *runrl));
 
     return j;
   }
@@ -584,19 +731,28 @@ public:
   ////////////////////////////////////////////////////////////////
   // Collector functions
   ////////////////////////////////////////////////////////////////
-  // set_run_arg() - set run argument at index
-  template <typename ArgType>
+  // set_run_arg() - set run scalar argument at index
   void
-  set_run_arg(const xrt::run_impl* hdl, size_t argidx, ArgType value)
+  capture_run_set_arg(const xrt::run_impl* hdl, size_t argidx, uint64_t value)
   {
     std::lock_guard lk(m_mutex);
     auto& run = create_run_if_new(hdl);
     run.set_arg(argidx, value);
   }
 
+  // set_run_arg() - set run bo argument at index
+  void
+  capture_run_set_arg(const xrt::run_impl* hdl, size_t argidx, const xrt::bo& xbo)
+  {
+    std::lock_guard lk(m_mutex);
+    auto& bo = create_bo_if_new(xbo);
+    auto& run = create_run_if_new(hdl);
+    run.set_arg(argidx, bo);
+  }
+
   // add_runlist_run() - add run to runlist
   void
-  add_runlist_run(const xrt::runlist_impl* rlhdl, const xrt::run_impl* rhdl)
+  capture_runlist_add_run(const xrt::runlist_impl* rlhdl, const xrt::run_impl* rhdl)
   {
     std::lock_guard lk(m_mutex);
     auto& rl = create_runlist_if_new(rlhdl);
@@ -605,7 +761,7 @@ public:
 
   // start() - start a frame represented by a single run
   void
-  start(const xrt::run_impl* hdl)
+  capture_start(const xrt::run_impl* hdl)
   {
     std::lock_guard lk(m_mutex);
     m_frames.emplace_back(&m_runs.at(hdl), m_artifacts);
@@ -613,7 +769,7 @@ public:
 
   // start() - start a frame represented by a runlist
   void
-  start(const xrt::runlist_impl* hdl)
+  capture_start(const xrt::runlist_impl* hdl)
   {
     std::lock_guard lk(m_mutex);
     m_frames.emplace_back(&m_runlists.at(hdl), m_artifacts);
@@ -626,6 +782,17 @@ public:
   {
     std::lock_guard lk(m_mutex);
     m_elfs.emplace(hdl, std::move(elf_data));
+  }
+
+  void
+  capture_sync(const xrt::bo_impl* hdl, xclBOSyncDirection dir)
+  {
+    if (dir != XCL_BO_SYNC_BO_TO_DEVICE)
+      return;
+    
+    std::lock_guard lk(m_mutex);
+    auto& bo = create_bo_if_new(xrt_core::bo_int::get_bo_from_impl(hdl));
+    bo.sync(m_artifacts);
   }
 
   ////////////////////////////////////////////////////////////////
@@ -659,44 +826,51 @@ num_frames()
 }
 
 void
+bo_sync(const xrt::bo_impl* bhdl, xclBOSyncDirection dir)
+{
+  XRT_PRINTF("bo_sync(bhdl:0x%x, dir:%d)\n", bhdl, dir);
+  frames::instance().capture_sync(bhdl, dir);
+}
+
+void
 run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, span<const uint8_t> value)
 {
-  XRT_PRINTF("run_set_arg_index() rhdl(0x%x) arg(%d) value(%d)\n", rhdl, argidx, to_uint64(value));
-  frames::instance().set_run_arg(rhdl, argidx, to_uint64(value));
+  XRT_PRINTF("run_set_arg_index(rhdl:0x%x, arg:%d, value:%d)\n", rhdl, argidx, to_uint64(value));
+  frames::instance().capture_run_set_arg(rhdl, argidx, to_uint64(value));
 }
 
 void
 run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, const xrt::bo& bo)
 {
-  XRT_PRINTF("run_set_arg_index() rhdl(0x%x) arg(%d) bo(...)\n", rhdl, argidx);
-  frames::instance().set_run_arg(rhdl, argidx, bo);
+  XRT_PRINTF("run_set_arg_index(rhdl:0x%x, arg:%d, bo:0x%x)\n", rhdl, argidx, bo.get_handle().get());
+  frames::instance().capture_run_set_arg(rhdl, argidx, bo);
 }
 
 void
 start_frame(const xrt::run_impl* rhdl)
 {
-  XRT_PRINTF("start_frame rhdl(0x%x)\n", rhdl);
-  frames::instance().start(rhdl);
+  XRT_PRINTF("start_frame(rhdl:0x%x)\n", rhdl);
+  frames::instance().capture_start(rhdl);
 }
 
 void
 runlist_add_run(const xrt::runlist_impl* rlhdl, const xrt::run_impl* rhdl)
 {
-  XRT_PRINTF("runlist_add_run rlhdl(0x%x) rhdl(0x%x)\n", rlhdl, rhdl);
-  frames::instance().add_runlist_run(rlhdl, rhdl);
+  XRT_PRINTF("runlist_add_run(rlhdl:0x%x, rhdl:0x%x)\n", rlhdl, rhdl);
+  frames::instance().capture_runlist_add_run(rlhdl, rhdl);
 }
 
 void
 start_frame(const xrt::runlist_impl* rlhdl)
 {
-  XRT_PRINTF("start_frame rlhdl(0x%x)\n", rlhdl);
-  frames::instance().start(rlhdl);
+  XRT_PRINTF("start_frame(rlhdl:0x%x)\n", rlhdl);
+  frames::instance().capture_start(rlhdl);
 }
 
 void
 elf_ctor(const xrt::elf_impl* hdl, const void* data, size_t size)
 {
-  XRT_PRINTF("elf_ctor(0x%x, 0x%x, %d)\n", hdl, data, size);
+  XRT_PRINTF("elf_ctor(ehdl:0x%x, data:0x%x, size:%d)\n", hdl, data, size);
   auto cdata = static_cast<const char*>(data);
   frames::instance().capture_elf(hdl, {cdata, cdata + size});
 }

@@ -152,7 +152,7 @@ struct replayer
   json m_replay;
   repo_type m_repo;
 
-  struct resources
+  class resources
   {
     using buffer_map = std::map<std::string, xrt::bo>;
     using hwctx_map = std::map<std::string, xrt::hw_context>;
@@ -163,19 +163,23 @@ struct replayer
     kernel_map m_kernels;
     run_map m_runs;
 
+    // create_buffer() - Create xrt::bo from resources::buffer
     static xrt::bo
-    create_buffer(const xrt::device& device, const json& j, const repo_type&)
+    create_buffer(const xrt::device& device, const json& buffer_object, const repo_type&)
     {
-      return xrt::ext::bo{device, j.at("size").get<size_t>()};
+      return xrt::ext::bo{device, buffer_object.at("size").get<size_t>()};
     }
 
+    // create_hwctx() - Create xrt::hwctx from xclbin
     static xrt::hw_context
-    create_hwctx(xrt::device device, const xrt::xclbin& xclbin,
+    create_hwctx(xrt::device device,
+                 const xrt::xclbin& xclbin,
                  const xrt::hw_context::cfg_type& cfg)
     {
       return xrt::hw_context{device, device.register_xclbin(xclbin), cfg};
     }
 
+    // create_hwctx() - Create xrt::hwctx from elf programs
     static xrt::hw_context
     create_hwctx(const xrt::device& device,
                  const json& programs_array,
@@ -203,6 +207,7 @@ struct replayer
       throw std::runtime_error("No program specified for hwctx");
     }
 
+    // create_hwctx() - Create xrt::hwctx from resource::hwctx object
     static xrt::hw_context
     create_hwctx(const xrt::device& device,
                  const json& hwctx_object,
@@ -216,12 +221,14 @@ struct replayer
         return cfg;
       };
 
+      // xclbin flow
       if (hwctx_object.contains("xclbin")) {
         auto data = repo.get(hwctx_object.at("xclbin").get<std::string>());
         return create_hwctx(device, xrt::xclbin{std::string_view{data.data(), data.size()}},
                  read_cfg(hwctx_object.value("cfg", json::object())));
       }
 
+      // elf program flow
       if (hwctx_object.contains("programs"))
         return create_hwctx(device, hwctx_object.at("programs"),
                  read_cfg(hwctx_object.value("cfg", json::object())), repo);
@@ -229,6 +236,7 @@ struct replayer
       throw std::runtime_error("No xclbin or program specified for hwctx");
     }
 
+    // create_kernel() - Create xrt::kernel from resources::kernel object
     static xrt::kernel
     create_kernel(const xrt::hw_context& hwctx,
                   const json& kernel_object,
@@ -237,20 +245,21 @@ struct replayer
         auto instance = kernel_object.at("instance").get<std::string>(); // required
         auto elf = kernel_object.value<std::string>("ctrlcode", ""); // optional elf file
         if (elf.empty())
-          // Legacy kernel (alveo) or elf file was used when the hwctx was constructed.
+          // Legacy kernel (alveo) or elf file was used when the hwctx was constructed
           return xrt::kernel{xrt_core::hw_context_int::get_elf_flow(hwctx)
                              ? xrt::ext::kernel{hwctx, instance}
                              : xrt::kernel{hwctx, instance}};
 
 
-        // Kernel must be in xclbin.  The xclbin was used when the hwctx was
-        // constructed.
+        // With ctrlcode ELF, the flow is legacy xclbin. The kernel
+        // must be in the xclbin.
         auto mod = module_cache::get(elf, repo);
         return xrt::ext::kernel{hwctx, mod, instance};
     }
 
-    xrt::run
-    create_run(const xrt::kernel& kernel, const json& run_object, const repo_type&)
+    // create_run() - Create xrt::run from resources::run object
+    static xrt::run
+    create_run(const xrt::kernel& kernel, const json& run_object, const buffer_map& bmap)
     {
       xrt::run run{kernel};
 
@@ -258,9 +267,14 @@ struct replayer
       for (const auto& j : run_object.at("constants"))
         run.set_arg(j.at("argidx").get<int>(), j.at("value").get<uint64_t>());
 
+      // Set bo run args
+      for (const auto& j : run_object.at("arguments"))
+        run.set_arg(j.at("argidx").get<int>(), bmap.at(j.at("bo")));
+
       return run;
     }
 
+    // create_buffers() - Create buffer_map from resources::buffers array
     buffer_map
     create_buffers(const xrt::device& device, const json& buffers_array, const repo_type& repo)
     {
@@ -271,6 +285,7 @@ struct replayer
       return buffers;
     }
 
+    // create_hwctxs() - Create hwctx_map from resources::hwctxs array
     hwctx_map
     create_hwctxs(const xrt::device& device, const json& hwctx_array, const repo_type& repo)
     {
@@ -281,6 +296,7 @@ struct replayer
       return hwctxs;
     }
 
+    // create_kernels() - Create kernel_map from resources::kernels array
     kernel_map
     create_kernels(const xrt::device&, const json& kernel_array, const repo_type& repo)
     {
@@ -292,17 +308,22 @@ struct replayer
       return kernels;
     }
 
+    // create_runs() - Create run_map from resources::runs array
+    //
+    // Since an xrt::run object is created from an xrt::kernel object, the
+    // kernel_map must have been created prior to calling this functon.
     run_map
     create_runs(const xrt::device&, const json& run_array, const repo_type& repo)
     {
       run_map runs;
       for (const auto& j : run_array)
         runs.emplace(j.at("name").get<std::string>(),
-          create_run(m_kernels.at(j.at("kernel").get<std::string>()), j, repo));
+          create_run(m_kernels.at(j.at("kernel").get<std::string>()), j, m_buffers));
       
       return runs;
     }
 
+  public:
     resources(const xrt::device& device, const json& resources_object, const repo_type& repo)
       : m_buffers(create_buffers(device, resources_object.at("buffers"), repo))
       , m_hwctxs(create_hwctxs(device, resources_object.at("hwctxs"), repo))
@@ -315,15 +336,194 @@ struct replayer
     {
       return m_runs.at(name);
     }
-  };
+  }; // class resources
+
+#if 0
+  class execution {
+
+    // class frame - list of run objects
+    //
+    // A frame is a list of run objects created that can be executed.
+    // The frame class is responsible for managing the runs objects
+    // creating an xrt::runlist if necessary.
+    //
+    // Capture represents an xrt::runlist as a frame with multiple run
+    // objects.  If a frame array in the replay json file has multiple
+    // elements then a frame will be created as an xrt::runlist,
+    // otherwise (single entry) a frame is just a single xrt::run
+    // object.
+    class frame {
+
+      struct executor
+      {
+        virtual void
+        execute() = 0;
+
+        virtual void
+        wait() = 0;
+      }; // class executor
+
+      class run_executor : executor
+      {
+        xrt::run m_run;
+
+        void
+        add(xrt::run run)
+        {
+          m_run = std::move(run);
+        }
+
+        void
+        execute() override;
+
+        void
+        wait() override;
+      }; // class run_executor
+
+      class runlist_executor : executor
+      {
+        xrt::runlist m_runlist;
+
+        void
+        add(xrt::run run)
+        {
+          m_runlist.add(std::move(run));
+        }
+
+        void
+        execute() override;
+
+        void
+        wait() override;
+      }; // class runlist_executor
+
+      class initializer
+      {
+      };
+
+      const repo_type* m_repo;
+      std::unique_ptr<executor> m_executor;
+
+      using run_initializer = std::vector<std::string>;
+      using initializer_map = std::map<xrt::run, run_initializer>;
+      initializer_map m_init;
+
+      static initializer_map
+      create_initializer(const resources& resources, const json& frame_array)
+      {
+        initialzier_map init;
+        for (const auto& frame_object : frame_array) {
+          if (!frame_object.contains("arguments"))
+            continue;
+
+          auto run 
+              
+          auto run = resources.get_xrt_run(frame_object.at("run").get<std::string>());
+          auto& run_init = m_init[run];
+
+          for (const auto& arg_object : frame_object.at("arguments")) {
+            auto idx = arg_object.at("argidx").get<int>();
+            auto fnm = arg_object.at("name").get<std::string>();
+            if (idx >= run_init.size())
+              run_init.resize(idx + 1);
+            
+            run_init[idx] = fnm;
+          }
+        }
+
+        return init;
+      }
+
+      static std::unique_ptr<executor>
+      create_executor(const resources& resources, const json& frame_array)
+      {
+        auto runs = frame_array.size();
+        if (!runs)
+          throw std::runtime_error("A frame must contain at least one run");
+
+        std::unique_ptr<executor> executor = (runs == 1)
+          ? std::make_unique<run_executor>()
+          : std::make_unique<runlist_executor>();
+
+        // Add each frame run object
+        for (const auto& frame_object : frame_array)
+          executor.add(resources.get_xrt_run(frame_object.at("run").get<std::string>()));
+
+        return executor;
+      }
+
+
+    public:
+      frame(const resources& resources, const json& frame_array, const repo_type& repo)
+        : m_repo(&repo)
+        , m_executor{create_executor(resources, frame_array)}
+        , m_init{create_initializer(resoures, frame_array)}
+      {}
+
+      std::vector<xrt::bo>
+      init()
+      {
+        for (auto& [run, args] : m_init) {
+          for (size_t idx = 0; idx < args.size(); ++idx) {
+            const auto& fnm = args[idx];
+            if (fnm.empty())
+              continue;
+
+            
+          for (const auto& fnm : args) {
+            if (!fnm.empty()) {
+            }
+            ++idx;
+          }
+        }
+      }
+
+      void
+      execute()
+      {
+        m_executor->execute();
+      }
+
+      void
+      wait()
+      {
+        m_executor->wait();
+      }
+      
+    }; //class frame
+
+    std::vector<frame> m_frames;
+
+    static std::vector<frame>
+    create_frames(const resources& resources, const json& frames_array, const repo_type& repo)
+    {
+      std::vector<frame> frames;
+      for (const auto& frame_array : frames_array)
+        frames.push_back(create_frame(resources, frame_array, repo));
+      
+      return m_frames;
+    }
+
+  public:
+    execution(const resources& resources, const json& exec_object, const repo_type& repo)
+      : m_frames{create_frames(resources, exec_object.at("frames"), repo)}
+    {
+      
+    }
+
+    }; // class frame
+  }; // class execution
+#endif
 
   resources m_resources;
+  //execution m_execution;
 
   replayer(json j, repo_type repo)
     : m_device{0}
-    , m_replay(std::move(j))
-    , m_repo(std::move(repo))
-    , m_resources(m_device, m_replay.at("resources"), m_repo)
+    , m_replay{std::move(j)}
+    , m_repo{std::move(repo)}
+    , m_resources{m_device, m_replay.at("resources"), m_repo}
+      //, m_execution{m_resources, m_replay.at("execution"), m_repo}
   {}
 
   xrt::bo
