@@ -7,6 +7,10 @@
 #include <cstring>
 #include <cstdarg>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 namespace xrt_core { namespace str_wrapper {
   // Pointer case - use std:: functions (cross-platform)
   char* strcpy(char* dest, const char* src)
@@ -22,11 +26,6 @@ namespace xrt_core { namespace str_wrapper {
   char* strcat(char* dest, const char* src)
   {
     return std::strcat(dest, src);
-  }
-
-  char* strncat(char* dest, const char* src, size_t n)
-  {
-    return std::strncat(dest, src, n);
   }
 
   int sprintf(char* buf, const char* format, ...)

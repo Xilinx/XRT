@@ -31,11 +31,6 @@ namespace xrt_core { namespace str_wrapper {
   }
 
   template<size_t N>
-  inline char* strncat(char (&dest)[N], const char* src, size_t n) {
-    return strncat_s(dest, N, src, n) == 0 ? dest : nullptr;
-  }
-
-  template<size_t N>
   inline int sprintf(char (&buf)[N], const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -54,7 +49,6 @@ namespace xrt_core { namespace str_wrapper {
   char* strcpy(char* dest, const char* src);
   char* strncpy(char* dest, const char* src, size_t n);
   char* strcat(char* dest, const char* src);
-  char* strncat(char* dest, const char* src, size_t n);
   int sprintf(char* buf, const char* format, ...);
   int vsnprintf(char* buf, size_t size, const char* format, va_list args);
 }} // str_wrapper, xrt_core
