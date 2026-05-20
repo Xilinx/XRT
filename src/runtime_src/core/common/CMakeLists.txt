@@ -43,7 +43,6 @@ add_library(core_common_library_objects OBJECT
   module_loader.cpp
   query_requests.cpp
   sensor.cpp
-  str_wrapper.cpp
   system.cpp
   thread.cpp
   time.cpp

@@ -17,7 +17,6 @@
 // Copyright 2015 Xilinx, Inc. All rights reserved.
 
 #include "rt_printf_impl.h"
-#include "core/common/str_wrapper.h"
 
 #include <array>
 #include <cstdio>
@@ -27,6 +26,11 @@
 #include <stdexcept>
 #include <iomanip>
 #include <algorithm>
+
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+# define snprintf _snprintf
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -769,7 +773,7 @@ void BufferPrintf::dbgDump(std::ostream& os) const
       os << std::dec << std::left << idx << ":\t";
     }
 
-    xrt_core::str_wrapper::sprintf(tmpbuf, "%02X", (int)m_buf[idx]);
+    std::sprintf(tmpbuf, "%02X", (int)m_buf[idx]);
     os << tmpbuf << "  ";
   }
   os << "\n";
@@ -1005,32 +1009,32 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
 {
   std::string retval = "";
   char formatStr[32];
-  xrt_core::str_wrapper::strcpy(formatStr, "%");
+  strcpy(formatStr, "%");
   if (conversion.m_leftJustify)
-    xrt_core::str_wrapper::strcat(formatStr, "-");
+    strcat(formatStr, "-");
   if (conversion.m_signPlus)
-    xrt_core::str_wrapper::strcat(formatStr, "+");
+    strcat(formatStr, "+");
   if (conversion.m_prefixSpace)
-    xrt_core::str_wrapper::strcat(formatStr, " ");
+    strcat(formatStr, " ");
   if (conversion.m_alternative)
-    xrt_core::str_wrapper::strcat(formatStr, "#");
+    strcat(formatStr, "#");
   if (conversion.m_padZero)
-    xrt_core::str_wrapper::strcat(formatStr, "0");
+    strcat(formatStr, "0");
   if (conversion.m_fieldWidth) {
     char *buf = formatStr + strlen(formatStr);
-    xrt_core::str_wrapper::sprintf(buf, "%d", conversion.m_fieldWidthValue);
+    sprintf(buf, "%d", conversion.m_fieldWidthValue);
   }
   if (conversion.m_precision) {
     char *buf = formatStr + strlen(formatStr);
-    xrt_core::str_wrapper::sprintf(buf, ".%d", conversion.m_precisionValue);
+    sprintf(buf, ".%d", conversion.m_precisionValue);
   }
   switch ( conversion.m_lengthModifier ) {
     case ConversionSpec::CS_CHAR: {
-      xrt_core::str_wrapper::strcat(formatStr, "hh");
+      strcat(formatStr, "hh");
       break;
     }
     case ConversionSpec::CS_SHORT: {
-      xrt_core::str_wrapper::strcat(formatStr, "h");
+      strcat(formatStr, "h");
       break;
     }
     case ConversionSpec::CS_INT_FLOAT: {
@@ -1041,7 +1045,7 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
     case ConversionSpec::CS_LONG: {
       // HACK: LONG only supported for non vectors now...
       if ( conversion.m_vectorSize == 1 ) {
-        xrt_core::str_wrapper::strcat(formatStr, "l");
+        strcat(formatStr, "l");
       }
       break;
     }
@@ -1049,7 +1053,7 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       break;
   }
 
-  xrt_core::str_wrapper::strcat(formatStr, " ");
+  strcat(formatStr, " ");
   formatStr[strlen(formatStr)-1] = conversion.m_specifier;
   // TODO: later make this dynamically size... for now 1024 should be sufficient
   int bufLen = 1024;
