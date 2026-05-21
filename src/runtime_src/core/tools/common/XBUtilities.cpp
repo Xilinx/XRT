@@ -1041,6 +1041,7 @@ is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f4:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f5:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
