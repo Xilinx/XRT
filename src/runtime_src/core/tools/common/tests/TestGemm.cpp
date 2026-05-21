@@ -54,9 +54,11 @@ static void
 log_gemm_results(boost::property_tree::ptree& ptree,
                  double tops,
                  double avg_cycle_count,
+                 uint64_t clock_mhz,
                  double period_ns)
 {
   if (XBU::getVerbose()) {
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Clock Frequency: %d MHz") % clock_mhz));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration (avg): %.1f ns") % (period_ns * avg_cycle_count)));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % avg_cycle_count));
   }
@@ -106,7 +108,7 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
     double TOPS = run_TOPS;
     double avg_cycle_count = run_total_cycle_count / num_of_cores_strix;
 
-    log_gemm_results(ptree, TOPS, avg_cycle_count, period_ns);
+    log_gemm_results(ptree, TOPS, avg_cycle_count, clock_mhz, period_ns);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
@@ -168,7 +170,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     double aie4_tops_all_cores = tops_per_core * num_of_cores_npu3;
     double avg_cycle_count = total_cycle_count / num_of_cores_npu3;
 
-    log_gemm_results(ptree, aie4_tops_all_cores, avg_cycle_count, period_ns);
+    log_gemm_results(ptree, aie4_tops_all_cores, avg_cycle_count, clock_mhz, period_ns);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
