@@ -222,10 +222,11 @@ public:
     stxH, // Strix Halo
     krk1, // Krackan
     npu3_f0, // deprecated
-    npu3_f4, // XXXXX 
     npu3_f1, // XXXXX
     npu3_f2, // XXXXX
     npu3_f3, // XXXXX
+    npu3_f4, // XXXXX
+    npu3_f5, // XXXXX
     npu3_B01, // XXXXX
     npu3_B02, // XXXXX
     npu3_B03, // XXXXX
