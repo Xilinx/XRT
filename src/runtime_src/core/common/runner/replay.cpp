@@ -165,7 +165,7 @@ struct replayer
 
     // create_buffer() - Create xrt::bo from resources::buffer
     static xrt::bo
-    create_buffer(const xrt::device& device, const json& buffer_object, const repo_type&)
+    create_buffer(const xrt::device& device, const json& buffer_object)
     {
       return xrt::ext::bo{device, buffer_object.at("size").get<size_t>()};
     }
@@ -276,11 +276,11 @@ struct replayer
 
     // create_buffers() - Create buffer_map from resources::buffers array
     buffer_map
-    create_buffers(const xrt::device& device, const json& buffers_array, const repo_type& repo)
+    create_buffers(const xrt::device& device, const json& buffers_array)
     {
       buffer_map buffers;
       for (const auto& j : buffers_array)
-        buffers.emplace(j.at("name").get<std::string>(), create_buffer(device, j, repo));
+        buffers.emplace(j.at("name").get<std::string>(), create_buffer(device, j));
 
       return buffers;
     }
@@ -313,7 +313,7 @@ struct replayer
     // Since an xrt::run object is created from an xrt::kernel object, the
     // kernel_map must have been created prior to calling this functon.
     run_map
-    create_runs(const xrt::device&, const json& run_array, const repo_type& repo)
+    create_runs(const xrt::device&, const json& run_array)
     {
       run_map runs;
       for (const auto& j : run_array)
@@ -325,20 +325,25 @@ struct replayer
 
   public:
     resources(const xrt::device& device, const json& resources_object, const repo_type& repo)
-      : m_buffers(create_buffers(device, resources_object.at("buffers"), repo))
-      , m_hwctxs(create_hwctxs(device, resources_object.at("hwctxs"), repo))
-      , m_kernels(create_kernels(device, resources_object.at("kernels"), repo))
-      , m_runs(create_runs(device, resources_object.at("runs"), repo))
+      : m_buffers{create_buffers(device, resources_object.at("buffers"))}
+      , m_hwctxs{create_hwctxs(device, resources_object.at("hwctxs"), repo)}
+      , m_kernels{create_kernels(device, resources_object.at("kernels"), repo)}
+      , m_runs{create_runs(device, resources_object.at("runs"))}
     {}
 
     xrt::run
-    get_run(const std::string& name) const
+    get_xrt_run(const std::string& name) const
     {
       return m_runs.at(name);
     }
+
+    xrt::bo
+    get_xrt_bo(const std::string& name) const
+    {
+      return m_buffers.at(name);
+    }
   }; // class resources
 
-#if 0
   class execution {
 
     // class frame - list of run objects
@@ -356,6 +361,12 @@ struct replayer
 
       struct executor
       {
+        virtual
+        ~executor() = default;
+
+        virtual void
+        add(xrt::run) = 0;
+        
         virtual void
         execute() = 0;
 
@@ -363,75 +374,111 @@ struct replayer
         wait() = 0;
       }; // class executor
 
-      class run_executor : executor
+      struct run_executor : executor
       {
         xrt::run m_run;
 
         void
-        add(xrt::run run)
+        add(xrt::run run) override
         {
           m_run = std::move(run);
         }
 
         void
-        execute() override;
+        execute() override
+        {
+          m_run.start();
+        }
 
         void
-        wait() override;
+        wait() override
+        {
+          m_run.wait2();
+        }
       }; // class run_executor
 
-      class runlist_executor : executor
+      struct runlist_executor : executor
       {
         xrt::runlist m_runlist;
 
         void
-        add(xrt::run run)
+        add(xrt::run run) override
         {
           m_runlist.add(std::move(run));
         }
 
         void
-        execute() override;
+        execute() override
+        {
+          m_runlist.execute();
+        }
 
         void
-        wait() override;
+        wait() override
+        {
+          m_runlist.wait();
+        }
       }; // class runlist_executor
 
+      // initialize data before frame execution
       class initializer
       {
+        std::map<std::string, std::pair<xrt::bo, std::string>> m_bo2data;
+      public:
+        void
+        init(const repo_type* repo)
+        {
+          for (auto& [nm, value] : m_bo2data) {
+            auto& [xbo, fnm] = value;
+            auto data = repo->get(fnm, file_mode::mmap);
+            if (data.size() > xbo.size())
+              throw std::runtime_error("size mismatch during buffer initialization");
+
+            auto xbo_data = xbo.map<char*>();
+            auto bytes = std::min(data.size(), xbo.size());
+            auto src = data.data();
+            std::copy(src, src + bytes, xbo_data);
+            xbo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+          }
+        }
+
+        void
+        add(std::string bonm, xrt::bo xbo, std::string fnm)
+        {
+          if (!m_bo2data.emplace(std::move(bonm), std::make_pair(std::move(xbo), std::move(fnm))).second)
+            throw std::runtime_error("Unexpected reinit of buffer");
+        }
       };
 
       const repo_type* m_repo;
       std::unique_ptr<executor> m_executor;
+      initializer m_init;
 
-      using run_initializer = std::vector<std::string>;
-      using initializer_map = std::map<xrt::run, run_initializer>;
-      initializer_map m_init;
-
-      static initializer_map
+      static initializer
       create_initializer(const resources& resources, const json& frame_array)
       {
-        initialzier_map init;
+        initializer init;
         for (const auto& frame_object : frame_array) {
           if (!frame_object.contains("arguments"))
             continue;
 
-          auto run 
-              
-          auto run = resources.get_xrt_run(frame_object.at("run").get<std::string>());
-          auto& run_init = m_init[run];
-
           for (const auto& arg_object : frame_object.at("arguments")) {
-            auto idx = arg_object.at("argidx").get<int>();
-            auto fnm = arg_object.at("name").get<std::string>();
-            if (idx >= run_init.size())
-              run_init.resize(idx + 1);
-            
-            run_init[idx] = fnm;
+            auto bonm = arg_object.at("bo").get<std::string>();
+            init.add(bonm, resources.get_xrt_bo(bonm),
+                     arg_object.at("fnm").get<std::string>());
           }
         }
-
         return init;
+      }
+
+      static std::unique_ptr<executor>
+      alloc_executor(size_t sz)
+      {
+        // beats me why ternary doesn't work
+        if (sz > 1)
+          return std::make_unique<runlist_executor>();
+
+        return std::make_unique<run_executor>();
       }
 
       static std::unique_ptr<executor>
@@ -441,13 +488,11 @@ struct replayer
         if (!runs)
           throw std::runtime_error("A frame must contain at least one run");
 
-        std::unique_ptr<executor> executor = (runs == 1)
-          ? std::make_unique<run_executor>()
-          : std::make_unique<runlist_executor>();
+        std::unique_ptr<executor> executor = alloc_executor(runs);
 
         // Add each frame run object
         for (const auto& frame_object : frame_array)
-          executor.add(resources.get_xrt_run(frame_object.at("run").get<std::string>()));
+          executor->add(resources.get_xrt_run(frame_object.at("run").get<std::string>()));
 
         return executor;
       }
@@ -457,30 +502,13 @@ struct replayer
       frame(const resources& resources, const json& frame_array, const repo_type& repo)
         : m_repo(&repo)
         , m_executor{create_executor(resources, frame_array)}
-        , m_init{create_initializer(resoures, frame_array)}
+        , m_init{create_initializer(resources, frame_array)}
       {}
-
-      std::vector<xrt::bo>
-      init()
-      {
-        for (auto& [run, args] : m_init) {
-          for (size_t idx = 0; idx < args.size(); ++idx) {
-            const auto& fnm = args[idx];
-            if (fnm.empty())
-              continue;
-
-            
-          for (const auto& fnm : args) {
-            if (!fnm.empty()) {
-            }
-            ++idx;
-          }
-        }
-      }
 
       void
       execute()
       {
+        m_init.init(m_repo);
         m_executor->execute();
       }
 
@@ -499,67 +527,45 @@ struct replayer
     {
       std::vector<frame> frames;
       for (const auto& frame_array : frames_array)
-        frames.push_back(create_frame(resources, frame_array, repo));
+        frames.emplace_back(resources, frame_array, repo);
       
-      return m_frames;
+      return frames;
     }
 
   public:
     execution(const resources& resources, const json& exec_object, const repo_type& repo)
       : m_frames{create_frames(resources, exec_object.at("frames"), repo)}
+    {}
+
+    void
+    run()
     {
-      
+      for (auto& frame : m_frames) {
+        frame.execute();
+        frame.wait();
+      }
     }
 
-    }; // class frame
   }; // class execution
-#endif
+
 
   resources m_resources;
-  //execution m_execution;
+  execution m_execution;
 
   replayer(json j, repo_type repo)
     : m_device{0}
-    , m_replay{std::move(j)}
+    , m_replay(std::move(j)) // purposely no {}
     , m_repo{std::move(repo)}
     , m_resources{m_device, m_replay.at("resources"), m_repo}
-      //, m_execution{m_resources, m_replay.at("execution"), m_repo}
+    , m_execution{m_resources, m_replay.at("execution"), m_repo}
   {}
-
-  xrt::bo
-  create_and_set_frame_bo_args(xrt::run& run, const json& arg_object)
-  {
-    auto data = m_repo.get(arg_object.at("name").get<std::string>(), file_mode::mmap);
-    xrt::bo bo{xrt::ext::bo{m_device, data.data(), data.size()}};
-    run.set_arg(arg_object.at("argidx").get<int>(), bo);
-    return bo;
-  }
-
-  void
-  run(const json& frame_object)
-  {
-    auto run = m_resources.get_run(frame_object.at("run").get<std::string>());
-    std::vector<xrt::bo> bos;
-    for(const auto& arg : frame_object.at("arguments")) {
-      // avoid creating the bo over and over again
-      // create the bo at the run level, map it here,
-      // copy data and sync
-      bos.push_back(create_and_set_frame_bo_args(run, arg));
-    }
-
-    static auto count = 0;
-    XRT_PRINTF("Executon frame #%d\n", count++);
-    run.start();
-    run.wait2();
-  }
 
   void
   run()
   {
-    for (const auto& frame : m_replay.at("execution").at("frames"))
-      run(frame);
+    m_execution.run();
   }
-};
+}; // class replayer
 
 void
 run(int argc, char* argv[])
@@ -593,7 +599,6 @@ run(int argc, char* argv[])
   }
 
   auto json = load_json(script);
-  auto repo = xrt_core::artifacts::repository{dir};
   replayer replay(load_json(script), xrt_core::artifacts::repository{dir});
   replay.run();
 }

@@ -172,7 +172,7 @@ public:
    */
   XRT_API_EXPORT
   span<char>
-  get(const std::string& key, file_mode hint);
+  get(const std::string& key, file_mode hint) const;
 };
 
 } // namespace xrt_core::artifacts
