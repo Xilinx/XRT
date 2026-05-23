@@ -2436,20 +2436,6 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     return asetter.get();
   }
 
-  void
-  bind_arg_at_index(size_t index, const xrt::bo& bo)
-  {
-    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, index, bo);
-    cmd->bind_arg_at_index(index, bo);
-  }
-
-  void
-  bind_arg_at_index(size_t index, const arg_range<uint8_t>& value)
-  {
-    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, index, value.data_as_span());
-    // cmd are not binding scalar values
-  }
-
   bool
   validate_ip_arg_connectivity(size_t argidx, int32_t grpidx)
   {
@@ -2800,18 +2786,17 @@ public:
     return get_arg_setter()->get_arg_value(arg);
   }
 
-  void
+  virtual void
   set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
   {
     get_arg_setter()->set_arg_value(arg, value);
-    bind_arg_at_index(arg.index(), value);
   }
 
-  void
+  virtual void
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
-    bind_arg_at_index(arg.index(), bo);
+    cmd->bind_arg_at_index(arg.index(), bo);
 
     if (m_module) {
       if (!cmd->is_done())
@@ -2994,7 +2979,6 @@ public:
     // sending state as ERT_CMD_STATE_NEW for kernel start
     m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
     cmd->run();
-    XRT_REPLAY_CAPTURE(start_frame, this);
   }
 
   void
@@ -3071,7 +3055,7 @@ public:
   // Deprecated wait() semantics.
   // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
   // Return ert cmd state otherwise
-  ert_cmd_state
+  virtual ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -3154,7 +3138,7 @@ public:
   // Return std::cv_status::timeout on timeout
   // Return std::cv_status::no_timeout on successful completion
   // Throw on abnormal command termination
-  std::cv_status
+  virtual std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -3245,7 +3229,55 @@ private:
       // update usage logger in success cases
       m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_COMPLETED);
   }
-};
+}; // class run_impl
+
+// class run_impl_debug - config enabled impl class
+//
+// Provides overrides for debug capture
+// Consider templatizing on run_impl concrete type
+class run_impl_debug : public run_impl
+{
+  void
+  set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
+  {
+    run_impl::set_arg_value(arg, value);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), value.data_as_span());
+  }
+    
+  void
+  set_arg_value(const argument& arg, const xrt::bo& bo) override
+  {
+    run_impl::set_arg_value(arg, bo);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), bo);
+  }
+  
+  void
+  start() override
+  {
+    run_impl::start();
+    XRT_REPLAY_CAPTURE(run_start, this);
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto status = run_impl::wait_throw_on_error(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this); // TODO: revisit for timeout
+    return status;
+  }
+
+  ert_cmd_state
+  wait(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto state = run_impl::wait(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this);
+    return state;
+    
+  }
+  
+public:
+  using run_impl::run_impl;
+}; // run_impl_debug
 
 // class mailbox_impl - Extension of run_impl for mailbox support
 //
@@ -3633,6 +3665,8 @@ public:
 // point will be dyanmic.
 class runlist_impl
 {
+  friend class runlist_impl_debug;
+
   static constexpr size_t submit_size = 24;
   static constexpr size_t noidx = std::numeric_limits<size_t>::max();
   static constexpr size_t execbuf_size = sizeof(ert_packet) + sizeof(ert_cmd_chain_data) + submit_size * sizeof(uint64_t);
@@ -3884,7 +3918,7 @@ class runlist_impl
   // successfully submitted command must be waited for before the list
   // can be reset. Pre-condition ensured by execute() is that size of
   // runlist is greater than 0.
-  void
+  virtual void
   submit()
   {
     m_submitted_cmds.clear();
@@ -3915,6 +3949,7 @@ public:
     , m_hwqueue{m_hwctx}
   {}
 
+  virtual
   ~runlist_impl()
   {
     // Make sure all run objects are severed from this list
@@ -3926,7 +3961,7 @@ public:
     }
   }
 
-  void
+  virtual void
   add(xrt::run run)
   {
     if (m_state != state::idle)
@@ -3967,8 +4002,6 @@ public:
     pkt->count += sizeof(uint64_t) / word_size; // account for added command
     m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
     m_bos.push_back(run_bo);              // ptr noexcept
-
-    XRT_REPLAY_CAPTURE(runlist_add_run, this, run_impl.get());
   }
 
   void
@@ -3994,7 +4027,6 @@ public:
     // things failed.
     try {
       submit();
-      XRT_REPLAY_CAPTURE(start_frame, this);
     }
     catch (const std::exception&) {
       m_state = state::running;
@@ -4008,8 +4040,8 @@ public:
 
   // Wait for runlist completion.  Throw exception with first failing
   // command if any.
-  std::cv_status
-  wait_throw_on_error(const std::chrono::milliseconds& timeout)
+  virtual std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout) const
   {
     if (m_state != state::running)
       return std::cv_status::no_timeout;
@@ -4078,7 +4110,40 @@ public:
     m_cmds.clear();
     m_state = state::idle;
   }
-};
+}; // class runlist_impl
+
+// class runlist_impl_debug - config enabled impl class
+//
+// Provides overrides for debug capture
+// Consider templatizing on runlist_impl concrete type
+class runlist_impl_debug : public runlist_impl
+{
+  void
+  submit() override
+  {
+    runlist_impl::submit();
+    XRT_REPLAY_CAPTURE(runlist_start, this);
+  }
+
+  void
+  add(xrt::run run) override
+  {
+    runlist_impl::add(run);
+    XRT_REPLAY_CAPTURE(runlist_add_run, this, run.get_handle().get());
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout) const override
+  {
+    auto status = runlist_impl::wait_throw_on_error(timeout);
+    XRT_REPLAY_CAPTURE(runlist_wait, this); // TODO: revisit for tiemout
+    return status;
+  }
+  
+public:
+  using runlist_impl::runlist_impl;
+}; // class runlist_impl_debug
+
 
 // runlist::command_error_impl is in anticipation of additional
 // implementation data over that of run::command_error_impl
@@ -4190,6 +4255,9 @@ get_run_update(xrtRunHandle rhdl)
 static std::unique_ptr<xrt::run_impl>
 alloc_run(const std::shared_ptr<xrt::kernel_impl>& khdl)
 {
+  if (xrt_core::config::get_capture_frames())
+    return std::make_unique<xrt::run_impl_debug>(khdl);
+  
   return khdl->has_mailbox()
     ? std::make_unique<xrt::mailbox_impl>(khdl)
     : std::make_unique<xrt::run_impl>(khdl);
@@ -4239,6 +4307,15 @@ get_mailbox_impl(const xrt::run& run)
   if (!mimpl)
     throw xrt_core::error("Mailbox not supported by this run object");
   return mimpl;
+}
+
+static std::shared_ptr<xrt::runlist_impl>
+alloc_runlist(const xrt::hw_context& hwctx)
+{
+  if (xrt_core::config::get_capture_frames())
+    return std::make_shared<xrt::runlist_impl_debug>(hwctx);
+
+  return std::make_shared<xrt::runlist_impl>(hwctx);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -4802,7 +4879,7 @@ set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
 
 runlist::
 runlist(const xrt::hw_context& hwctx)
-  : detail::pimpl<runlist_impl>(std::make_shared<runlist_impl>(hwctx))
+  : detail::pimpl<runlist_impl>(alloc_runlist(hwctx))
 {}
 
 runlist::

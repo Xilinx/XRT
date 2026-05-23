@@ -29,13 +29,19 @@ void
 run_set_arg_at_index(const xrt::run_impl*, size_t, const xrt::bo&);
 
 void
-start_frame(const xrt::run_impl*);
+run_start(const xrt::run_impl*);
+
+void
+run_wait(const xrt::run_impl*);
 
 void
 runlist_add_run(const xrt::runlist_impl*, const xrt::run_impl*);
 
 void
-start_frame(const xrt::runlist_impl*);
+runlist_start(const xrt::runlist_impl*);
+
+void
+runlist_wait(const xrt::runlist_impl*);
 
 void
 elf_ctor(const xrt::elf_impl* hdl, const void* data, size_t size);

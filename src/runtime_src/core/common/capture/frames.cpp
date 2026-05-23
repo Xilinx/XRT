@@ -847,10 +847,15 @@ run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, const xrt::bo& bo
 }
 
 void
-start_frame(const xrt::run_impl* rhdl)
+run_start(const xrt::run_impl* rhdl)
 {
   XRT_PRINTF("start_frame(rhdl:0x%x)\n", rhdl);
   frames::instance().capture_start(rhdl);
+}
+
+void
+run_wait(const xrt::run_impl* rhdl)
+{
 }
 
 void
@@ -861,10 +866,15 @@ runlist_add_run(const xrt::runlist_impl* rlhdl, const xrt::run_impl* rhdl)
 }
 
 void
-start_frame(const xrt::runlist_impl* rlhdl)
+runlist_start(const xrt::runlist_impl* rlhdl)
 {
   XRT_PRINTF("start_frame(rlhdl:0x%x)\n", rlhdl);
   frames::instance().capture_start(rlhdl);
+}
+
+void
+runlist_wait(const xrt::runlist_impl* rlhdl)
+{
 }
 
 void
