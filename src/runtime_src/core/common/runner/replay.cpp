@@ -50,8 +50,9 @@ usage()
   std::cout << "usage: xrt-replay.exe [options]\n";
   std::cout << " [--replay <replay.json>] replay scrpt to run\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
+  std::cout << " [--iter <num>] iterate the frame set\n";
   std::cout << "\n";
-  std::cout << "% xrt-replay.exe --replay replay.json [--dir <path>]\n";
+  std::cout << "% xrt-replay.exe --replay replay.json [--dir <path>] [--iter <num>]\n";
 }
 
 // struct streambuf - wrap a std::streambuf around an external buffer
@@ -344,21 +345,36 @@ struct replayer
     }
   }; // class resources
 
+  // class execution - execution section of a replay json script
+  //
+  // The execution section is an array of frames, where a frame
+  // fundametally is either a single xrt::run, or a xrt::runlist.
   class execution {
-
     // class frame - list of run objects
     //
-    // A frame is a list of run objects created that can be executed.
+    // A frame is a list of run objects that can be executed.
     // The frame class is responsible for managing the runs objects
     // creating an xrt::runlist if necessary.
     //
     // Capture represents an xrt::runlist as a frame with multiple run
-    // objects.  If a frame array in the replay json file has multiple
-    // elements then a frame will be created as an xrt::runlist,
-    // otherwise (single entry) a frame is just a single xrt::run
+    // objects.  If a frame in the replay json file has multiple
+    // run elements then a frame will be created as an xrt::runlist,
+    // otherwise (single run element) a frame is just a single xrt::run
     // object.
+    //
+    // A frame is captured when application calls xrt::run::start() or
+    // xrt::runlist::execute().  Capture has the concept of an active
+    // frame, which is the last frame to start.  Any application call
+    // to xrt::run::wait() or xrt::runlist::wait() are attributed to
+    // the current active frame, but could possibly refer to frames
+    // that were started before the current active frame.  It is an
+    // error for a wait to refer to a frame in the future.
+    //
+    // Execution of a frame first starts the frame, then calls wait()
+    // on all recorded frame waits.
     class frame {
 
+      // class executor - handles execution and waiting of frames
       struct executor
       {
         virtual
@@ -374,6 +390,7 @@ struct replayer
         wait() = 0;
       }; // class executor
 
+      // class run_executor - used for single xrt::run case
       struct run_executor : executor
       {
         xrt::run m_run;
@@ -397,6 +414,7 @@ struct replayer
         }
       }; // class run_executor
 
+      // class runlist_executor - used for xrt::runlist case
       struct runlist_executor : executor
       {
         xrt::runlist m_runlist;
@@ -420,11 +438,39 @@ struct replayer
         }
       }; // class runlist_executor
 
-      // initialize data before frame execution
+      // class initializer - initialize data before frame execution
+      //
+      // During capture, xrt::run::start() or xrt::runlist::start()
+      // saves the current run(s) argument data to disk. Before an
+      // xrt::run object can be executed its data must be
+      // valid. xrt::bo objects are associated with xrt::run objects
+      // through capture of xrt::run::set_arg(). During capture of
+      // xrt::run::start(), the run arguments are checked if they they
+      // are already valid for this run object.  A previous frame
+      // could have set the argument on same run object used by a
+      // subsequent frame, and if there are no sync-to-device calls in
+      // between these frame execution, then the subsequent frames are
+      // valid in regards to this run object.
+      //
+      // The replay json script records args for a frame if and only
+      // if they must be reinitialized prior to frame execution. This
+      // initializer object for a frame records the necessary
+      // initialization of frame run arguments.
       class initializer
       {
+        // bonm -> {xrt::bo, filename}
+        // Note that xrt::bo while unique for bonm cannot be used
+        // as map key because the bo must be mapped, populated,
+        // and synced (non const operations).
         std::map<std::string, std::pair<xrt::bo, std::string>> m_bo2data;
       public:
+
+        // init() - Initialize recorded buffers with their data
+        //
+        // This function is called prior to frame execution.  Per
+        // capture logic it is possible (likely) that the buffer
+        // data is already valid for this frame, in which case
+        // the buffer will not be in the bo data map.
         void
         init(const repo_type* repo)
         {
@@ -442,27 +488,41 @@ struct replayer
           }
         }
 
+        // add() - record a bo and its file data to the initializer
+        //
+        // @bonm: name of bo object, ensures map is unique for a given bo
+        // @xbo: the xrt::bo object to initialize (cannot be used as map key).
+        // @fnm: the name of the file with dumped bo data 
         void
         add(std::string bonm, xrt::bo xbo, std::string fnm)
         {
+          // It's an error to emplace the same bo multiple times
           if (!m_bo2data.emplace(std::move(bonm), std::make_pair(std::move(xbo), std::move(fnm))).second)
             throw std::runtime_error("Unexpected reinit of buffer");
         }
       };
 
-      const repo_type* m_repo;
-      std::unique_ptr<executor> m_executor;
-      initializer m_init;
+      const repo_type* m_repo;              // repository with bo file data
+      std::unique_ptr<executor> m_executor; // executor for run objects
+      initializer m_init;                   // run object initializer
+      std::vector<std::string> m_waits;     // wait frames prior to next frame
 
+      /// I think frame will have to record all run objects in a vector
+      /// and then call set_arg for each of the bo in initializer.
+      /// This is because we cannot be certain the application uses the
+      /// same bo for all frames that use the same run objects.  A set_arg
+      /// in between frame execution must be honered. (see notebook 5/23/26 page)
+
+      // create_initializer - check buffer arguments 
       static initializer
-      create_initializer(const resources& resources, const json& frame_array)
+      create_initializer(const resources& resources, const json& runs_array)
       {
         initializer init;
-        for (const auto& frame_object : frame_array) {
-          if (!frame_object.contains("arguments"))
+        for (const auto& run_object : runs_array) {
+          if (!run_object.contains("arguments"))
             continue;
 
-          for (const auto& arg_object : frame_object.at("arguments")) {
+          for (const auto& arg_object : run_object.at("arguments")) {
             auto bonm = arg_object.at("bo").get<std::string>();
             init.add(bonm, resources.get_xrt_bo(bonm),
                      arg_object.at("fnm").get<std::string>());
@@ -482,28 +542,34 @@ struct replayer
       }
 
       static std::unique_ptr<executor>
-      create_executor(const resources& resources, const json& frame_array)
+      create_executor(const resources& resources, const json& runs_array)
       {
-        auto runs = frame_array.size();
+        auto runs = runs_array.size();
         if (!runs)
           throw std::runtime_error("A frame must contain at least one run");
 
         std::unique_ptr<executor> executor = alloc_executor(runs);
 
         // Add each frame run object
-        for (const auto& frame_object : frame_array)
-          executor->add(resources.get_xrt_run(frame_object.at("run").get<std::string>()));
+        for (const auto& run_object : runs_array)
+          executor->add(resources.get_xrt_run(run_object.at("run").get<std::string>()));
 
         return executor;
       }
 
-
     public:
-      frame(const resources& resources, const json& frame_array, const repo_type& repo)
+      frame(const resources& resources, const json& frame_object, const repo_type& repo)
         : m_repo(&repo)
-        , m_executor{create_executor(resources, frame_array)}
-        , m_init{create_initializer(resources, frame_array)}
+        , m_executor{create_executor(resources, frame_object.at("runs"))}
+        , m_init{create_initializer(resources, frame_object.at("runs"))}
+        , m_waits(frame_object.at("waits"))
       {}
+
+      const std::vector<std::string>&
+      get_waits() const
+      {
+        return m_waits;
+      }
 
       void
       execute()
@@ -520,14 +586,14 @@ struct replayer
       
     }; //class frame
 
-    std::vector<frame> m_frames;
+    std::map<std::string, frame> m_frames;
 
-    static std::vector<frame>
+    static std::map<std::string, frame>
     create_frames(const resources& resources, const json& frames_array, const repo_type& repo)
     {
-      std::vector<frame> frames;
-      for (const auto& frame_array : frames_array)
-        frames.emplace_back(resources, frame_array, repo);
+      std::map<std::string, frame> frames;
+      for (const auto& frame_object : frames_array)
+        frames.emplace(frame_object.at("name").get<std::string>(), frame{resources, frame_object, repo});
       
       return frames;
     }
@@ -540,10 +606,20 @@ struct replayer
     void
     run()
     {
-      for (auto& frame : m_frames) {
+      for (auto& [nm, frame] : m_frames) {
         frame.execute();
-        frame.wait();
+
+        // Consider translating wait names to frames in frame ctor
+        for (auto& frame_name : frame.get_waits())
+          m_frames.at(frame_name).wait();
       }
+
+      // Capture has no chance to capture waits after last frame at
+      // frame capture limit. Make sure wait is called on all frames.
+      // The capture frames cannot be destroy nor iterated unless they
+      // have been waited on.
+      for (auto& [nm, frame] : m_frames)
+        frame.wait();
     }
 
   }; // class execution
@@ -561,9 +637,10 @@ struct replayer
   {}
 
   void
-  run()
+  run(size_t iterations)
   {
-    m_execution.run();
+    for (size_t i = 0; i < iterations; ++i)
+      m_execution.run();
   }
 }; // class replayer
 
@@ -574,7 +651,7 @@ run(int argc, char* argv[])
   std::string cur;
   std::string script;
   std::string dir = ".";
-  
+  uint32_t iterations = 1;
 
   for (auto& arg : args) {
     if (arg == "--help" || arg == "-h" || arg == "-help") {
@@ -591,6 +668,8 @@ run(int argc, char* argv[])
       script = arg;
     else if (cur == "--dir" || cur == "-d")
       dir = arg;
+    else if (cur == "--iterations" || cur == "-i")
+      iterations = std::stoi(arg);
     else
       // Cannot use xrt::message::logf(...), before ini::set below
       std::cerr << "[replay] INFO: ignoring unknown argument value " << cur << " " << arg << '\n';
@@ -600,12 +679,10 @@ run(int argc, char* argv[])
 
   auto json = load_json(script);
   replayer replay(load_json(script), xrt_core::artifacts::repository{dir});
-  replay.run();
+  replay.run(iterations);
 }
 
-  
-
-}
+} // namespace
 
 int
 main(int argc, char* argv[])

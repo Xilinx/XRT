@@ -14,6 +14,7 @@
 #include "core/common/api/xclbin_int.h"
 #include "core/common/json/nlohmann/json.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -163,12 +164,20 @@ class frames
     using arg_type = std::variant<uint64_t, const bo*>;
   private:
     std::vector<arg_type> m_args;
+    const xrt::run_impl* m_hdl;
     xrt::run m_run;
 
   public:
     run(const xrt::run_impl* hdl)
-      : m_run{xrt_core::kernel_int::get_run_from_impl(hdl)}
+      : m_hdl{hdl}
+      , m_run{xrt_core::kernel_int::get_run_from_impl(m_hdl)}
     {}
+
+    const xrt::run_impl*
+    get_handle() const
+    {
+      return m_hdl;
+    }
 
     void
     set_arg(size_t argidx, uint64_t value)
@@ -261,8 +270,19 @@ class frames
     // Pointer to run is safe since the run lifetime is tied to a
     // std::map and std::map nodes remains valid after insert and
     // erase operations.
+    const xrt::runlist_impl* m_hdl;
     std::vector<const run*> m_runs;
   public:
+    runlist(const xrt::runlist_impl* hdl)
+      : m_hdl{hdl}
+    {}
+
+    const xrt::runlist_impl*
+    get_handle() const
+    {
+      return m_hdl;
+    }
+
     void
     add_run(const run& r)
     {
@@ -296,8 +316,17 @@ class frames
     // Application can call wait() any time while frames are running
     // and the waits can be for any prviously started frame.
     // Replay inserts wait() calls in the right sequence following
-    // a frame start
-    std::vector<frame_type> m_waits;
+    // a frame start.  m_waits stores frames by name.
+    std::vector<std::string> m_waits;
+
+    uint64_t m_id;
+
+    static uint64_t
+    get_uid()
+    {
+      static std::atomic<uint64_t> id{0};
+      return id++;
+    }
 
     ////////////////////////////////////////////////////////////////
     // Capture frame data immediately when a frame starts executing.
@@ -371,8 +400,27 @@ class frames
     template <typename FrameType>
     frame(FrameType ft, artifacts& repo)
       : m_frame(std::move(ft))
+      , m_id(get_uid())
     {
       capture_frame_start_data(ft, repo);
+    }
+
+    const void*
+    get_handle() const
+    {
+      return std::visit([](const auto& v) -> const void* {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, run*>)
+          return v->get_handle();
+        else if constexpr (std::is_same_v<T, runlist*>)
+          return v->get_handle();
+      }, m_frame);
+    }
+
+    const std::string
+    get_name() const
+    {
+      return "frame_" + std::to_string(m_id);
     }
 
     const run*
@@ -400,15 +448,15 @@ class frames
     }
 
     void
-    add_wait(run* run)
+    add_wait(std::string frame_name)
     {
-      m_waits.push_back(run);
+      m_waits.push_back(std::move(frame_name));
     }
 
-    void
-    add_wait(runlist* runlist)
+    const std::vector<std::string>&
+    get_waits() const
     {
-      m_waits.push_back(runlist);
+      return m_waits;
     }
   };
 
@@ -423,6 +471,12 @@ class frames
   // is a pointer to an object stored in a std::map, vector can
   // resize by pointers remain valid.
   std::vector<frame> m_frames;
+
+  // Mapping from run_impl or runlist_impl handle to the frame
+  // created for the run or runlist.  Used when correlating
+  // application run.wait() or runlist.wait to frame that should
+  // waited on.
+  std::map<const void*, frame*> m_hdl2frame;
 
   // ELFIO cannot be dumped post creation, so capture as created
   // along with the data used to create ELF
@@ -459,8 +513,9 @@ class frames
   {
     if (auto itr = m_runlists.find(hdl); itr != m_runlists.end())
       return (*itr).second;
-
-    return m_runlists[hdl];
+    
+    auto [itr, inserted] = m_runlists.emplace(hdl, hdl);
+    return (*itr).second;
   }
 
   // create_bo_if_new()
@@ -699,7 +754,7 @@ class frames
   }
 
   json
-  replay_execution_frame(const frame& frame) const
+  replay_execution_frame_runs(const frame& frame) const
   {
     json j = json::array();
     if (auto run = frame.get_run_or_null())
@@ -708,6 +763,26 @@ class frames
       for (auto runrl : runlist->get_runs())
         j.push_back(replay_execution_frame(frame, *runrl));
 
+    return j;
+  }
+
+  json
+  replay_execution_frame_waits(const frame& frame) const
+  {
+    json j = json::array();
+    for (auto& nm : frame.get_waits()) 
+      j.push_back(nm);
+
+    return j;
+  }
+
+  json
+  replay_execution_frame(const frame& frame) const
+  {
+    json j = json::object();
+    j["name"] = frame.get_name();
+    j["runs"] = replay_execution_frame_runs(frame);
+    j["waits"] = replay_execution_frame_waits(frame);
     return j;
   }
 
@@ -781,20 +856,29 @@ public:
   capture_start(const xrt::run_impl* hdl)
   {
     std::lock_guard lk(m_mutex);
-    m_frames.emplace_back(&m_runs.at(hdl), m_artifacts);
+    auto& frame = m_frames.emplace_back(&m_runs.at(hdl), m_artifacts);
+    m_hdl2frame.emplace(hdl, &frame);
   }
 
   // wait() - wait on a frame represented by a single run
   // Waits are associated with the last started frame
+  template <typename HandleType>
   void
-  capture_wait(const xrt::run_impl* hdl)
+  capture_wait(const HandleType* hdl)
   {
     std::lock_guard lk(m_mutex);
     if (m_frames.empty())
       throw std::runtime_error("No active frame, cannot wait");
 
-    auto& frame = m_frames.back();
-    frame.add_wait(&m_runs.at(hdl));
+    // Find last frame starting from m_frames.end() that is
+    // created from hdl, this is the frame to wait on.
+    auto itr = std::find_if(m_frames.rbegin(), m_frames.rend(),
+         [hdl](const auto& f) { return f.get_handle() == hdl; });
+    if (itr == m_frames.rend())
+      throw std::runtime_error("No frame to wait on");
+
+    // Add wait to current active frame 
+    m_frames.back().add_wait((*itr).get_name());
   }
 
   // start() - start a frame represented by a runlist
@@ -802,20 +886,8 @@ public:
   capture_start(const xrt::runlist_impl* hdl)
   {
     std::lock_guard lk(m_mutex);
-    m_frames.emplace_back(&m_runlists.at(hdl), m_artifacts);
-  }
-
-  // wait() - wait on a frame represented by a runlist
-  // Waits are associated with the last started frame
-  void
-  capture_wait(const xrt::runlist_impl* hdl)
-  {
-    std::lock_guard lk(m_mutex);
-    if (m_frames.empty())
-      throw std::runtime_error("No active frame, cannot wait");
-
-    auto& frame = m_frames.back();
-    frame.add_wait(&m_runlists.at(hdl));
+    auto& frame = m_frames.emplace_back(&m_runlists.at(hdl), m_artifacts);
+    m_hdl2frame.emplace(hdl, &frame);
   }
 
   // capture_elf() - capture elf data for recipe reference
