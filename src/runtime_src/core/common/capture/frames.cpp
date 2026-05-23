@@ -289,10 +289,15 @@ class frames
     frame_type m_frame;
 
     using fnm_type = std::string;
-  public:
     using arg_type = std::variant<uint64_t, fnm_type>;
-  private:
     std::map<const run*, std::vector<arg_type>> m_run2args;
+
+    // A frame is captured as part of run.start() or runlist.execute()
+    // Application can call wait() any time while frames are running
+    // and the waits can be for any prviously started frame.
+    // Replay inserts wait() calls in the right sequence following
+    // a frame start
+    std::vector<frame_type> m_waits;
 
     ////////////////////////////////////////////////////////////////
     // Capture frame data immediately when a frame starts executing.
@@ -392,6 +397,18 @@ class frames
     get_args(const run& run) const
     {
       return m_run2args.at(&run);
+    }
+
+    void
+    add_wait(run* run)
+    {
+      m_waits.push_back(run);
+    }
+
+    void
+    add_wait(runlist* runlist)
+    {
+      m_waits.push_back(runlist);
     }
   };
 
@@ -767,12 +784,38 @@ public:
     m_frames.emplace_back(&m_runs.at(hdl), m_artifacts);
   }
 
+  // wait() - wait on a frame represented by a single run
+  // Waits are associated with the last started frame
+  void
+  capture_wait(const xrt::run_impl* hdl)
+  {
+    std::lock_guard lk(m_mutex);
+    if (m_frames.empty())
+      throw std::runtime_error("No active frame, cannot wait");
+
+    auto& frame = m_frames.back();
+    frame.add_wait(&m_runs.at(hdl));
+  }
+
   // start() - start a frame represented by a runlist
   void
   capture_start(const xrt::runlist_impl* hdl)
   {
     std::lock_guard lk(m_mutex);
     m_frames.emplace_back(&m_runlists.at(hdl), m_artifacts);
+  }
+
+  // wait() - wait on a frame represented by a runlist
+  // Waits are associated with the last started frame
+  void
+  capture_wait(const xrt::runlist_impl* hdl)
+  {
+    std::lock_guard lk(m_mutex);
+    if (m_frames.empty())
+      throw std::runtime_error("No active frame, cannot wait");
+
+    auto& frame = m_frames.back();
+    frame.add_wait(&m_runlists.at(hdl));
   }
 
   // capture_elf() - capture elf data for recipe reference
@@ -849,13 +892,15 @@ run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, const xrt::bo& bo
 void
 run_start(const xrt::run_impl* rhdl)
 {
-  XRT_PRINTF("start_frame(rhdl:0x%x)\n", rhdl);
+  XRT_PRINTF("run_start(rhdl:0x%x)\n", rhdl);
   frames::instance().capture_start(rhdl);
 }
 
 void
 run_wait(const xrt::run_impl* rhdl)
 {
+  XRT_PRINTF("run_wait(rhdl:0x%x)\n", rhdl);
+  frames::instance().capture_wait(rhdl);
 }
 
 void
@@ -868,13 +913,15 @@ runlist_add_run(const xrt::runlist_impl* rlhdl, const xrt::run_impl* rhdl)
 void
 runlist_start(const xrt::runlist_impl* rlhdl)
 {
-  XRT_PRINTF("start_frame(rlhdl:0x%x)\n", rlhdl);
+  XRT_PRINTF("runlist_start(rlhdl:0x%x)\n", rlhdl);
   frames::instance().capture_start(rlhdl);
 }
 
 void
 runlist_wait(const xrt::runlist_impl* rlhdl)
 {
+  XRT_PRINTF("runlist_wait(rhdl:0x%x)\n", rlhdl);
+  frames::instance().capture_wait(rlhdl);
 }
 
 void
