@@ -14,7 +14,7 @@
 #include "core/common/message.h"
 #include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
-#include "core/common/capture/capture.h"
+#include "core/common/runner/capture.h"
 
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <elfio/elfio.hpp>

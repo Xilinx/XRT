@@ -6,7 +6,6 @@ if (NOT XRT_BASE)
 endif()
 
 add_subdirectory(api)
-add_subdirectory(capture)
 add_subdirectory(xdp)
 add_subdirectory(runner)
 add_subdirectory(smi)
@@ -83,7 +82,6 @@ add_library(xrt_coreutil SHARED
   xrt_coreutil-version.rc
   $<TARGET_OBJECTS:core_common_library_objects>
   $<TARGET_OBJECTS:core_common_runner_objects>
-  $<TARGET_OBJECTS:core_common_capture_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
   $<TARGET_OBJECTS:core_common_smi_objects>
@@ -92,7 +90,6 @@ add_library(xrt_coreutil SHARED
 add_library(xrt_coreutil_static STATIC
   $<TARGET_OBJECTS:core_common_library_objects>
   $<TARGET_OBJECTS:core_common_runner_objects>
-  $<TARGET_OBJECTS:core_common_capture_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
   $<TARGET_OBJECTS:core_common_smi_objects>

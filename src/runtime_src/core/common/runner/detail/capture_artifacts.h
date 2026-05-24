@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
-#ifndef XRT_COMMON_CAPTURE_DATA_DUMPER_H_
-#define XRT_COMMON_CAPTURE_DATA_DUMPER_H_
+#ifndef XRT_COMMON_RUNNER_DETAIL_ARTIFACTS_H_
+#define XRT_COMMON_RUNNER_DETAIL_ARTIFACTS_H_
 #include "core/common/config.h"
 #include "core/common/debug.h"
 #include "xrt/detail/span.h"
@@ -14,7 +14,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace xrt_core::capture {
+namespace xrt_core::capture::detail {
 
 template <typename T>
 using span = xrt::detail::span<T>;
@@ -90,6 +90,6 @@ public:
   }
 };
 
-} // namespace xrt_core::capture
+} // namespace xrt_core::capture::detail
 
 #endif

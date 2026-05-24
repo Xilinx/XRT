@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
-#include "artifacts.h"
+#include "capture.h"
+#include "detail/capture_artifacts.h"
+#include "detail/capture_fnfwd.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/experimental/xrt_kernel.h"
@@ -68,6 +70,9 @@ to_string(const void* v)
 } // namespace
 
 namespace xrt_core::capture {
+
+// class artifacts - Dumps artifacts to disk
+using artifacts = detail::artifacts;
 
 // class frames - capture frames from a running application
 //
@@ -531,7 +536,7 @@ class frames
   }
 
   ////////////////////////////////////////////////////////////////
-  // Inspectors for recipe builder
+  // Inspectors for replay builder
   ////////////////////////////////////////////////////////////////
   std::set<xrt::hw_context>
   get_hwctxs() const
@@ -565,7 +570,7 @@ class frames
   }
 
   ////////////////////////////////////////////////////////////////
-  // Recipe writer functions
+  // Replay writer functions
   ////////////////////////////////////////////////////////////////
   json
   replay_resource_hwctx(const xrt::hw_context& hwctx) const
@@ -911,7 +916,7 @@ public:
   }
 
   ////////////////////////////////////////////////////////////////
-  // Recipe writer functions
+  // Replay writer functions
   ////////////////////////////////////////////////////////////////
   void
   save_replay_script() const
@@ -940,11 +945,13 @@ num_frames()
   return frames::instance().num_frames();
 }
 
+namespace detail {
+
 void
-bo_sync(const xrt::bo_impl* bhdl, xclBOSyncDirection dir)
+bo_sync(const xrt::bo_impl* bhdl, int dir)
 {
   XRT_PRINTF("bo_sync(bhdl:0x%x, dir:%d)\n", bhdl, dir);
-  frames::instance().capture_sync(bhdl, dir);
+  frames::instance().capture_sync(bhdl, static_cast<xclBOSyncDirection>(dir));
 }
 
 void
@@ -1026,6 +1033,8 @@ elf_ctor(const xrt::elf_impl* hdl, const std::string& fnm)
   std::ifstream istr(fnm, std::ios::binary | std::ios::ate);
   elf_ctor(hdl, istr);
 }
+
+} // namespace detail
 
 } // namespace xrt_core::capture
 

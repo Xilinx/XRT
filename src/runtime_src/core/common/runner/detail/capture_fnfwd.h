@@ -1,26 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
-#ifndef XRT_COMMON_CAPTURE_FNFWD_H_
-#define XRT_COMMON_CAPTURE_FNFWD_H_
-// This file forward declares all functions that are
-// are invoked by XRT_RECIPE_CAPTURE
+#ifndef XRT_RUNNER_DETAIL_CAPTURE_FNFWD_H_
+#define XRT_RUNNER_DETAIL_CAPTURE_FNFWD_H_
 
+// This file forward declares all functions that are
+// are invoked by XRT_REPLAY_CAPTURE
 #include "xrt/detail/span.h"
+#include <cstddef>
 #include <cstdint>
+#include <iosfwd>
+#include <string>
 
 namespace xrt {
 class bo;
+class bo_impl;
+class elf_impl;
 class run_impl;
 class runlist_impl;
 }
 
-namespace xrt_core::capture {
+namespace xrt_core::capture::detail {
 
 template <typename T>
 using span = xrt::detail::span<T>;
 
 void
-bo_sync(const xrt::bo_impl*, xclBOSyncDirection);
+bo_sync(const xrt::bo_impl*, int direction);
 
 void
 run_set_arg_at_index(const xrt::run_impl*, size_t, span<const uint8_t>);

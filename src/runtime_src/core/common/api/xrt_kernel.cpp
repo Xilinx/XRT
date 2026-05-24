@@ -49,7 +49,7 @@
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
-#include "core/common/capture/capture.h"
+#include "core/common/runner/capture.h"
 #include "core/common/xdp/profile.h"
 
 #include <boost/format.hpp>

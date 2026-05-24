@@ -30,7 +30,7 @@
 #include "core/common/unistd.h"
 #include "core/common/xclbin_parser.h"
 
-#include "core/common/capture/capture.h"
+#include "core/common/runner/capture.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/shared_handle.h"
 
@@ -496,7 +496,7 @@ public:
     handle->sync(static_cast<xrt_core::buffer_handle::direction>(dir), sz, offset);
     m_usage_logger->log_buffer_sync(device->get_device_id(), device.get_hwctx_handle(), sz, dir);
 
-    XRT_REPLAY_CAPTURE(bo_sync, this, dir);
+    XRT_REPLAY_CAPTURE(bo_sync, this, static_cast<int>(dir));
   }
 
   virtual uint64_t
@@ -973,7 +973,7 @@ public:
     // sync through parent buffer, which handles nodma case also
     m_parent->sync(dir, sz, off);
 
-    XRT_REPLAY_CAPTURE(bo_sync, this, dir);
+    XRT_REPLAY_CAPTURE(bo_sync, this, static_cast<int>(dir));
   }
 };
 
