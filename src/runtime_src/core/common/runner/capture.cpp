@@ -614,6 +614,14 @@ class frames
   ////////////////////////////////////////////////////////////////
   // Replay writer functions
   ////////////////////////////////////////////////////////////////
+  // replay_resource_hwctx() - hwctx object
+  //
+  // {
+  //   "name":     unique identifier for this hwctx
+  //   "cfg":      {string key value pairs  of configuration parameters}
+  //   "xclbin":   file name for xclbin file
+  //   "programs": [array of program elf file names]
+  // }
   json
   replay_resource_hwctx(const xrt::hw_context& hwctx) const
   {
@@ -634,7 +642,8 @@ class frames
     
     return j;
   }
-  
+
+  // replay_resources_hwctxs() - array of hwctxs
   json
   replay_resources_hwctxs() const
   {
@@ -645,6 +654,13 @@ class frames
     return j;
   }
 
+  // replay_resource_buffer() - buffer object
+  //
+  // {
+  //   "name": unique identifier for this buffer
+  //   "size": size of buffer in bytes 
+  //   "type": string type of this buffer
+  // }
   json
   replay_resource_buffer(const xrt::bo& bo) const
   {
@@ -658,6 +674,7 @@ class frames
     return j;
   }
 
+  // replay_resource_buffers() - array of buffers
   json
   replay_resource_buffers() const
   {
@@ -668,6 +685,15 @@ class frames
     return j;
   }
 
+  // replay_resource_kernel() - kernel object
+  //
+  // {
+  //   "name":     unique identifier for this kernel
+  //   "instance": kernel instance name
+  //   "hwctx":    hwctx name
+  //   "ctrlcode": file name for ctrlcode if any
+  // }
+  
   json
   replay_resource_kernel(const xrt::kernel& kernel) const
   {
@@ -684,6 +710,7 @@ class frames
     return j;
   }
 
+  // replay_resource_kernels() - kernel array
   json
   replay_resource_kernels() const
   {
@@ -694,6 +721,15 @@ class frames
     return j;
   }
 
+  // replay_resource_run_arguments() - array of run BO arguments
+  //
+  // [
+  //   {
+  //     "bo":     identifier for bo object
+  //     "argidx": numeric argument index
+  //   },
+  //   { ... }
+  // ]
   json
   replay_resource_run_arguments(const std::vector<run::arg_type>& args) const
   {
@@ -715,6 +751,16 @@ class frames
     return j;
   }
 
+  // replay_resource_run_constantss() - array of run constant arguments
+  //
+  // [
+  //   {
+  //     "value":  numeric value
+  //     "argidx": numeric argument index
+  //     "type":   "int"
+  //   },
+  //   { ... }
+  // ]
   json
   replay_resource_run_constants(const std::vector<run::arg_type>& args) const
   {
@@ -736,6 +782,14 @@ class frames
     return j;
   }
 
+  // replay_resource_run() - run object
+  //
+  // {
+  //   "name":      unique identifier for this run object
+  //   "kernel":    identifier for kernel from which run is created
+  //   "arguments": [array of buffer arguments]
+  //   "constants": [array of constant arguments]
+  // }
   json
   replay_resource_run(const run& run) const
   {
@@ -747,6 +801,7 @@ class frames
     return j;
   }
 
+  // replay_resource_runs() - array of run objects
   json
   replay_resource_runs() const
   {
@@ -757,7 +812,14 @@ class frames
     return j;
   }
 
-
+  // replay_resources() - resource object
+  //
+  // "resources": {
+  //   "buffers":  [array of buffer objects]
+  //   "hwctxs":   [array of hwctx objects]
+  //   "kernels":  [array of kernel objects]
+  //   "runs":     [array of run objects]
+  // }
   json
   replay_resources() const
   {
@@ -769,6 +831,16 @@ class frames
     return resources;
   }
 
+  // replay_execution_frame_arguments() - array of frame BO arguments
+  //
+  // [
+  //   {
+  //     "argidx": numeric run argument index
+  //     "bo":     identifier for bo object
+  //     "fnm":    file name of bo captured data
+  //   }
+  //   { ... }
+  // ]
   json
   replay_execution_frame_arguments(const frame& frame, const run& run) const
   {
@@ -782,7 +854,6 @@ class frames
           a["argidx"] = argidx;
           a["bo"] = run.get_bo_arg(argidx)->get_name();
           a["fnm"] = v;
-            
           j.push_back(a);
         }
       }, arg);
@@ -791,6 +862,12 @@ class frames
     return j;
   }
 
+  // replay_execution_frame() - frame run object
+  //
+  // {
+  //   "run":       identifier for run object
+  //   "arguments": [array of run BO arguments]
+  // }
   json
   replay_execution_frame(const frame& frame, const run& run) const
   {
@@ -800,6 +877,7 @@ class frames
     return j;
   }
 
+  // replay_execution_frame_runs() - array of frame run objects
   json
   replay_execution_frame_runs(const frame& frame) const
   {
@@ -813,6 +891,7 @@ class frames
     return j;
   }
 
+  // replay_execution_frame_waits() - array of frame wait objects
   json
   replay_execution_frame_waits(const frame& frame) const
   {
@@ -823,6 +902,21 @@ class frames
     return j;
   }
 
+  // replay_execution_frame() - frame object
+  //
+  // {
+  //   "name":  unique identifer for this frame
+  //   "runs":  [array of frame run objects]
+  //   "waits": [array of frame wait]
+  // }
+  //
+  // "runs" is either a single run originating from an application
+  // xrt::run object or a list of run objects obtained from an
+  // application xrt::runlist.
+  //
+  // "waits" is a list of frame objects identifiers which must be
+  // either this frame object or preceed this frame in the array of
+  // frames.  The waits are to be replayed after the frame is started.
   json
   replay_execution_frame(const frame& frame) const
   {
@@ -833,6 +927,7 @@ class frames
     return j;
   }
 
+  // replay_execution_frames() - array of frame objects
   json
   replay_execution_frames() const
   {
@@ -843,6 +938,11 @@ class frames
     return j;
   }
 
+  // replay_execution() - execution object
+  //
+  //  "execution:" {
+  //      "frames": [array of frame objects]
+  //  }
   json
   replay_execution() const
   {
@@ -852,6 +952,7 @@ class frames
   }
 
 public:
+  // instance() - singleton capture instance
   // Singleton instance
   static frames&
   instance()
@@ -860,6 +961,7 @@ public:
     return cap;
   }
 
+  // num_frames() - number of frames captured
   size_t
   num_frames() const
   {
@@ -870,7 +972,7 @@ public:
   ////////////////////////////////////////////////////////////////
   // Collector functions
   ////////////////////////////////////////////////////////////////
-  // set_run_arg() - set run scalar argument at index
+  // set_run_arg() - capture xrt::run::set_arg(scalar)
   void
   capture_run_set_arg(const xrt::run_impl* hdl, size_t argidx, uint64_t value)
   {
@@ -879,7 +981,7 @@ public:
     run.set_arg(argidx, value);
   }
 
-  // set_run_arg() - set run bo argument at index
+  // set_run_arg() - capture xrt::run::set_arg(bo)
   void
   capture_run_set_arg(const xrt::run_impl* hdl, size_t argidx, const xrt::bo& xbo)
   {
@@ -889,7 +991,7 @@ public:
     run.set_arg(argidx, bo);
   }
 
-  // add_runlist_run() - add run to runlist
+  // add_runlist_run() - capture xrt::runlist::add(xrt::run)
   void
   capture_runlist_add_run(const xrt::runlist_impl* rlhdl, const xrt::run_impl* rhdl)
   {
@@ -898,7 +1000,7 @@ public:
     rl.add_run(m_runs.at(rhdl));
   }
 
-  // start() - start a frame represented by a single run
+  // start() - capture xrt::run::start()
   void
   capture_start(const xrt::run_impl* hdl)
   {
@@ -907,8 +1009,10 @@ public:
     m_hdl2frame.emplace(hdl, &frame);
   }
 
-  // wait() - wait on a frame represented by a single run
-  // Waits are associated with the last started frame
+  // wait() - capture xrt::run::wait() or xrt::runlist::wait()
+  // 
+  // Waits are attributed for the current active frame, and during
+  // replay, are executed after the active frame has been started
   template <typename HandleType>
   void
   capture_wait(const HandleType* hdl)
@@ -928,7 +1032,7 @@ public:
     m_frames.back().add_wait((*itr).get_name());
   }
 
-  // start() - start a frame represented by a runlist
+  // start() - capture xrt::runlist::start()
   void
   capture_start(const xrt::runlist_impl* hdl)
   {
@@ -937,7 +1041,8 @@ public:
     m_hdl2frame.emplace(hdl, &frame);
   }
 
-  // capture_elf() - capture elf data for recipe reference
+  // capture_elf() - capture xrt::elf constructor
+  //
   // ELFIO objects cannot be dumped, so capture when creating
   void
   capture_elf(const xrt::elf_impl* hdl, std::vector<char>&& elf_data)
@@ -946,6 +1051,7 @@ public:
     m_elfs.emplace(hdl, std::move(elf_data));
   }
 
+  // capture_sync() - capture xrt::bo::sync() 
   void
   capture_sync(const xrt::bo_impl* hdl, xclBOSyncDirection dir)
   {

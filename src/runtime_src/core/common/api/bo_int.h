@@ -97,6 +97,10 @@ XRT_CORE_COMMON_EXPORT
 void
 unconfig_bo(const xrt::bo& bo, const xrt_core::hwctx_handle* ctx_handle = nullptr);
 
+// get_bo_from_impl() - Convert impl to xrt::bo
+//
+// The argument impl is created from a shared ptr, this function wraps
+// the impl in that shared_ptr.
 xrt::bo
 get_bo_from_impl(const xrt::bo_impl*);
 

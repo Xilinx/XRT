@@ -90,24 +90,26 @@ get_regmap_size(const xrt::kernel& kernel);
 
 // get_instance_name() - Get the kernel instance name
 // Return the name used to create the kernel before it is stripped to
-// remove instance identifier part.  On Alveo, this name is not
+// remove instance identifier part.  In xclbin flow, this name is not
 // necessarily an instance name, but in ELF flow it uniquely
 // identifies a kernel instance.
 std::string
 get_instance_name(const xrt::kernel&);
 
-// Get hw ctx using which this kernel is created
+// get_hwctx() - Get hwctx in which this kernel is created
 xrt::hw_context
 get_hwctx(const xrt::kernel& kernel);
 
+// get_ctrlcode() - Get kernel ctrlcode
+// For kernels created from legacy xrt::module
 xrt::elf
 get_ctrlcode(const xrt::kernel&);
 
-// Get hw ctx using which this kernel is created
+// get_hwctx() - Get hwctx in which the run kernel is created
 xrt::hw_context
 get_hwctx(const xrt::run&);
 
-// Get xrt::kernel fron which run was created
+// get_kernel() - Get xrt::kernel fron which run is created
 xrt::kernel
 get_kernel(const xrt::run&);
 

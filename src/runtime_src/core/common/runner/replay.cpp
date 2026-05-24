@@ -29,6 +29,29 @@
 #include <string>
 #include <vector>
 
+// Replay a captured XRT application. Capturing is enabled through
+// xrt.ini by specifying how many frames to capture.  A frame is
+// defined as application call to xrt::run::start() or
+// xrt::runlist::execute().
+//
+// [Runtime]
+// capture_frames=<num>
+//
+// The replay.json script is dumped along with frame buffer data to a
+// directory specified through xrt.ini:
+//
+// [Runtime]
+// capture_output_dir="<directory>"
+//
+// % cat xrt.ini
+// [Runtime]
+// capture_frames=10
+// capture_output_dir="/tmp"
+//
+// To replay capture data, run xrt-replay as
+//
+// % xrt-replay --replay /tmp/replay.json --dir /tmp [--iter <num>]
+
 namespace {
 
 using repo_type = xrt_core::artifacts::repository;
