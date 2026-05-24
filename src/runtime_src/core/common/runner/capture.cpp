@@ -104,16 +104,25 @@ class frames
     // bo is synced.
     mutable std::set<const run*> m_runs;
     xrt::bo m_bo;
+    uint64_t m_id;
     
+    static uint64_t
+    get_uid()
+    {
+      static std::atomic<uint64_t> id{0};
+      return id++;
+    }
+
   public:
     bo(xrt::bo bo)
-      : m_bo(std::move(bo))
+      : m_bo{std::move(bo)}
+      , m_id{get_uid()}
     {}
 
     std::string
     get_name() const
     {
-      return to_string(m_bo.get_handle().get());
+      return "bo_" + std::to_string(m_id);
     }
 
     xrt::bo
@@ -189,12 +198,27 @@ class frames
     std::vector<arg_type> m_args;
     const xrt::run_impl* m_hdl;
     xrt::run m_run;
+    uint64_t m_id;
+
+    static uint64_t
+    get_uid()
+    {
+      static std::atomic<uint64_t> id{0};
+      return id++;
+    }
 
   public:
     run(const xrt::run_impl* hdl)
       : m_hdl{hdl}
       , m_run{xrt_core::kernel_int::get_run_from_impl(m_hdl)}
+      , m_id{get_uid()}
     {}
+
+    std::string
+    get_name() const
+    {
+      return "run_" + std::to_string(m_id);
+    }
 
     const xrt::run_impl*
     get_handle() const
@@ -218,12 +242,6 @@ class frames
         m_args.resize(argidx + 1);
 
       m_args[argidx] = &bo;
-    }
-
-    std::string
-    get_name() const
-    {
-      return to_string(m_run.get_handle().get());
     }
 
     xrt::run
@@ -517,6 +535,12 @@ class frames
     save_replay_script();
   }
 
+  std::string
+  get_name(const xrt::bo_impl* hdl) const
+  {
+    return m_bos.at(hdl).get_name();
+  }
+
   // create_run_if_new() - get capture::run for hdl
   // Return existing run or create new run
   run&
@@ -628,7 +652,7 @@ class frames
     // The name here implies that when buffer data is dumped to disk,
     // it is must use the name assigned to the bo.  There is no data
     // sharing even if two bos refer to same data.
-    j["name"] = to_string(bo.get_handle().get());
+    j["name"] = get_name(bo.get_handle().get());
     j["size"] = bo.size();
     j["type"] = "inout";  // no idea what the actual type is
     return j;
