@@ -3231,54 +3231,6 @@ private:
   }
 }; // class run_impl
 
-// class run_impl_debug - config enabled impl class
-//
-// Provides overrides for debug capture
-// Consider templatizing on run_impl concrete type
-class run_impl_debug : public run_impl
-{
-  void
-  set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
-  {
-    run_impl::set_arg_value(arg, value);
-    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), value.data_as_span());
-  }
-    
-  void
-  set_arg_value(const argument& arg, const xrt::bo& bo) override
-  {
-    run_impl::set_arg_value(arg, bo);
-    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), bo);
-  }
-  
-  void
-  start() override
-  {
-    run_impl::start();
-    XRT_REPLAY_CAPTURE(run_start, this);
-  }
-
-  std::cv_status
-  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const override
-  {
-    auto status = run_impl::wait_throw_on_error(timeout_ms);
-    XRT_REPLAY_CAPTURE(run_wait, this); // TODO: revisit for timeout
-    return status;
-  }
-
-  ert_cmd_state
-  wait(const std::chrono::milliseconds& timeout_ms) const override
-  {
-    auto state = run_impl::wait(timeout_ms);
-    XRT_REPLAY_CAPTURE(run_wait, this);
-    return state;
-    
-  }
-  
-public:
-  using run_impl::run_impl;
-}; // run_impl_debug
-
 // class mailbox_impl - Extension of run_impl for mailbox support
 //
 // Implements an argument setter override that writes kernel arguments
@@ -3529,6 +3481,57 @@ public:
     run_impl::start();
   }
 };
+
+// class run_impl_debug - config enabled impl class
+//
+// Provides overrides for debug capture.  Maybe an overkill here since
+// quite possibly XRT_REPLAY_CAPTURE is faster than the vtbl indirect
+// call, but this class allows adding more bells and whistles in the
+// future.
+template <typename RunImplType>
+class run_impl_debug : public RunImplType
+{
+  void
+  set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
+  {
+    run_impl::set_arg_value(arg, value);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), value.data_as_span());
+  }
+    
+  void
+  set_arg_value(const argument& arg, const xrt::bo& bo) override
+  {
+    run_impl::set_arg_value(arg, bo);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), bo);
+  }
+  
+  void
+  start() override
+  {
+    run_impl::start();
+    XRT_REPLAY_CAPTURE(run_start, this);
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto status = run_impl::wait_throw_on_error(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this); // TODO: revisit for timeout
+    return status;
+  }
+
+  ert_cmd_state
+  wait(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto state = run_impl::wait(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this);
+    return state;
+    
+  }
+  
+public:
+  using RunImplType::RunImplType;
+}; // run_impl_debug
 
 // struct run_update_type - RTP update
 //
@@ -4255,8 +4258,13 @@ get_run_update(xrtRunHandle rhdl)
 static std::unique_ptr<xrt::run_impl>
 alloc_run(const std::shared_ptr<xrt::kernel_impl>& khdl)
 {
-  if (xrt_core::config::get_capture_frames())
-    return std::make_unique<xrt::run_impl_debug>(khdl);
+  if (xrt_core::config::get_capture_frames()) {
+    // For some reason ternary doesn't work here
+    if (khdl->has_mailbox())
+      return std::make_unique<xrt::run_impl_debug<xrt::mailbox_impl>>(khdl);
+    else
+      return std::make_unique<xrt::run_impl_debug<xrt::run_impl>>(khdl);
+  }
   
   return khdl->has_mailbox()
     ? std::make_unique<xrt::mailbox_impl>(khdl)
