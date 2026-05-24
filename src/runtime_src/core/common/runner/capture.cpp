@@ -92,6 +92,11 @@ class frames
   // through sync->device, so we capture all xrt::bo::sync()
   // operations and store bo data here.
   //
+  // On sync() of a bo, all runs are invalidated with respect to the
+  // bo.  On set_arg(bo) it is the responsibility of the run to
+  // invalidate itself.  During replay, the run must be reinitialized
+  // with the bo and the bo must be updated with captured data.
+  //
   // frames <>--* run <>--* bo
   class bo
   {
@@ -115,6 +120,19 @@ class frames
     get_xrt_bo() const
     {
       return m_bo;
+    }
+
+    // erase() - invalidate a run with respeect to this bo
+    //
+    // If erased, the replay json will ensure that a run is
+    // re-initialized before the frame containinig the run is
+    // executed. If a run is valid wrt to this bo, then there is no
+    // need to reinitialized the run before execution and the replay
+    // json will relect this.
+    void
+    erase(const run* run)
+    {
+      m_runs.erase(run);
     }
 
     // sync() - Capture that this bo is synced to device

@@ -19,16 +19,20 @@ namespace xrt_core::capture::detail {
 template <typename T>
 using span = xrt::detail::span<T>;
 
+// class artifacts - dump unique artifacts to disk
+//
+// This class manages captured data dumping to specified
+// directory if and only if data is not already dumped.
 class artifacts
 {
   std::filesystem::path m_dir;
   std::unordered_map<uint64_t, std::string> m_hash_to_fnm;
-  std::atomic<uint64_t> m_counter {0};
 
-  std::string
+  static std::string
   generate_fnm()
   {
-    return "capture_" + std::to_string(m_counter.fetch_add(1)) + ".bin";
+    static std::atomic<uint64_t> counter {0};
+    return "capture_" + std::to_string(counter.fetch_add(1)) + ".bin";
   }
 
   static std::filesystem::path
