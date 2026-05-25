@@ -1951,13 +1951,23 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
-		strncpy(kname, ip->m_name, sizeof(kname));
-		kname[sizeof(kname)-1] = '\0';
+		size_t len = strlen(ip->m_name);
+		if (len >= sizeof(kname)) {
+			len = sizeof(kname) - 1;
+		}
+		memcpy(kname, ip->m_name, len);
+		kname[len] = '\0';
 		kname_p = &kname[0];
-		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
-		info.kname[sizeof(info.kname)-1] = '\0';
-		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
-		info.iname[sizeof(info.kname)-1] = '\0';
+		char *str1 = strsep(&kname_p, ":");
+		len = strlen(str1);
+  		if (len >= sizeof(info.kname)) len = sizeof(info.kname) - 1;
+		memcpy(info.kname, str1, len);
+		info.kname[len] = '\0';
+		char *str2 = strsep(&kname_p, ":");
+		len = strlen(str2);
+		if (len >= sizeof(info.iname)) len = sizeof(info.iname) - 1;
+		memcpy(info.iname, str2, len);
+		info.iname[len] = '\0';
 
 		info.addr = ip->m_base_address;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
@@ -2050,13 +2060,24 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
-		strncpy(kname, ip->m_name, sizeof(kname));
-		kname[sizeof(kname)-1] = '\0';
+		size_t len = strlen(ip->m_name);
+		if (len >= sizeof(kname))
+			len = sizeof(kname) - 1;
+		memcpy(kname, ip->m_name, len);
+		kname[len] = '\0';
 		kname_p = &kname[0];
-		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
-		info.kname[sizeof(info.kname)-1] = '\0';
-		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
-		info.iname[sizeof(info.kname)-1] = '\0';
+		char *str1 = strsep(&kname_p, ":");
+		len = strlen(str1);
+		if (len >= sizeof(info.kname))
+			len = sizeof(info.kname) - 1;
+		memcpy(info.kname, str1, len);
+		info.kname[len] = '\0';
+		char *str2 = strsep(&kname_p, ":");
+		len = strlen(str2);
+		if (len >= sizeof(info.iname))
+			len = sizeof(info.iname) - 1;
+		memcpy(info.iname, str2, len);
+		info.iname[len] = '\0';
 
 		info.addr = 0;
 		info.intr_enable = 0;
