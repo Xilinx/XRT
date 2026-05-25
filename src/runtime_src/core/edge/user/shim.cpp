@@ -759,8 +759,11 @@ xclLoadAxlf(const axlf *buffer)
       auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
       if (kernel.name.size() > sizeof(krnl->name))
           return -EINVAL;
-      std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
-      krnl->name[sizeof(krnl->name)-1] = '\0';
+      size_t len = kernel.name.length();
+      if (len >= sizeof(krnl->name))
+          len = sizeof(krnl->name) - 1;
+      std::memcpy(krnl->name, kernel.name.c_str(), len);
+      krnl->name[len] = '\0';
       krnl->range = kernel.range;
       krnl->anums = kernel.args.size();
       krnl->features = 0;
@@ -773,8 +776,11 @@ xclLoadAxlf(const axlf *buffer)
           xclLog(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
           return -EINVAL;
         }
-        std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-        krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+        size_t arg_len = arg.name.length();
+        if (arg_len >= sizeof(krnl->args[ai].name))
+          arg_len = sizeof(krnl->args[ai].name) - 1;
+        std::memcpy(krnl->args[ai].name, arg.name.c_str(), arg_len);
+        krnl->args[ai].name[arg_len] = '\0';
         krnl->args[ai].offset = arg.offset;
         krnl->args[ai].size   = arg.size;
         // XCLBIN doesn't define argument direction yet and it only support
@@ -942,7 +948,11 @@ xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
   std::string path = xclGetSysfsPath("debug_ip_layout");
   if (path.size() >= size)
     return -EINVAL;
-  std::strncpy(layoutPath, path.c_str(), size);
+  size_t len = path.length();
+  if (len >= size)
+    len = size - 1;
+  std::memcpy(layoutPath, path.c_str(), len);
+  layoutPath[len] = '\0';
   return 0;
 }
 
@@ -1142,8 +1152,11 @@ open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuna
     drm_zocl_open_cu_ctx  cu_ctx = {};
     cu_ctx.flags = flags;
     cu_ctx.hw_context = hwctx_hdl->get_slotidx();
-    std::strncpy(cu_ctx.cu_name, cuname.c_str(), sizeof(cu_ctx.cu_name));
-    cu_ctx.cu_name[sizeof(cu_ctx.cu_name) - 1] = 0;
+    size_t cu_len = cuname.length();
+    if (cu_len >= sizeof(cu_ctx.cu_name))
+      cu_len = sizeof(cu_ctx.cu_name) - 1;
+    std::memcpy(cu_ctx.cu_name, cuname.c_str(), cu_len);
+    cu_ctx.cu_name[cu_len] = '\0';
     if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_OPEN_CU_CTX, &cu_ctx))
       throw xrt_core::system_error(errno, "Failed to open cu context");
 
@@ -1255,8 +1268,11 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
     auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->za_kernels + off);
     if (kernel.name.size() > sizeof(krnl->name))
         return -EINVAL;
-    std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
-    krnl->name[sizeof(krnl->name)-1] = '\0';
+    size_t krnl_len = kernel.name.length();
+    if (krnl_len >= sizeof(krnl->name))
+        krnl_len = sizeof(krnl->name) - 1;
+    std::memcpy(krnl->name, kernel.name.c_str(), krnl_len);
+    krnl->name[krnl_len] = '\0';
     krnl->range = kernel.range;
     krnl->anums = kernel.args.size();
 
@@ -1270,8 +1286,11 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
         xclLog(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
         return -EINVAL;
       }
-      std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-      krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+      size_t krnl_arg_len = arg.name.length();
+      if (krnl_arg_len >= sizeof(krnl->args[ai].name))
+        krnl_arg_len = sizeof(krnl->args[ai].name) - 1;
+      std::memcpy(krnl->args[ai].name, arg.name.c_str(), krnl_arg_len);
+      krnl->args[ai].name[krnl_arg_len] = '\0';
       krnl->args[ai].offset = arg.offset;
       krnl->args[ai].size   = arg.size;
       // XCLBIN doesn't define argument direction yet and it only support
@@ -2691,7 +2710,11 @@ xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (path.size() >= size)
     return -EINVAL;
 
-  std::strncpy(sysfsPath, path.c_str(), size);
+  size_t sysfs_len = path.length();
+  if (sysfs_len >= size)
+    sysfs_len = size - 1;
+  std::memcpy(sysfsPath, path.c_str(), sysfs_len);
+  sysfsPath[sysfs_len] = '\0';
   return 0;
 }
 

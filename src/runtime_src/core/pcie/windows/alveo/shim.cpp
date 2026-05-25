@@ -721,8 +721,11 @@ public:
 
         if (kernel.name.size() > sizeof(krnl->name))
             return 1;
-        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
-        krnl->name[sizeof(krnl->name)-1] = '\0';
+        size_t len = kernel.name.length();
+        if (len >= sizeof(krnl->name))
+            len = sizeof(krnl->name) - 1;
+        std::memcpy(krnl->name, kernel.name.c_str(), len);
+        krnl->name[len] = '\0';
         krnl->anums = kernel.args.size();
         krnl->range = kernel.range;
 
@@ -734,8 +737,11 @@ public:
                 send(xrt_core::message::severity_level::error, "XRT", "Argument name length invalid.");
                return 1;
             }
-            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-            krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+            size_t arg_len = arg.name.length();
+            if (arg_len >= sizeof(krnl->args[ai].name))
+                arg_len = sizeof(krnl->args[ai].name) - 1;
+            std::memcpy(krnl->args[ai].name, arg.name.c_str(), arg_len);
+            krnl->args[ai].name[arg_len] = '\0';
             krnl->args[ai].offset = arg.offset;
             krnl->args[ai].size   = arg.size;
             // XCLBIN doesn't define argument direction yet and it only support
