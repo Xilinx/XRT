@@ -21,10 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: windows-latest
-            triplet: x64-windows
-            cmake_arch: x64
-            build_dir: WRelease
+          # - runner: windows-latest
+          #   triplet: x64-windows
+          #   cmake_arch: x64
+          #   build_dir: WRelease
           - runner: windows-11-arm
             triplet: arm64-windows
             cmake_arch: ARM64
