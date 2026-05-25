@@ -151,7 +151,7 @@ class frames
     // when frame start is captured, it records that this bo
     // must be restored from disk during replay
     void
-    sync(artifacts& repo)
+    sync(artifacts&)
     {
       // Note that frame runs are invalid wrt this bo'
       // When a frame is captured, it must this bo as an argument

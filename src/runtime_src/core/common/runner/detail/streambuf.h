@@ -28,7 +28,7 @@ struct streambuf : public std::streambuf
   {}
 
   std::streampos
-  seekpos(std::streampos pos, std::ios_base::openmode which) override
+  seekpos(std::streampos pos, std::ios_base::openmode) override
   {
     if (pos < 0 || pos > (egptr() - eback()))
       return std::streampos(std::streamoff(-1));
@@ -38,7 +38,7 @@ struct streambuf : public std::streambuf
   }
 
   std::streampos
-  seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode which) override
+  seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode) override
   {
     char* new_gptr = nullptr;
   

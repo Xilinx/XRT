@@ -498,7 +498,12 @@ struct replayer
         : m_repo(&repo)
         , m_executor{create_executor(resources, frame_object.at("runs"))}
         , m_init{create_initializer(resources, frame_object.at("runs"))}
+#ifdef _WIN32
+          // help cl.exe deduce the type of the initializer list for m_waits
+        , m_waits(frame_object.at("waits").get<std::vector<std::string>>())
+#else
         , m_waits(frame_object.at("waits"))
+#endif
       {}
 
       const std::vector<std::string>&
