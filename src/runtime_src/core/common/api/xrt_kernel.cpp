@@ -3494,28 +3494,28 @@ class run_impl_debug : public RunImplType
   void
   set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
   {
-    run_impl::set_arg_value(arg, value);
+    RunImplType::set_arg_value(arg, value);
     XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), value.data_as_span());
   }
     
   void
   set_arg_value(const argument& arg, const xrt::bo& bo) override
   {
-    run_impl::set_arg_value(arg, bo);
+    RunImplType::set_arg_value(arg, bo);
     XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), bo);
   }
   
   void
   start() override
   {
-    run_impl::start();
+    RunImplType::start();
     XRT_REPLAY_CAPTURE(run_start, this);
   }
 
   std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const override
   {
-    auto status = run_impl::wait_throw_on_error(timeout_ms);
+    auto status = RunImplType::wait_throw_on_error(timeout_ms);
     XRT_REPLAY_CAPTURE(run_wait, this); // TODO: revisit for timeout
     return status;
   }
@@ -3523,7 +3523,7 @@ class run_impl_debug : public RunImplType
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const override
   {
-    auto state = run_impl::wait(timeout_ms);
+    auto state = RunImplType::wait(timeout_ms);
     XRT_REPLAY_CAPTURE(run_wait, this);
     return state;
     

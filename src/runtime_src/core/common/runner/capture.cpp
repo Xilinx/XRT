@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in same dll as coreutil
+
 #include "capture.h"
 #include "detail/capture_artifacts.h"
 #include "detail/capture_fnfwd.h"
@@ -9,6 +13,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/debug.h"
+#include "core/common/error.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/api/elf_int.h"
 #include "core/common/api/hw_context_int.h"
@@ -53,7 +58,7 @@ insert_json_object(json& dest, const json& src)
 static uint64_t
 to_uint64(span<const uint8_t> data)
 {
-  if (data.size() > 8)
+  if (data.size() > sizeof(uint64_t))
     throw std::runtime_error("Wrong data size");
 
   uint64_t value = 0;
@@ -114,6 +119,7 @@ class frames
     }
 
   public:
+    explicit
     bo(xrt::bo bo)
       : m_bo{std::move(bo)}
       , m_id{get_uid()}
@@ -208,6 +214,7 @@ class frames
     }
 
   public:
+    explicit
     run(const xrt::run_impl* hdl)
       : m_hdl{hdl}
       , m_run{xrt_core::kernel_int::get_run_from_impl(m_hdl)}
@@ -314,6 +321,7 @@ class frames
     const xrt::runlist_impl* m_hdl;
     std::vector<const run*> m_runs;
   public:
+    explicit
     runlist(const xrt::runlist_impl* hdl)
       : m_hdl{hdl}
     {}
@@ -400,7 +408,7 @@ class frames
 
       // Process current run args.  Dump data if arg is a bo.
       for (auto& rarg : run->get_args()) {
-        std::visit([&args, &repo, run] (auto& v) {
+        std::visit([&args, &repo, run] (const auto& v) {
           using T = std::decay_t<decltype(v)>;
           if constexpr (std::is_same_v<T, const bo*>) {
             if (!v->is_valid(run)) {
@@ -414,8 +422,12 @@ class frames
               v->set_run(run);
             }
           }
-          else if constexpr (std::is_same_v<T, uint64_t>)
-            args.push_back(v);
+          else if constexpr (std::is_same_v<T, uint64_t>) {
+            // gcc14 comple error requires explicit help here
+            // args.push_back(v); // fails RHEL10 (gcc14)
+            // args.emplace_back(arg_type{v}); // also fails
+            args.emplace_back(std::in_place_index<0>, v);
+          }
         }, rarg);
       }
       XRT_DEBUGF("<- capture_frame_start(run:0x%x)\n", run);
@@ -451,10 +463,11 @@ class frames
     {
       return std::visit([](const auto& v) -> const void* {
         using T = std::decay_t<decltype(v)>;
+        // branch clone is repeated to make compiler happy
         if constexpr (std::is_same_v<T, run*>)
-          return v->get_handle();
+          return v->get_handle(); // NOLINT
         else if constexpr (std::is_same_v<T, runlist*>)
-          return v->get_handle();
+          return v->get_handle(); // NOLINT
       }, m_frame);
     }
 
@@ -532,7 +545,13 @@ class frames
 
   ~frames()
   {
-    save_replay_script();
+    try {
+      save_replay_script();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message("could not save replay script: " + std::string(ex.what()));
+    }
+      
   }
 
   std::string

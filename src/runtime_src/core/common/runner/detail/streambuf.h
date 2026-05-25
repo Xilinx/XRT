@@ -31,7 +31,7 @@ struct streambuf : public std::streambuf
   seekpos(std::streampos pos, std::ios_base::openmode) override
   {
     if (pos < 0 || pos > (egptr() - eback()))
-      return std::streampos(std::streamoff(-1));
+      return {std::streamoff(-1)};
     
     setg(eback(), eback() + pos, egptr());
     return pos;
@@ -49,13 +49,13 @@ struct streambuf : public std::streambuf
     else if (way == std::ios_base::beg)
       new_gptr = eback() + off;
     else
-      return std::streampos(std::streamoff(-1));
+      return {std::streamoff(-1)};
   
     if (new_gptr < eback() || new_gptr > egptr())
-      return std::streampos(std::streamoff(-1));
+      return {std::streamoff(-1)};
   
     setg(eback(), new_gptr, egptr());
-    return std::streampos(new_gptr - eback());
+    return {new_gptr - eback()};
   }
 };
 

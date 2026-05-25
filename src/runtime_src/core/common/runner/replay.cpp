@@ -153,7 +153,7 @@ struct replayer
       auto read_cfg = [&](const json& cfg_object) {
         xrt::hw_context::cfg_type cfg;
         for (auto [key, value] : cfg_object.items())
-          cfg.emplace(std::move(key), value.get<std::string>());
+          cfg.emplace(key, value.get<std::string>());
 
         return cfg;
       };
@@ -181,12 +181,12 @@ struct replayer
     {
         auto instance = kernel_object.at("instance").get<std::string>(); // required
         auto elf = kernel_object.value<std::string>("ctrlcode", ""); // optional elf file
-        if (elf.empty())
+        if (elf.empty()) {
           // Legacy kernel (alveo) or elf file was used when the hwctx was constructed
           return xrt::kernel{xrt_core::hw_context_int::get_elf_flow(hwctx)
                              ? xrt::ext::kernel{hwctx, instance}
                              : xrt::kernel{hwctx, instance}};
-
+        }
 
         // With ctrlcode ELF, the flow is legacy xclbin. The kernel
         // must be in the xclbin.
@@ -609,7 +609,7 @@ run(int argc, char* argv[])
       script = arg;
     else if (cur == "--dir" || cur == "-d")
       dir = arg;
-    else if (cur == "--iterations" || cur == "-i")
+    else if (cur == "--iterations" || cur == "-i" || cur == "--iter")
       iterations = std::stoi(arg);
     else
       // Cannot use xrt::message::logf(...), before ini::set below

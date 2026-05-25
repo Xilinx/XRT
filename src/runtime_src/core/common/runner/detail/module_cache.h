@@ -11,9 +11,7 @@
 #include <map>
 #include <string>
 
-namespace xrt_core::detail {
-
-namespace module_cache {
+namespace xrt_core::detail::module_cache {
 
 using repo_type = xrt_core::artifacts::repository;
 
@@ -22,7 +20,7 @@ using repo_type = xrt_core::artifacts::repository;
 static std::map<std::string, xrt::elf> s_path2elf; // NOLINT
 static std::map<xrt::elf, xrt::module> s_elf2mod;  // NOLINT
 
-static xrt::module
+inline xrt::module
 get(const xrt::elf& elf)
 {
   if (auto it = s_elf2mod.find(elf); it != s_elf2mod.end())
@@ -33,7 +31,7 @@ get(const xrt::elf& elf)
   return mod;
 }
 
-static xrt::module
+inline xrt::module
 get(const std::string& path, const repo_type& repo)
 {
   //auto key = repo->get_id() + path; // must be unique to repo
@@ -51,8 +49,6 @@ get(const std::string& path, const repo_type& repo)
   return get(elf);
 }
 
-} // module_cache
-
-} // xrt_core::runner::detail
+} // xrt_core::runner::detail::module_cache
 
 #endif

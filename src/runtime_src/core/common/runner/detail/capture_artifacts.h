@@ -48,15 +48,16 @@ class artifacts
   static uint64_t
   calculate_hash(span<const char> data)
   {
-    auto hash = 0xcbf29ce484222325ULL;
+    auto hash = 0xcbf29ce484222325ULL; // NOLINT
     for (unsigned char c : data) {
       hash ^= c;
-      hash *= 0x100000001b3ULL;
+      hash *= 0x100000001b3ULL; // NOLINT
     }
     return hash;
   }
 
 public:
+  explicit
   artifacts(std::filesystem::path dir)
     : m_dir(init_dir(std::move(dir)))
   {}
@@ -78,7 +79,7 @@ public:
     if (!ostr)
       throw std::runtime_error("Failed to open file for capture dump: " + file_path.string());
 
-    ostr.write(data.data(), data.size());
+    ostr.write(data.data(), static_cast<std::streamsize>(data.size()));
     if (!ostr)
       throw std::runtime_error("Error writing capture dump to: " + file_path.string());
 
