@@ -141,6 +141,10 @@ if (WIN32)
     PUBLIC
     $<INSTALL_INTERFACE:/MT$<$<CONFIG:Debug>:d>>
     )
+
+  # Advapi32 is required for Windows Event Log API used in syslog_dispatch (message.cpp)
+  target_link_libraries(xrt_coreutil PRIVATE Advapi32)
+  target_link_libraries(xrt_coreutil_static INTERFACE Advapi32)
 endif()
 
 if (NOT WIN32)

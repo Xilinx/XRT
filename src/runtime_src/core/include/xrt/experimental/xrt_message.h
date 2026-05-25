@@ -21,9 +21,17 @@
  *
  * @details
  * XRT internally uses a message system that supports dispatching of
- * messages to null, console, file, or syslog under different verbosity
- * levels.  The sink and verbosity level is controlled statically
- * through ``xrt.ini`` or at run-time using ``xrt::ini``.
+ * messages to different sinks under configurable verbosity levels.
+ * The sink and verbosity level is controlled statically through
+ * ``xrt.ini`` or at run-time using ``xrt::ini``.
+ *
+ * Supported sinks (``Runtime.runtime_log`` in xrt.ini):
+ *   - ``null``    : discard all messages
+ *   - ``console`` : writes to console (default)
+ *   - ``syslog``  : route to OS-level centralized log (all platforms):
+ *                   Linux uses POSIX syslog; Windows uses the Windows
+ *                   Application Event Log under source "AMD_XRT"
+ *   - ``<path>``  : write to a file at the given path (all platforms)
  *
  * The APIs in this file allow host application to use the same
  * message dispatch mechanism as XRT is configured to use.
