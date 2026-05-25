@@ -1009,43 +1009,46 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
 {
   std::string retval = "";
   char formatStr[32];
-  strcpy(formatStr, "%");
+  size_t pos = 0;
+  formatStr[pos++] = '%';
   if (conversion.m_leftJustify)
-    strcat(formatStr, "-");
+    formatStr[pos++] = '-';
   if (conversion.m_signPlus)
-    strcat(formatStr, "+");
+    formatStr[pos++] = '+';
   if (conversion.m_prefixSpace)
-    strcat(formatStr, " ");
+    formatStr[pos++] = ' ';
   if (conversion.m_alternative)
-    strcat(formatStr, "#");
+    formatStr[pos++] = '#';
   if (conversion.m_padZero)
-    strcat(formatStr, "0");
+    formatStr[pos++] = '0';
   if (conversion.m_fieldWidth) {
-    char *buf = formatStr + strlen(formatStr);
-    sprintf(buf, "%d", conversion.m_fieldWidthValue);
+    char *buf = &formatStr[pos];
+    pos += sprintf(buf, "%d", conversion.m_fieldWidthValue);
   }
   if (conversion.m_precision) {
-    char *buf = formatStr + strlen(formatStr);
-    sprintf(buf, ".%d", conversion.m_precisionValue);
+    char *buf = &formatStr[pos];
+    pos += sprintf(buf, ".%d", conversion.m_precisionValue);
   }
   switch ( conversion.m_lengthModifier ) {
     case ConversionSpec::CS_CHAR: {
-      strcat(formatStr, "hh");
+      std::memcpy(&formatStr[pos], "hh", 2);
+      pos += 2;
       break;
     }
     case ConversionSpec::CS_SHORT: {
-      strcat(formatStr, "h");
+      formatStr[pos++] = 'h';
       break;
     }
     case ConversionSpec::CS_INT_FLOAT: {
       // TODO: Vec Only...
-      //strcat(formatStr, "hl");
+      // std::memcpy(&formatStr[pos], "hl", 2);
+      // pos += 2;
       break;
     }
     case ConversionSpec::CS_LONG: {
       // HACK: LONG only supported for non vectors now...
       if ( conversion.m_vectorSize == 1 ) {
-        strcat(formatStr, "l");
+        formatStr[pos++] = 'l';
       }
       break;
     }
@@ -1053,8 +1056,8 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       break;
   }
 
-  strcat(formatStr, " ");
-  formatStr[strlen(formatStr)-1] = conversion.m_specifier;
+  formatStr[pos++] = conversion.m_specifier;
+  formatStr[pos] = '\0';
   // TODO: later make this dynamically size... for now 1024 should be sufficient
   int bufLen = 1024;
   char *printBuf = new char[bufLen];
