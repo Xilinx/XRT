@@ -73,7 +73,7 @@ public:
 
     auto fnm = generate_fnm();
     std::filesystem::path file_path = m_dir / fnm;
-    XRT_PRINTF("Dumping artifact data to %s\n", file_path.string().c_str());
+    XRT_DEBUGF("Dumping artifact data to %s\n", file_path.string().c_str());
     std::ofstream ostr(file_path, std::ios::binary);
     if (!ostr)
       throw std::runtime_error("Failed to open file for capture dump: " + file_path.string());

@@ -393,7 +393,7 @@ class frames
     void
     capture_frame_start_data(const run* run, artifacts& repo)
     {
-      XRT_PRINTF("-> capture_frame_start(run:0x%x)\n", run);
+      XRT_DEBUGF("-> capture_frame_start(run:0x%x)\n", run);
       // Arguments to be populated for this run and frame
       auto& args = m_run2args[run];
       args.reserve(run->get_num_args());
@@ -405,7 +405,7 @@ class frames
           if constexpr (std::is_same_v<T, const bo*>) {
             if (!v->is_valid(run)) {
               auto fnm = v->dump(repo);
-              XRT_PRINTF("- invalid bo:0x%x data dumped to:%s\n", v, fnm.c_str());
+              XRT_DEBUGF("- invalid bo:0x%x data dumped to:%s\n", v, fnm.c_str());
               args.push_back(std::move(fnm));
  
               // The bo is now valid wrt to this run, any subsequent
@@ -418,7 +418,7 @@ class frames
             args.push_back(v);
         }, rarg);
       }
-      XRT_PRINTF("<- capture_frame_start(run:0x%x)\n", run);
+      XRT_DEBUGF("<- capture_frame_start(run:0x%x)\n", run);
     }
 
     // capture_frame_start_data() - for a runlist with corresponding xrt::runlist
@@ -751,7 +751,7 @@ class frames
     return j;
   }
 
-  // replay_resource_run_constantss() - array of run constant arguments
+  // replay_resource_run_constants() - array of run constant arguments
   //
   // [
   //   {
@@ -1074,7 +1074,9 @@ public:
     insert_json_object(recipe, replay_resources());
     insert_json_object(recipe, replay_execution());
 
+#ifdef XRT_VERBOSE
     std::cout << recipe.dump(2) << "\n";
+#endif
 
     std::filesystem::path path = xrt_core::config::get_capture_dir();
     path /= "replay.json";
@@ -1098,63 +1100,63 @@ namespace detail {
 void
 bo_sync(const xrt::bo_impl* bhdl, int dir)
 {
-  XRT_PRINTF("bo_sync(bhdl:0x%x, dir:%d)\n", bhdl, dir);
+  XRT_DEBUGF("bo_sync(bhdl:0x%x, dir:%d)\n", bhdl, dir);
   frames::instance().capture_sync(bhdl, static_cast<xclBOSyncDirection>(dir));
 }
 
 void
 run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, span<const uint8_t> value)
 {
-  XRT_PRINTF("run_set_arg_index(rhdl:0x%x, arg:%d, value:%d)\n", rhdl, argidx, to_uint64(value));
+  XRT_DEBUGF("run_set_arg_index(rhdl:0x%x, arg:%d, value:%d)\n", rhdl, argidx, to_uint64(value));
   frames::instance().capture_run_set_arg(rhdl, argidx, to_uint64(value));
 }
 
 void
 run_set_arg_at_index(const xrt::run_impl* rhdl, size_t argidx, const xrt::bo& bo)
 {
-  XRT_PRINTF("run_set_arg_index(rhdl:0x%x, arg:%d, bo:0x%x)\n", rhdl, argidx, bo.get_handle().get());
+  XRT_DEBUGF("run_set_arg_index(rhdl:0x%x, arg:%d, bo:0x%x)\n", rhdl, argidx, bo.get_handle().get());
   frames::instance().capture_run_set_arg(rhdl, argidx, bo);
 }
 
 void
 run_start(const xrt::run_impl* rhdl)
 {
-  XRT_PRINTF("run_start(rhdl:0x%x)\n", rhdl);
+  XRT_DEBUGF("run_start(rhdl:0x%x)\n", rhdl);
   frames::instance().capture_start(rhdl);
 }
 
 void
 run_wait(const xrt::run_impl* rhdl)
 {
-  XRT_PRINTF("run_wait(rhdl:0x%x)\n", rhdl);
+  XRT_DEBUGF("run_wait(rhdl:0x%x)\n", rhdl);
   frames::instance().capture_wait(rhdl);
 }
 
 void
 runlist_add_run(const xrt::runlist_impl* rlhdl, const xrt::run_impl* rhdl)
 {
-  XRT_PRINTF("runlist_add_run(rlhdl:0x%x, rhdl:0x%x)\n", rlhdl, rhdl);
+  XRT_DEBUGF("runlist_add_run(rlhdl:0x%x, rhdl:0x%x)\n", rlhdl, rhdl);
   frames::instance().capture_runlist_add_run(rlhdl, rhdl);
 }
 
 void
 runlist_start(const xrt::runlist_impl* rlhdl)
 {
-  XRT_PRINTF("runlist_start(rlhdl:0x%x)\n", rlhdl);
+  XRT_DEBUGF("runlist_start(rlhdl:0x%x)\n", rlhdl);
   frames::instance().capture_start(rlhdl);
 }
 
 void
 runlist_wait(const xrt::runlist_impl* rlhdl)
 {
-  XRT_PRINTF("runlist_wait(rhdl:0x%x)\n", rlhdl);
+  XRT_DEBUGF("runlist_wait(rhdl:0x%x)\n", rlhdl);
   frames::instance().capture_wait(rlhdl);
 }
 
 void
 elf_ctor(const xrt::elf_impl* hdl, const void* data, size_t size)
 {
-  XRT_PRINTF("elf_ctor(ehdl:0x%x, data:0x%x, size:%d)\n", hdl, data, size);
+  XRT_DEBUGF("elf_ctor(ehdl:0x%x, data:0x%x, size:%d)\n", hdl, data, size);
   auto cdata = static_cast<const char*>(data);
   frames::instance().capture_elf(hdl, {cdata, cdata + size});
 }

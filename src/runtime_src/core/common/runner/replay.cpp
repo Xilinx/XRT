@@ -419,7 +419,7 @@ struct replayer
             auto xbo_data = xbo.map<char*>();
             auto bytes = std::min(data.size(), xbo.size());
             auto src = data.data();
-            std::copy(src, src + bytes, xbo_data);
+            std::memcpy(xbo_data, src, bytes);
             xbo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
           }
         }
