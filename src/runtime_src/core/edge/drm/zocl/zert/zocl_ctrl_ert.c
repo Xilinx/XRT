@@ -176,8 +176,10 @@ static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *inf
 		info->model = XCU_HLS;
 	info->cu_domain = conf->cu_domain;
 	info->cu_idx = conf->cu_idx;
-	strcpy(info->kname, strsep(&kname_p, ":"));
-	strcpy(info->iname, strsep(&kname_p, ":"));
+	char *str1 = strsep(&kname_p, ":");
+	memcpy(info->kname, str1, strlen(str1) + 1);
+	char *str2 = strsep(&kname_p, ":");
+	memcpy(info->iname, str2, strlen(str2) + 1);
 	memcpy(info->uuid, conf->uuid, sizeof(info->uuid));
 }
 

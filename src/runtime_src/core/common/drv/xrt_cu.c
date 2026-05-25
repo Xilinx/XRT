@@ -1058,12 +1058,15 @@ ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of arguments: %d\n",
 			info->num_args);
 	for (i = 0; i < info->num_args; i++) {
-		if (info->args[i].dir == DIR_INPUT)
-			strcpy(dir, "input");
-		else if (info->args[i].dir == DIR_OUTPUT)
-			strcpy(dir, "output");
-		else
-			strcpy(dir, "unknown");
+		if (info->args[i].dir == DIR_INPUT) {
+			memcpy(dir, "input", strlen("input") + 1);
+		}
+		else if (info->args[i].dir == DIR_OUTPUT) {
+			memcpy(dir, "output", strlen("output") + 1);
+		}
+		else {
+			memcpy(dir, "unknown", strlen("unknown") + 1);
+		}
 
 		sz += scnprintf(buf+sz, PAGE_SIZE - sz, "arg name: %s\n",
 				info->args[i].name);

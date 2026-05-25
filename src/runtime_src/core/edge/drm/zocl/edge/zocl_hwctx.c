@@ -104,8 +104,10 @@ static int zocl_cu_ctx_to_info(struct drm_zocl_dev *zdev, struct drm_zocl_open_c
     char kname[CU_NAME_MAX_LEN];
     int i = 0;
 
-    strcpy(kname, strsep(&kname_p, ":"));
-    strcpy(iname, strsep(&kname_p, ":"));
+    char *str1 = strsep(&kname_p, ":");
+    memcpy(kname, str1, strlen(str1) + 1);
+    char *str2 = strsep(&kname_p, ":");
+    memcpy(iname, str2, strlen(str2) + 1);
 
     /* Retrive the CU index from the given slot */
     for (i = 0; i < MAX_CUS; i++) {

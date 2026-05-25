@@ -622,7 +622,7 @@ namespace xclemulation{
           if(mName.empty() == false)
           {
             if(strlen(mName.c_str()) < 256)//info.mName is static array of size 256
-              std::strcpy(info.mName, mName.c_str());
+              std::memcpy(info.mName, mName.c_str(), strlen(mName.c_str()) + 1);
           }
         }
         else if(prop.first == "HalMajorVersion")
