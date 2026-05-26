@@ -160,7 +160,10 @@ public:
    * @param device
    *  The device on which to allocate this buffer
    * @param userptr
-   *  Pointer to aligned user memory
+   *  Pointer to 4K aligned user memory allocated using OS provided aligned
+   *  allocator.
+   *  A readonly pointer may be obtained via a readonly mmap of a file
+   *  opened in readonly mode.
    * @param sz
    *  Size of buffer
    * @param flags
@@ -181,7 +184,10 @@ public:
    * @param device
    *  The device on which to allocate this buffer
    * @param userptr
-   *  Pointer to aligned user memory
+   *  Pointer to 4K aligned user memory allocated using OS provided aligned
+   *  allocator.
+   *  A readonly pointer may be obtained via a readonly mmap of a file
+   *  opened in readonly mode.
    * @param sz
    *  Size of buffer
    * @param grp
@@ -272,7 +278,10 @@ public:
    * @param hwctx
    *  The hardware context in which to allocate this buffer
    * @param userptr
-   *  Pointer to aligned user memory
+   *  Pointer to 4K aligned user memory allocated using OS provided aligned
+   *  allocator.
+   *  A readonly pointer may be obtained via a readonly mmap of
+   *  a file opened in readonly mode.
    * @param sz
    *  Size of buffer
    * @param flags
@@ -293,7 +302,10 @@ public:
    * @param hwctx
    *  The hardware context in which to allocate this buffer
    * @param userptr
-   *  Pointer to aligned user memory
+   *  Pointer to 4K aligned user memory allocated using OS provided aligned
+   *  allocator.
+   *  A readonly pointer may be obtained via a readonly mmap of a file
+   *  opened in readonly mode.
    * @param sz
    *  Size of buffer
    * @param grp
