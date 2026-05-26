@@ -106,6 +106,7 @@ xrt::elf
 get_ctrlcode(const xrt::kernel&);
 
 // get_hwctx() - Get hwctx in which the run kernel is created
+XRT_CORE_COMMON_EXPORT
 xrt::hw_context
 get_hwctx(const xrt::run&);
 

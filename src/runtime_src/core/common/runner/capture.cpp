@@ -4,6 +4,8 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #define XRT_API_SOURCE         // in same dll as coreutil
 
+//#define XRT_VERBOSE
+
 #include "capture.h"
 #include "detail/capture_artifacts.h"
 #include "detail/capture_fnfwd.h"
@@ -870,6 +872,8 @@ class frames
         using T = std::decay_t<decltype(v)>;
         if constexpr (std::is_same_v<T, std::string>) {
           json a = json::object();
+          XRT_DEBUGF("replay_execution_frame_arguments: argidx=%zu, nm=%s, value=%s\n",
+                     argidx, run.get_bo_arg(argidx)->get_name().c_str(), v.c_str());
           a["argidx"] = argidx;
           a["bo"] = run.get_bo_arg(argidx)->get_name();
           a["fnm"] = v;
@@ -1016,6 +1020,7 @@ public:
   {
     std::lock_guard lk(m_mutex);
     auto& rl = create_runlist_if_new(rlhdl);
+    create_run_if_new(rhdl);
     rl.add_run(m_runs.at(rhdl));
   }
 

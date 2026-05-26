@@ -6,6 +6,7 @@
 
 #include "core/common/debug.h"
 #include "core/common/api/hw_context_int.h"
+#include "core/common/api/kernel_int.h"
 #include "core/common/json/nlohmann/json.hpp"
 
 #include "core/include/xrt/xrt_bo.h"
@@ -358,6 +359,9 @@ struct replayer
         void
         add(xrt::run run) override
         {
+          if (!m_runlist)
+            m_runlist = xrt::runlist{xrt_core::kernel_int::get_hwctx(run)};
+
           m_runlist.add(std::move(run));
         }
 
