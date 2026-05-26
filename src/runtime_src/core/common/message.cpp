@@ -99,7 +99,7 @@ private:
 };
 
 // syslog_dispatch: routes to the OS-level centralized log on each platform.
-// Linux   -> POSIX syslog (/var/log/syslog)
+// Linux   -> POSIX syslog
 //
 // Windows -> Windows Application Event Log under source "AMD_XRT"
 // Filter in Event Viewer:
@@ -128,8 +128,13 @@ public:
     // known source is done separately at driver install time via the INF AddReg
     // directive
     m_handle = RegisterEventSourceA(nullptr, "AMD_XRT");
+    // Do not throw on failure — syslog_dispatch is constructed lazily on the
+    // first call to xrt_core::message::send(), so a throw here would crash the
+    // application during normal logging if the Windows Event Log service is
+    // unavailable.
     if (!m_handle)
-      throw std::runtime_error("Failed to register Windows event source 'AMD_XRT'");
+      std::cerr << "XRT: Failed to open Windows Event Log source 'AMD_XRT' "
+                << "(error " << GetLastError() << "). Logging disabled.\n";
   }
 
   virtual ~syslog_dispatch()
@@ -138,11 +143,12 @@ public:
       DeregisterEventSource(m_handle);
   }
 
-  virtual void
+  void
   send(severity_level l, const char* tag, const char* msg) override
   {
     if (!m_handle)
-      return;
+      return; // Logging is unavailable if we failed to open the event source
+
     // Combine tag and message so Event Viewer shows "[xrt_elf] : some message"
     std::string full_msg = std::string("[") + tag + "] : " + msg;
     LPCSTR strings[] = {full_msg.c_str()};
@@ -189,7 +195,7 @@ public:
   virtual ~syslog_dispatch()
   { closelog(); }
 
-  virtual void
+  void
   send(severity_level l, const char* tag, const char* msg) override
   { syslog(severityMap[l], "%s", msg); }
 

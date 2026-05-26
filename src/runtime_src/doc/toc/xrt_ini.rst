@@ -82,7 +82,7 @@ The ``runtime_log`` key controls where XRT message output is sent. The following
    * - ``syslog``
      - All
      - Routes to the OS-level centralized log on each platform:
-       Linux uses the POSIX syslog (``/var/log/syslog``);
+       Linux uses the system syslog/journald depending on distro.
        Windows uses the Windows Application Event Log under source ``AMD_XRT``.
        Using ``syslog`` in ``xrt.ini`` works on both platforms without change.
 
