@@ -436,8 +436,20 @@ struct replayer
         void
         add(std::string bonm, xrt::bo xbo, std::string fnm)
         {
-          // It's an error to emplace the same bo multiple times
-          if (!m_bo2data.emplace(std::move(bonm), std::make_pair(std::move(xbo), std::move(fnm))).second)
+          // It's an error to emplace the same bo multiple times, but capture
+          // is tracking BOs at individual run level. If application used an
+          // xrt::runlist then each run in the runlist are captured separately
+          // but reflected as a frame with multiple runs in the replay json.
+          // When a frame is initialized, it should initialize each BO at
+          // most once, so here each bo is inserted only once.  Still it would
+          // be an error if multiple runs in a frame initialize the same BO
+          // with different data, so that is asserted.
+          auto [itr, inserted] = m_bo2data.try_emplace(std::move(bonm), std::move(xbo), std::move(fnm));
+          if (inserted)
+            return;
+
+          // try_emplace ensures xbo and fnm remain valid if not inserted
+          if (fnm != m_bo2data.at(bonm).second)
             throw std::runtime_error("Unexpected reinit of buffer");
         }
       };
