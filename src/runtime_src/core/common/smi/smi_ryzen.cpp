@@ -31,7 +31,7 @@ config_gen_ryzen()
     {"runlist-throughput", "Run end-to-end throughput test using runlist", "hidden"},
     {"df-bw", "Run bandwidth test on data fabric", "hidden"},
     {"gemm", "Measure the TOPS value of GEMM INT8operations", "common"},
-    {"resnet50", "Run ResNet-50 model and report latency and throughput", "common"},
+    {"resnet50", "Run ResNet-50 model and report latency and throughput", "hidden"},
     {"latency", "Run end-to-end latency test", "common"},
     {"quick", "Run a subset of four tests: \n1. latency \n2. throughput \n3. runlist-latency \n4. runlist-throughput", "hidden"},
     {"tct-all-col", "Measure average TCT processing time for all columns", "hidden"},
@@ -145,7 +145,7 @@ config_gen_npu3()
     {"tct-one-col", "Measure average TCT processing time for one column", "hidden"},
     {"tct-all-col", "Measure average TCT processing time for all columns", "hidden"},
     {"gemm", "Measure the TOPS value of GEMM INT8operations", "common"},
-    {"resnet50", "Run ResNet-50 model and report latency and throughput", "common"},
+    {"resnet50", "Run ResNet-50 model and report latency and throughput", "hidden"},
     {"preemption-overhead", "Measure preemption overhead at noop and memtile levels", "hidden"}
   };
 }
