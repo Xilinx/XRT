@@ -58,10 +58,20 @@ dlsym(void* handle, const char* symbol)
 #endif
 
 #ifdef _WIN32
+// Forward declaration
+void init_dll_search_paths();
+
 inline void*
 dlopen(const char* dllname, int)
 {
-  return ::LoadLibrary(dllname);
+  init_dll_search_paths();
+
+  DWORD flags = LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS;
+  void* handle = ::LoadLibraryExA(dllname, NULL, flags);
+  if (!handle)
+    throw std::runtime_error("LoadLibrary of " + std::string(dllname ? dllname : "") + " failed");
+
+  return handle;
 }
 
 inline void

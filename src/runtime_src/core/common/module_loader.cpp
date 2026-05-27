@@ -246,6 +246,31 @@ load_library(const std::string& path)
 
 namespace xrt_core {
 
+#ifdef _WIN32
+// Initialize DLL search paths once at process startup
+void
+init_dll_search_paths()
+{
+  static bool initialized = false;
+  if (initialized)
+    return;
+  initialized = true;
+
+  sfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
+  sfs::path sdk(value_or_empty(getenv("AMD_NPU_SDK_PATH")));
+
+  if (!xrt.empty()) {
+    std::wstring wide_xrt(xrt.string().begin(), xrt.string().end());
+    AddDllDirectory(wide_xrt.c_str());
+  }
+
+  if (!sdk.empty()) {
+    std::wstring wide_sdk(sdk.string().begin(), sdk.string().end());
+    AddDllDirectory(wide_sdk.c_str());
+  }
+}
+#endif
+
 module_loader::
 module_loader(const std::string& module_name,
               std::function<void (void*)> register_function,
