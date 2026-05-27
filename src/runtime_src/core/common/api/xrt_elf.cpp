@@ -12,6 +12,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -917,6 +918,7 @@ public:
   elf_aie_gen2(ELFIO::elfio&& elfio, elf::platform platform, std::string path)
     : elf_impl{std::move(elfio), platform, std::move(path)}
   {
+    XRT_TRACE_POINT_SCOPE(xrt_elf_aie_gen2);
     // Parse ELF sections to populate kernel and section maps
     parse_sections();
     // Initialize all section buffer maps
@@ -1362,6 +1364,7 @@ public:
   elf_aie_gen2_plus(ELFIO::elfio&& elfio, elf::platform platform, std::string path)
     : elf_impl{std::move(elfio), platform, std::move(path)}
   {
+    XRT_TRACE_POINT_SCOPE(xrt_elf_aie_gen2_plus);
     // Parse ELF sections to populate kernel and section maps
     parse_sections();
     // Initialize all section buffer maps

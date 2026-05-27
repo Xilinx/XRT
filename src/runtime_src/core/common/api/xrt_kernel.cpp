@@ -289,7 +289,7 @@ ctx_error_type_to_string(uint32_t ctx_error_type)
 
   if (ctx_error_type >= ctx_error_type_names.size())
     return "UNKNOWN";
-  
+
   return ctx_error_type_names[ctx_error_type];
 }
 
@@ -299,7 +299,7 @@ flags_to_string(uint32_t value, const std::array<std::pair<uint32_t, const char*
 {
   if (value == 0)
     return "NONE";
-  
+
   std::string result;
   uint32_t unknown = value;
   for (const auto& entry : flags) {
@@ -320,7 +320,7 @@ flags_to_string(uint32_t value, const std::array<std::pair<uint32_t, const char*
   }
   return result;
 }
-  
+
 // misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
 static std::string
 uc_misc_status_flags_to_string(uint32_t misc_status)
@@ -2584,6 +2584,7 @@ public:
   void
   set_dtrace_control_file(const std::string& path)
   {
+    XRT_TRACE_POINT_SCOPE(xrt_run_set_dtrace_control_file);
     std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_module) {
       throw xrt_core::error(
@@ -2597,12 +2598,13 @@ public:
           "Cannot set dtrace control file: run has already been started and is "
           "still in progress");
 
+    xrt_core::module_int::set_dtrace_control_file(m_module, path);
+    if (m_dpu_payload)
+      xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
+
+    // Store only after module and command payload are updated
+    // clone inherits this
     m_dtrace_control_file = path;
-    if (m_module) {
-      xrt_core::module_int::set_dtrace_control_file(m_module, path);
-      if (m_dpu_payload)
-        xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
-    }
   }
 
   // run_type() - constructor
@@ -3067,7 +3069,7 @@ public:
   {
     if (state != ERT_CMD_STATE_TIMEOUT)
       return;
-    
+
     auto file = xrt_core::config::get_aie_coredump_file();
     if (file.empty())
       return;
@@ -4908,10 +4910,10 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
   // (e.g. ELF loaded from a buffer rather than a file path).
   if (!kernel_instance.empty())
     oss << "Kernel Instance: " << kernel_instance;
-  
+
   if (!elf_filename.empty())
     oss << "\nELF File:        " << elf_filename;
-  
+
   if (!elf_uuid.empty())
     oss << "\nELF UUID:        " << elf_uuid;
 

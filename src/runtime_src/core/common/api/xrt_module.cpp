@@ -5,6 +5,8 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/trace.h"
+
 #include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
@@ -555,6 +557,7 @@ public:
     : module_run(elf, hw_context, id)
     , m_config(std::get<xrt::module_config_aie_gen2>(m_elf_impl->get_module_config(id)))
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_aie_gen2);
     create_ctrlpkt_buf(ctrlpkt_bo);
     create_ctrlpkt_pm_bufs();
     create_instruction_buf();
@@ -1026,6 +1029,7 @@ public:
     : module_run(elf, hw_context, id)
     , m_config(std::get<xrt::module_config_aie_gen2_plus>(m_elf_impl->get_module_config(id)))
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_aie_gen2_plus);
     initialize_dtrace_buf("");  // use config path by default
     create_ctrlpkt_bufs();
     create_instruction_buffer();
