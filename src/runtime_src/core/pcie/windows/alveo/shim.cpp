@@ -721,9 +721,7 @@ public:
 
         if (kernel.name.size() > sizeof(krnl->name))
             return 1;
-        size_t len = kernel.name.length();
-        if (len >= sizeof(krnl->name))
-            len = sizeof(krnl->name) - 1;
+        auto len = std::min(kernel.name.size(), sizeof(krnl->name) - 1);
         std::memcpy(krnl->name, kernel.name.c_str(), len);
         krnl->name[len] = '\0';
         krnl->anums = kernel.args.size();
@@ -737,9 +735,7 @@ public:
                 send(xrt_core::message::severity_level::error, "XRT", "Argument name length invalid.");
                return 1;
             }
-            size_t arg_len = arg.name.length();
-            if (arg_len >= sizeof(krnl->args[ai].name))
-                arg_len = sizeof(krnl->args[ai].name) - 1;
+            auto arg_len = std::min(arg.name.size(), sizeof(krnl->args[ai].name) - 1);
             std::memcpy(krnl->args[ai].name, arg.name.c_str(), arg_len);
             krnl->args[ai].name[arg_len] = '\0';
             krnl->args[ai].offset = arg.offset;

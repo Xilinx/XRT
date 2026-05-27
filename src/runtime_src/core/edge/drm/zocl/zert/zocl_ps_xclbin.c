@@ -138,11 +138,9 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf, u32 slot_idx)
 		memcpy(sip->si_bo->cma_base.vaddr, begin + sp->m_image_offset,
 		    sp->m_image_size);
 
-		size_t len = strlen(begin + sp->mpo_symbol_name);
-		if (len >= PS_KERNEL_NAME_LENGTH)
-			len = PS_KERNEL_NAME_LENGTH - 1;
-		memcpy(sip->scu_name, begin + sp->mpo_symbol_name, len);
-		sip->scu_name[len] = '\0';
+		strncpy(sip->scu_name,
+		    begin + sp->mpo_symbol_name,
+		    PS_KERNEL_NAME_LENGTH - 1);
 		scu_idx += sp->m_num_instances;
 
 		header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL,

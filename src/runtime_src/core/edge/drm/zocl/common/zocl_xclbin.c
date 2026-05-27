@@ -342,19 +342,12 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			apt = &zdev->cu_subdev.apertures[apt_idx];
 
 			apt->addr = ip->m_base_address;
-
-			size_t len = strlen(ip->m_name);
-			if (len >= sizeof(kname))
-				len = sizeof(kname) - 1;
-			memcpy(kname, ip->m_name, len);
-			kname[len] = '\0';
-			kname_p = &kname[0];
-			char *str = strsep(&kname_p, ":");
-			len = strlen(str);
-			if (len >= sizeof(kname))
-				len = sizeof(kname) - 1;
-			memcpy(kname, str, len);
-			kname[len] = '\0';
+                        
+                        strncpy(kname, ip->m_name, sizeof(kname));
+		        kname[sizeof(kname)-1] = '\0';
+		        kname_p = &kname[0];
+		        strncpy(kname, strsep(&kname_p, ":"), sizeof(kname));
+		        kname[sizeof(kname)-1] = '\0';
                         krnl_info = zocl_query_kernel(slot, kname);
 		        if (krnl_info && krnl_info->range >= CU_SIZE)
                                 apt->size = krnl_info->range;

@@ -183,11 +183,7 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[1
 	cp = kmalloc(sizeof(struct config_sk_image_uuid), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
 	cp->num_cus = 1;
-	size_t len = strlen(kname);
-	if (len >= PS_KERNEL_NAME_LENGTH)
-		len = PS_KERNEL_NAME_LENGTH - 1;
-	memcpy((char *)cp->sk_name, kname, len);
-	cp->sk_name[len] = '\0';
+	strncpy((char *)cp->sk_name,kname, PS_KERNEL_NAME_LENGTH);
 	memcpy(cp->sk_uuid, uuid, sizeof(cp->sk_uuid));
 
 	sk = zdev->soft_kernel;

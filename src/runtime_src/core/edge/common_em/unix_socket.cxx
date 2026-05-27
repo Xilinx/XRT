@@ -61,9 +61,7 @@ void unix_socket::start_server(const std::string sk_desc)
   }
   server.sun_family = AF_UNIX;
   //Coverity
-  size_t len = sk_desc.length();
-  if (len >= sizeof(server.sun_path))
-    len = sizeof(server.sun_path) - 1;
+  auto len = std::min(sk_desc.size(), sizeof(server.sun_path) - 1);
   memcpy(server.sun_path, sk_desc.c_str(), len);
   server.sun_path[len] = '\0';
   if (connect(sock, (struct sockaddr*)&server, sizeof(server)) >= 0){
