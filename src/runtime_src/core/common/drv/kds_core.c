@@ -1951,21 +1951,19 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
-		size_t len = strlen(ip->m_name);
-		if (len >= sizeof(kname)) {
-			len = sizeof(kname) - 1;
-		}
+		size_t src_len = strlen(ip->m_name);
+		size_t len = src_len < sizeof(kname) - 1 ? src_len : sizeof(kname) - 1;
 		memcpy(kname, ip->m_name, len);
 		kname[len] = '\0';
 		kname_p = &kname[0];
 		char *str1 = strsep(&kname_p, ":");
-		len = strlen(str1);
-  		if (len >= sizeof(info.kname)) len = sizeof(info.kname) - 1;
+		src_len = strlen(str1);
+		len = src_len < sizeof(info.kname) - 1 ? src_len : sizeof(info.kname) - 1;
 		memcpy(info.kname, str1, len);
 		info.kname[len] = '\0';
 		char *str2 = strsep(&kname_p, ":");
-		len = strlen(str2);
-		if (len >= sizeof(info.iname)) len = sizeof(info.iname) - 1;
+		src_len = strlen(str2);
+		len = src_len < sizeof(info.iname) - 1 ? src_len : sizeof(info.iname) - 1;
 		memcpy(info.iname, str2, len);
 		info.iname[len] = '\0';
 
@@ -2060,22 +2058,19 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
-		size_t len = strlen(ip->m_name);
-		if (len >= sizeof(kname))
-			len = sizeof(kname) - 1;
+		size_t src_len = strlen(ip->m_name);
+		size_t len = src_len < sizeof(kname) - 1 ? src_len : sizeof(kname) - 1;
 		memcpy(kname, ip->m_name, len);
 		kname[len] = '\0';
 		kname_p = &kname[0];
 		char *str1 = strsep(&kname_p, ":");
-		len = strlen(str1);
-		if (len >= sizeof(info.kname))
-			len = sizeof(info.kname) - 1;
+		src_len = strlen(str1);
+		len = src_len < sizeof(info.kname) - 1 ? src_len : sizeof(info.kname) - 1;
 		memcpy(info.kname, str1, len);
 		info.kname[len] = '\0';
 		char *str2 = strsep(&kname_p, ":");
-		len = strlen(str2);
-		if (len >= sizeof(info.iname))
-			len = sizeof(info.iname) - 1;
+		src_len = strlen(str2);
+		len = src_len < sizeof(info.iname) - 1 ? src_len : sizeof(info.iname) - 1;
 		memcpy(info.iname, str2, len);
 		info.iname[len] = '\0';
 
