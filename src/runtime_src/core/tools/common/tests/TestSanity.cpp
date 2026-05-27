@@ -64,15 +64,6 @@ TestSanity::TestSanity()
 {}
 
 boost::property_tree::ptree
-TestSanity::run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  ptree.put("status", XBValidateUtils::test_token_failed);
-  XBValidateUtils::logger(ptree, "Error", "Archive required for sanity validate");
-  return ptree;
-}
-
-boost::property_tree::ptree
 TestSanity::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();

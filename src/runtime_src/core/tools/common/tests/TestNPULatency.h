@@ -9,12 +9,7 @@
 
 class TestNPULatency : public TestRunner {
   public:
-    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
-    
-    // Archive-aware version - extracts test artifacts from archive
-    boost::property_tree::ptree 
-    run (const std::shared_ptr<xrt_core::device>&,
-        const xrt_core::archive* archive) override;
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*) override;
 
   public:
     TestNPULatency();
