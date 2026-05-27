@@ -944,9 +944,7 @@ xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
   std::string path = xclGetSysfsPath("debug_ip_layout");
   if (path.size() >= size)
     return -EINVAL;
-  size_t len = path.length();
-  if (len >= size)
-    len = size - 1;
+  auto len = std::min(path.size(), size - 1);
   std::memcpy(layoutPath, path.c_str(), len);
   layoutPath[len] = '\0';
   return 0;
@@ -2700,9 +2698,7 @@ xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (path.size() >= size)
     return -EINVAL;
 
-  size_t sysfs_len = path.length();
-  if (sysfs_len >= size)
-    sysfs_len = size - 1;
+  auto sysfs_len = std::min(path.size(), size - 1);
   std::memcpy(sysfsPath, path.c_str(), sysfs_len);
   sysfsPath[sysfs_len] = '\0';
   return 0;
