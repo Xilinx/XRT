@@ -8,7 +8,7 @@
 #include <map>
 #include <syslog.h>
 
-namespace xrt_core { namespace message {
+namespace xrt_core::message {
 
 class syslog_dispatch : public message_dispatch
 {
@@ -16,7 +16,12 @@ public:
   syslog_dispatch()
   { openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER); }
 
-  ~syslog_dispatch()
+  syslog_dispatch(const syslog_dispatch&) = delete;
+  syslog_dispatch& operator=(const syslog_dispatch&) = delete;
+  syslog_dispatch(syslog_dispatch&&) = delete;
+  syslog_dispatch& operator=(syslog_dispatch&&) = delete;
+
+  ~syslog_dispatch() override
   { closelog(); }
 
   void
@@ -36,4 +41,4 @@ private:
   };
 };
 
-}} // xrt_core::message
+} // xrt_core::message

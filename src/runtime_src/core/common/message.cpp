@@ -166,25 +166,23 @@ send(severity_level l, const char* tag, const char* msg)
 
 namespace xrt_core { namespace message {
 
-message_dispatch*
+std::unique_ptr<message_dispatch>
 message_dispatch::
 make_dispatcher(const std::string& choice)
 {
   if ((choice == "null") || (choice == ""))
-    return new null_dispatch;
-  else if (choice == "console")
-    return new console_dispatch;
-  else if (choice == "syslog")
-    return new syslog_dispatch;
-  else {
-    if (choice.front() == '"') {
-      std::string file = choice;
-      file.erase(0, 1);
-      file.erase(file.size()-1);
-      return new file_dispatch(file);
-    }
-    return new file_dispatch(choice);
+    return std::make_unique<null_dispatch>();
+  if (choice == "console")
+    return std::make_unique<console_dispatch>();
+  if (choice == "syslog")
+    return std::make_unique<syslog_dispatch>();
+
+  std::string file = choice;
+  if (file.front() == '"') {
+    file.erase(0, 1);
+    file.erase(file.size()-1);
   }
+  return std::make_unique<file_dispatch>(file);
 }
 
 void
@@ -195,7 +193,7 @@ send(severity_level l, const char* tag, const char* msg)
   int lev = static_cast<int>(l);
 
   if(ver >= lev) {
-    static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
+    static auto dispatcher = message_dispatch::make_dispatcher(logger);
     dispatcher->send(l, tag, msg);
   }
 }

@@ -8,6 +8,7 @@
 #include "core/common/config_reader.h"
 #include "core/include/xrt.h"
 #include "core/include/xrt/experimental/xrt_message.h"
+#include <memory>
 #include <string>
 #include <cstdio>
 #include <vector>
@@ -19,9 +20,18 @@ using severity_level = xrt::message::level;
 class message_dispatch
 {
 public:
+  message_dispatch() = default;
+  message_dispatch(const message_dispatch&) = delete;
+  message_dispatch& operator=(const message_dispatch&) = delete;
+  message_dispatch(message_dispatch&&) = delete;
+  message_dispatch& operator=(message_dispatch&&) = delete;
   virtual ~message_dispatch() = default;
-  static message_dispatch* make_dispatcher(const std::string& choice);
-  virtual void send(severity_level l, const char* tag, const char* msg) = 0;
+
+  static std::unique_ptr<message_dispatch>
+  make_dispatcher(const std::string& choice);
+
+  virtual void
+  send(severity_level l, const char* tag, const char* msg) = 0;
 };
 
 XRT_CORE_COMMON_EXPORT
