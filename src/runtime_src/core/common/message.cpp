@@ -7,6 +7,8 @@
 #include "config_reader.h"
 #include "utils.h"
 
+#include "detail/syslog.h"  // for syslog_dispatch
+
 #include "xrt/detail/version-git.h"
 
 #include <algorithm>
@@ -19,15 +21,9 @@
 #include <mutex>
 #include <thread>
 #ifdef __linux__
-# include <syslog.h>
 # include <linux/limits.h>
 # include <sys/stat.h>
 # include <sys/types.h>
-#endif
-#ifdef _WIN32
-# include <winsock.h>
-// Windows Event Log API - required for syslog_dispatch
-# include <windows.h>
 #endif
 
 namespace {
@@ -56,17 +52,7 @@ get_exe_path()
 
 
 using severity_level = xrt_core::message::severity_level;
-
-//--
-class message_dispatch
-{
-public:
-  message_dispatch() {}
-  virtual ~message_dispatch() {}
-  static message_dispatch* make_dispatcher(const std::string& choice);
-public:
-  virtual void send(severity_level l, const char* tag, const char* msg) = 0;
-};
+using message_dispatch = xrt_core::message::message_dispatch;
 
 //--
 class null_dispatch : public message_dispatch
@@ -98,122 +84,6 @@ private:
   };
 };
 
-// syslog_dispatch: routes to the OS-level centralized log on each platform.
-// Linux   -> POSIX syslog
-//
-// Windows -> Windows Application Event Log under source "AMD_XRT"
-// Filter in Event Viewer:
-//   Windows Logs -> Application -> Source: AMD_XRT
-// Filter via PowerShell:
-//   Get-EventLog -LogName Application -Source "AMD_XRT"                        -- all
-//   Get-EventLog -LogName Application -Source "AMD_XRT" -EntryType Error       -- errors only
-//   Get-EventLog -LogName Application -Source "AMD_XRT" -EntryType Error,Warning
-// Filter via cmd line (Level: 2=Error, 3=Warning, 4=Information):
-//   wevtutil qe Application /q:"*[System[Provider[@Name='AMD_XRT']]]" /f:text
-//   wevtutil qe Application /q:"*[System[Provider[@Name='AMD_XRT'] and Level=2]]" /f:text
-//   wevtutil qe Application /q:"*[System[Provider[@Name='AMD_XRT'] and (Level=2 or Level=3)]]" /f:text
-#ifdef _WIN32
-class syslog_dispatch : public message_dispatch
-{
-public:
-  syslog_dispatch()
-  {
-    // RegisterEventSourceA opens a handle to the Application event log and
-    // associates it with the source name "AMD_XRT". This handle is used in
-    // every subsequent ReportEventA call to stamp events with that source name.
-    // First arg (nullptr) means the local machine; a UNC server name can be
-    // passed to write to a remote machine's event log.
-    // This call does NOT require admin rights and does NOT touch the registry —
-    // it only opens a write channel. Registry registration of "AMD_XRT" as a
-    // known source is done separately at driver install time via the INF AddReg
-    // directive
-    m_handle = RegisterEventSourceA(nullptr, "AMD_XRT");
-    // Do not throw on failure — syslog_dispatch is constructed lazily on the
-    // first call to xrt_core::message::send(), so a throw here would crash the
-    // application during normal logging if the Windows Event Log service is
-    // unavailable.
-    if (!m_handle)
-      std::cerr << "XRT: Failed to open Windows Event Log source 'AMD_XRT' "
-                << "(error " << GetLastError() << "). Logging disabled.\n";
-  }
-
-  virtual ~syslog_dispatch()
-  {
-    if (m_handle)
-      DeregisterEventSource(m_handle);
-  }
-
-  void
-  send(severity_level l, const char* tag, const char* msg) override
-  {
-    if (!m_handle)
-      return; // Logging is unavailable if we failed to open the event source
-
-    // Combine tag and message so Event Viewer shows "[xrt_elf] : some message"
-    std::string full_msg = std::string("[") + tag + "] : " + msg;
-    LPCSTR strings[] = {full_msg.c_str()};
-    // Event ID 1 matches the pass-through entry in EventCreate.exe's message table
-    // (%1 format string), so Event Viewer displays our message text directly
-    // without the warning.
-    // Severity filtering in Event Viewer uses wType (Level column), not event ID.
-    static constexpr DWORD event_id = 1;
-    ReportEventA(m_handle, to_event_type(l), 0, event_id,
-                 nullptr, 1, 0, strings, nullptr);
-  }
-
-private:
-  HANDLE m_handle = nullptr;
-
-  // Maps XRT severity to Windows event type (controls icon in Event Viewer):
-  //   EVENTLOG_ERROR_TYPE       -> red X
-  //   EVENTLOG_WARNING_TYPE     -> yellow triangle
-  //   EVENTLOG_INFORMATION_TYPE -> blue i
-  static WORD
-  to_event_type(severity_level l)
-  {
-    switch (l) {
-    case severity_level::emergency:
-    case severity_level::alert:
-    case severity_level::critical:
-    case severity_level::error:
-      return EVENTLOG_ERROR_TYPE;
-    case severity_level::warning:
-      return EVENTLOG_WARNING_TYPE;
-    default:
-      return EVENTLOG_INFORMATION_TYPE;
-    }
-  }
-
-};
-#else
-class syslog_dispatch : public message_dispatch
-{
-public:
-  syslog_dispatch()
-  { openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER); }
-
-  virtual ~syslog_dispatch()
-  { closelog(); }
-
-  void
-  send(severity_level l, const char* tag, const char* msg) override
-  { syslog(severityMap[l], "%s", msg); }
-
-private:
-  // Maps XRT severity to POSIX syslog priority
-  std::map<severity_level, int> severityMap = {
-    { severity_level::emergency, LOG_EMERG},
-    { severity_level::alert,     LOG_ALERT},
-    { severity_level::critical,  LOG_CRIT},
-    { severity_level::error,     LOG_ERR},
-    { severity_level::warning,   LOG_WARNING},
-    { severity_level::notice,    LOG_NOTICE},
-    { severity_level::info,      LOG_INFO},
-    { severity_level::debug,     LOG_DEBUG}
-  };
-};
-#endif
-
 //--
 class file_dispatch : public message_dispatch
 {
@@ -235,29 +105,6 @@ private:
     { severity_level::debug,     "DEBUG: "}
   };
 };
-
-//-------
-message_dispatch*
-message_dispatch::
-make_dispatcher(const std::string& choice)
-{
-  if( (choice == "null") || (choice == ""))
-    return new null_dispatch;
-  else if(choice == "console")
-    return new console_dispatch;
-  else if(choice == "syslog")
-    return new syslog_dispatch;
-  else {
-    if(choice.front() == '"') {
-      std::string file = choice;
-      file.erase(0, 1);
-      file.erase(file.size()-1);
-      return new file_dispatch(file);
-    }
-    else
-      return new file_dispatch(choice);
-  }
-}
 
 //file ops
 file_dispatch::
@@ -318,6 +165,27 @@ send(severity_level l, const char* tag, const char* msg)
 } //end unnamed namespace
 
 namespace xrt_core { namespace message {
+
+message_dispatch*
+message_dispatch::
+make_dispatcher(const std::string& choice)
+{
+  if ((choice == "null") || (choice == ""))
+    return new null_dispatch;
+  else if (choice == "console")
+    return new console_dispatch;
+  else if (choice == "syslog")
+    return new syslog_dispatch;
+  else {
+    if (choice.front() == '"') {
+      std::string file = choice;
+      file.erase(0, 1);
+      file.erase(file.size()-1);
+      return new file_dispatch(file);
+    }
+    return new file_dispatch(choice);
+  }
+}
 
 void
 send(severity_level l, const char* tag, const char* msg)
