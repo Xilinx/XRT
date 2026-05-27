@@ -621,8 +621,9 @@ namespace xclemulation{
           std::string mName = prop.second.get_value<std::string>();
           if(mName.empty() == false)
           {
-            if(strlen(mName.c_str()) < 256)//info.mName is static array of size 256
-              std::memcpy(info.mName, mName.c_str(), strlen(mName.c_str()) + 1);
+            const auto len = std::min(mName.size(), sizeof(info.mName) - 1);
+            std::memcpy(info.mName, mName.c_str(), len);
+            info.mName[len] = '\0';
           }
         }
         else if(prop.first == "HalMajorVersion")
