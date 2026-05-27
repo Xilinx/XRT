@@ -97,7 +97,7 @@ private:
   static void*
   map_region(int fd, std::size_t size)
   {
-    void* ptr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    void* ptr = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
     if (ptr == MAP_FAILED)
     {
       close(fd);
