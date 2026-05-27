@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 
-// Sanity validate workload (ResNet-50 model-tests strix/medusa profile layout).
-// Runner validates OFM against golden bins, then reports throughput/latency metrics.
+// Sanity workload: run a small model and validate output against golden data to validate sanity of the device.
 
 #include "TestSanity.h"
 #include "TestValidateUtilities.h"
@@ -12,46 +11,6 @@
 #include "tools/common/XBUtilities.h"
 
 namespace XBU = XBUtilities;
-
-std::optional<TestSanity::json>
-TestSanity::find_execution_report(const json& report, const std::string& mode) const
-{
-  if (!report.contains("executions") || !report["executions"].is_array())
-    return std::nullopt;
-
-  for (const auto& exec : report["executions"]) {
-    if (exec.value("mode", "") == mode)
-      return exec;
-  }
-  return std::nullopt;
-}
-
-void
-TestSanity::log_cpu_metrics(boost::property_tree::ptree& ptree, const json& exec_report) const
-{
-  if (!exec_report.contains("cpu") || !exec_report["cpu"].is_object())
-    return;
-
-  const auto& cpu = exec_report["cpu"];
-  if (cpu.contains("throughput"))
-    XBValidateUtils::logger(ptree, "Details",
-      "Average throughput: " + std::to_string(cpu["throughput"].get<double>()) + " op/s");
-  if (cpu.contains("latency"))
-    XBValidateUtils::logger(ptree, "Details",
-      "Average latency: " + std::to_string(cpu["latency"].get<double>()) + " us");
-}
-
-void
-TestSanity::log_runner_report(boost::property_tree::ptree& ptree, const std::string& report_json) const
-{
-  const auto report = json::parse(report_json);
-
-  if (auto throughput = find_execution_report(report, "throughput"))
-    log_cpu_metrics(ptree, *throughput);
-
-  if (auto latency = find_execution_report(report, "latency"))
-    log_cpu_metrics(ptree, *latency);
-}
 
 void
 TestSanity::run_sanity(const std::shared_ptr<xrt_core::device>& dev,
@@ -63,7 +22,6 @@ TestSanity::run_sanity(const std::shared_ptr<xrt_core::device>& dev,
   xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
   runner.execute();
   runner.wait();
-  log_runner_report(ptree, runner.get_report());
   ptree.put("status", XBValidateUtils::test_token_passed);
 }
 
@@ -102,7 +60,7 @@ TestSanity::run_npu3(const std::shared_ptr<xrt_core::device>& dev,
 }
 
 TestSanity::TestSanity()
-  : TestRunner("sanity", "Run sanity model validate, throughput, and latency")
+  : TestRunner("sanity", "Run a small model and validate sanity of the device")
 {}
 
 boost::property_tree::ptree

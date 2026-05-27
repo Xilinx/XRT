@@ -4,13 +4,11 @@
 #ifndef TestSanity_h_
 #define TestSanity_h_
 
-#include "core/common/json/nlohmann/json.hpp"
 #include "tools/common/TestRunner.h"
 #include "xrt/xrt_device.h"
 
 #include <boost/property_tree/ptree.hpp>
 #include <memory>
-#include <optional>
 #include <string>
 
 class TestSanity : public TestRunner {
@@ -21,17 +19,6 @@ public:
   TestSanity();
 
 private:
-  using json = nlohmann::json;
-
-  std::optional<json>
-  find_execution_report(const json& report, const std::string& mode) const;
-
-  void
-  log_cpu_metrics(boost::property_tree::ptree& ptree, const json& exec_report) const;
-
-  void
-  log_runner_report(boost::property_tree::ptree& ptree, const std::string& report_json) const;
-
   void
   run_sanity(const std::shared_ptr<xrt_core::device>& dev,
              const std::string& recipe_data,
