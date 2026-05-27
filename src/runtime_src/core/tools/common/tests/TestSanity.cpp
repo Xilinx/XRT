@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 
-// ResNet-50 validate workload (model-tests strix/medusa resnet50 profile layout).
+// Sanity validate workload (ResNet-50 model-tests strix/medusa profile layout).
 // Runner validates OFM against golden bins, then reports throughput/latency metrics.
 
-#include "TestResnet50.h"
+#include "TestSanity.h"
 #include "TestValidateUtilities.h"
 #include "core/common/archive.h"
 #include "core/common/runner/runner.h"
@@ -13,8 +13,8 @@
 
 namespace XBU = XBUtilities;
 
-std::optional<TestResnet50::json>
-TestResnet50::find_execution_report(const json& report, const std::string& mode) const
+std::optional<TestSanity::json>
+TestSanity::find_execution_report(const json& report, const std::string& mode) const
 {
   if (!report.contains("executions") || !report["executions"].is_array())
     return std::nullopt;
@@ -27,7 +27,7 @@ TestResnet50::find_execution_report(const json& report, const std::string& mode)
 }
 
 void
-TestResnet50::log_cpu_metrics(boost::property_tree::ptree& ptree, const json& exec_report) const
+TestSanity::log_cpu_metrics(boost::property_tree::ptree& ptree, const json& exec_report) const
 {
   if (!exec_report.contains("cpu") || !exec_report["cpu"].is_object())
     return;
@@ -42,7 +42,7 @@ TestResnet50::log_cpu_metrics(boost::property_tree::ptree& ptree, const json& ex
 }
 
 void
-TestResnet50::log_runner_report(boost::property_tree::ptree& ptree, const std::string& report_json) const
+TestSanity::log_runner_report(boost::property_tree::ptree& ptree, const std::string& report_json) const
 {
   const auto report = json::parse(report_json);
 
@@ -54,11 +54,11 @@ TestResnet50::log_runner_report(boost::property_tree::ptree& ptree, const std::s
 }
 
 void
-TestResnet50::run_resnet50(const std::shared_ptr<xrt_core::device>& dev,
-                           const std::string& recipe_data,
-                           const std::string& profile_data,
-                           const xrt_core::runner::artifacts_repository& artifacts_repo,
-                           boost::property_tree::ptree& ptree) const
+TestSanity::run_sanity(const std::shared_ptr<xrt_core::device>& dev,
+                       const std::string& recipe_data,
+                       const std::string& profile_data,
+                       const xrt_core::runner::artifacts_repository& artifacts_repo,
+                       boost::property_tree::ptree& ptree) const
 {
   xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
   runner.execute();
@@ -68,54 +68,54 @@ TestResnet50::run_resnet50(const std::shared_ptr<xrt_core::device>& dev,
 }
 
 void
-TestResnet50::run_strix(const std::shared_ptr<xrt_core::device>& dev,
-                        const xrt_core::archive* archive,
-                        boost::property_tree::ptree& ptree) const
+TestSanity::run_strix(const std::shared_ptr<xrt_core::device>& dev,
+                      const xrt_core::archive* archive,
+                      boost::property_tree::ptree& ptree) const
 {
-  const std::string recipe_data = archive->data("recipe_resnet50_strix.json");
-  const std::string profile_data = archive->data("profile_resnet50_strix.json");
+  const std::string recipe_data = archive->data("recipe_sanity_strix.json");
+  const std::string profile_data = archive->data("profile_sanity_strix.json");
   auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
-    "design_resnet50_strix.xclbin",
-    "ctrl_resnet50_strix.elf",
-    "wts32_hw_resnet50_strix.bin",
-    "ifm_hw_resnet50_strix.bin",
-    "ofm_hw_resnet50_strix.bin",
+    "design_sanity_strix.xclbin",
+    "ctrl_sanity_strix.elf",
+    "wts32_hw_sanity_strix.bin",
+    "ifm_hw_sanity_strix.bin",
+    "ofm_hw_sanity_strix.bin",
   });
-  run_resnet50(dev, recipe_data, profile_data, artifacts_repo, ptree);
+  run_sanity(dev, recipe_data, profile_data, artifacts_repo, ptree);
 }
 
 void
-TestResnet50::run_npu3(const std::shared_ptr<xrt_core::device>& dev,
-                       const xrt_core::archive* archive,
-                       boost::property_tree::ptree& ptree) const
+TestSanity::run_npu3(const std::shared_ptr<xrt_core::device>& dev,
+                     const xrt_core::archive* archive,
+                     boost::property_tree::ptree& ptree) const
 {
-  const std::string recipe_data = archive->data("recipe_resnet50_npu3.json");
-  const std::string profile_data = archive->data("profile_resnet50_npu3.json");
+  const std::string recipe_data = archive->data("recipe_sanity_npu3.json");
+  const std::string profile_data = archive->data("profile_sanity_npu3.json");
   auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
-    "control_resnet50_npu3.elf",
-    "ifm_resnet50_npu3.bin",
-    "wts_resnet50_npu3.bin",
-    "ctrl_pkt0_resnet50_npu3.bin",
-    "ofm_resnet50_npu3.bin",
+    "control_sanity_npu3.elf",
+    "ifm_sanity_npu3.bin",
+    "wts_sanity_npu3.bin",
+    "ctrl_pkt0_sanity_npu3.bin",
+    "ofm_sanity_npu3.bin",
   });
-  run_resnet50(dev, recipe_data, profile_data, artifacts_repo, ptree);
+  run_sanity(dev, recipe_data, profile_data, artifacts_repo, ptree);
 }
 
-TestResnet50::TestResnet50()
-  : TestRunner("resnet50", "Run ResNet-50 model and report latency and throughput")
+TestSanity::TestSanity()
+  : TestRunner("sanity", "Run sanity model validate, throughput, and latency")
 {}
 
 boost::property_tree::ptree
-TestResnet50::run(const std::shared_ptr<xrt_core::device>& dev)
+TestSanity::run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.put("status", XBValidateUtils::test_token_failed);
-  XBValidateUtils::logger(ptree, "Error", "Archive required for resnet50 validate");
+  XBValidateUtils::logger(ptree, "Error", "Archive required for sanity validate");
   return ptree;
 }
 
 boost::property_tree::ptree
-TestResnet50::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+TestSanity::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
