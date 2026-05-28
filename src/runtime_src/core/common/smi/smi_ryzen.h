@@ -80,6 +80,21 @@ public:
   }
 };
 
+// Telluride aie2ps and T20 npu3_aie2ps (same Versal AIE2 / "ve2" silicon).
+// Only tests packaged in xrt_smi_ve2.a are exposed (see src/shim_ve2/smi_ve2.cpp).
+class config_gen_npu3_aie2ps : public config_gen_ryzen {
+  std::vector<xrt_core::smi::basic_option> validate_test_desc;
+
+public:
+  config_gen_npu3_aie2ps();
+
+  const std::vector<xrt_core::smi::basic_option>&
+  get_validate_test_desc() const override
+  {
+    return validate_test_desc;
+  }
+};
+
 void
 populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* device);
 

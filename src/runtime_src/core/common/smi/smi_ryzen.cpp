@@ -120,6 +120,25 @@ config_gen_ryzen::create_advanced_subcommand()
   return {"advanced", "Low level command operations", "hidden", std::move(advanced_suboptions)};
 }
 
+config_gen_npu3_aie2ps::
+config_gen_npu3_aie2ps()
+{
+  /*
+   * Mirrors src/shim_ve2/smi_ve2.cpp: only the four tests whose artifacts
+   * are packaged in VTD's xrt_smi_ve2.a (latency, throughput and the
+   * runlist variants).  GEMM and the other npu3-style tests are
+   * intentionally omitted because the ve2 archive ships no gemm.elf and
+   * TestGemm has no aie2ps geometry handling.
+   */
+  validate_test_desc = {
+    {"all", "All applicable validate tests will be executed (default)", "common"},
+    {"runlist-latency", "Run end-to-end latency test using command chaining", "hidden"},
+    {"runlist-throughput", "Run end-to-end throughput test using command chaining", "hidden"},
+    {"latency", "Run end-to-end latency test", "common"},
+    {"throughput", "Run end-to-end throughput test", "common"},
+  };
+}
+
 config_gen_npu3::
 config_gen_npu3()
 {
@@ -180,6 +199,19 @@ populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* 
   case smi_hardware_config::hardware_type::npu3_B03:
   {
     generator = std::make_shared<config_gen_npu3>();
+    break;
+  }
+  /*
+   * Telluride aie2ps and the T20 npu3_aie2ps SoC share the same Versal
+   * AIE2 ("ve2") silicon; npu3_aie2ps just routes management via RPU
+   * firmware (npu3/aie4 protocol) but runs the same AIE ELFs.  Use the
+   * ve2-style test list for both so that 'xrt-smi validate' offers only
+   * tests whose artifacts ship in xrt_smi_ve2.a.
+   */
+  case smi_hardware_config::hardware_type::aie2ps:
+  case smi_hardware_config::hardware_type::npu3_aie2ps:
+  {
+    generator = std::make_shared<config_gen_npu3_aie2ps>();
     break;
   }
   default:
