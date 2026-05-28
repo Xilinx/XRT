@@ -43,6 +43,7 @@
 #include "tools/common/tests/TestPreemptionOverhead.h"
 #include "tools/common/tests/TestValidateUtilities.h"
 #include "tools/common/tests/TestShimDMABW.h"
+#include "tools/common/tests/TestSanity.h"
 
 namespace XBU = XBUtilities;
 namespace xq = xrt_core::query;
@@ -120,6 +121,7 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestTemporalSharingOvd>(),
   std::make_shared<TestPreemptionOverhead>(),
   std::make_shared<TestShimDMABW>(),
+  std::make_shared<TestSanity>(),
 };
 
 /*

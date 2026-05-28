@@ -23,13 +23,6 @@ TestShimDMABW::TestShimDMABW()
     })
 {}
 
-boost::property_tree::ptree
-TestShimDMABW::run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
-
 void
 TestShimDMABW::run_flavors(boost::property_tree::ptree& test, const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive,
                            const std::vector<FlavorConfig>& test_configs)

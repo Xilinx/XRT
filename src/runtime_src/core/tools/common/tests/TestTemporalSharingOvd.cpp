@@ -38,17 +38,9 @@ get_total_frame_events(const std::shared_ptr<xrt_core::device>& dev)
   return total_frame_events;
 }
 
-boost::property_tree::ptree 
+boost::property_tree::ptree
 TestTemporalSharingOvd::
-run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
-
-boost::property_tree::ptree 
-TestTemporalSharingOvd::
-run(const std::shared_ptr<xrt_core::device>& dev, 
+run(const std::shared_ptr<xrt_core::device>& dev,
     const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
@@ -60,8 +52,9 @@ run(const std::shared_ptr<xrt_core::device>& dev,
   }
   
   if (archive == nullptr) {
-    XBValidateUtils::logger(ptree, "Info", "No archive provided, falling back to standard method");
-    return run(dev);
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No archive found, skipping test");
+    return ptree;
   }
   
   try {

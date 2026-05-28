@@ -21,13 +21,6 @@ TestNPUThroughput::TestNPUThroughput()
 {}
 
 boost::property_tree::ptree
-TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
-
-boost::property_tree::ptree
 TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();

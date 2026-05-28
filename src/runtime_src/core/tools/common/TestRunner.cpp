@@ -71,6 +71,12 @@ TestRunner::TestRunner (const std::string & test_name,
 }
 
 boost::property_tree::ptree
+TestRunner::run(const std::shared_ptr<xrt_core::device>& dev)
+{
+  return run(dev, nullptr);
+}
+
+boost::property_tree::ptree
 TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev, 
                       const xrt_core::archive* archive, 
                       unsigned int iter)
