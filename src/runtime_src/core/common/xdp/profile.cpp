@@ -14,6 +14,7 @@
 #include <cstring>
 #include <functional>
 #include <sstream>
+#include <string_view>
 #include <cstdlib>
 
 #ifdef _WIN32
@@ -949,9 +950,24 @@ finish_flush_device(void* handle)
 #endif
 }
 
+// XDP plugins that submit their own ELF name the xrt::ext::kernel
+// "XDP_KERNEL" or "XDP_KERNEL_<suffix>" so the run-lifecycle hooks
+// can skip self-instrumentation of those internal runs.
+static bool
+is_xdp_internal_kernel(const xrt::run_impl* run_impl)
+{
+  xrt_kernel_data data{};
+  xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+  constexpr std::string_view prefix{"XDP_KERNEL"};
+  return data.name.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0;
+}
+
 void
 run_constructor(xrt::run_impl* run_impl)
 {
+  if (is_xdp_internal_kernel(run_impl))
+    return;
+
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
@@ -961,6 +977,9 @@ run_constructor(xrt::run_impl* run_impl)
 void
 run_start(const xrt::run_impl* run_impl)
 {
+  if (is_xdp_internal_kernel(run_impl))
+    return;
+
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
@@ -970,6 +989,9 @@ run_start(const xrt::run_impl* run_impl)
 void
 run_wait(const xrt::run_impl* run_impl)
 {
+  if (is_xdp_internal_kernel(run_impl))
+    return;
+
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
