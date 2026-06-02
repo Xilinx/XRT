@@ -376,51 +376,6 @@ finish_flush_device(void* handle)
 
 } // end namespace xrt_core::xdp::ml_timeline
 
-namespace xrt_core::xdp::aie_pc {
-
-std::function<void (void*)> update_device_cb;
-std::function<void (void*)> finish_flush_device_cb;
-
-void
-register_callbacks(void* handle)
-{ 
-  #ifdef XDP_CLIENT_BUILD
-    using ftype = void (*)(void*);
-
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEPC"));
-    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceAIEPC"));
-  #else
-    (void)handle;
-  #endif
-
-}
-
-void
-load()
-{
-  static xrt_core::module_loader
-  xdp_aie_pc_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_pc_plugin_npu3" : "xdp_aie_pc_plugin",
-                    register_callbacks,
-                    warning_callbacks_empty);
-}
-
-// Make connections
-void
-update_device(void* handle)
-{
-  if (update_device_cb)
-    update_device_cb(handle);
-}
-
-void
-finish_flush_device(void* handle)
-{
-  if (finish_flush_device_cb)
-    finish_flush_device_cb(handle);
-}
-
-} // end namespace xrt_core::xdp::aie_pc
-
 namespace xrt_core::xdp::pl_deadlock {
 
 std::function<void (void*)> update_device_cb;
@@ -679,8 +634,7 @@ update_device(void* handle, bool hw_context_flow)
       || xrt_core::config::get_aie_dtrace()
       || xrt_core::config::get_aie_trace()
       || xrt_core::config::get_aie_debug()
-      || xrt_core::config::get_aie_halt()
-      || xrt_core::config::get_aie_pc()) {
+      || xrt_core::config::get_aie_halt()) {
     /* All the above plugins are dependent on xdp_core library. So,
      * explicitly load it to avoid library search issue in implicit loading.
      */
@@ -730,13 +684,6 @@ update_device(void* handle, bool hw_context_flow)
 		       xrt_core::xdp::aie::debug::update_device,
 		       "Failed to load AIE Debug library. Caught exception ",
 		       "Failed to setup for AIE Debug. Caught exception ",
-		       handle);
-
-  load_once_and_update(xrt_core::config::get_aie_pc,
-		       xrt_core::xdp::aie_pc::load,
-		       xrt_core::xdp::aie_pc::update_device,
-		       "Failed to load AIE PC library. Caught exception ",
-		       "Failed to setup for AIE PC. Caught exception ",
 		       handle);
 
 #elif defined(XDP_VE2_BUILD)
@@ -906,8 +853,6 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_debug())
     xrt_core::xdp::aie::debug::end_debug(handle);
-  if (xrt_core::config::get_aie_pc())
-    xrt_core::xdp::aie_pc::finish_flush_device(handle);
 
 #elif defined(XDP_VE2_BUILD)
 

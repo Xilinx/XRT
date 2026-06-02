@@ -22,9 +22,7 @@
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_device_offload.h"
 #include "plugin/xdp/hal_profile.h"
-#include "plugin/xdp/noc_profile.h"
 #include "plugin/xdp/power_profile.h"
-#include "plugin/xdp/sc_profile.h"
 #include "plugin/xdp/vart_profile.h"
 
 #include "core/common/config_reader.h"
@@ -81,15 +79,6 @@ bool load()
   }
 
   try {
-    if (xrt_core::config::get_noc_profile())
-      xdp::noc::profile::load();
-  }
-  catch (std::exception& e) {
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                            e.what());
-  }
-
-  try {
     if (xrt_core::config::get_power_profile())
       xdp::power::profile::load();
   }
@@ -101,15 +90,6 @@ bool load()
   try {
     if (xrt_core::config::get_aie_trace())
       xdp::aie::trace::load();
-  }
-  catch (std::exception& e) {
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                            e.what());
-  }
-
-  try {
-    if (xrt_core::config::get_sc_profile())
-      xdp::sc::profile::load();
   }
   catch (std::exception& e) {
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
