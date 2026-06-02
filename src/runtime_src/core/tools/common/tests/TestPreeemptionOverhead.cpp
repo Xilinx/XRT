@@ -94,7 +94,8 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
   // Restore the original preemption state
   xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
 
-  ptree.put("status", XBU::test_token_passed);
+  if (ptree.get<std::string>("status", "") != XBU::test_token_failed)
+    ptree.put("status", XBU::test_token_passed);
 }
 
 void static
@@ -121,7 +122,8 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
   // Restore the original preemption state
   xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
 
-  ptree.put("status", XBU::test_token_passed);
+  if (ptree.get<std::string>("status", "") != XBU::test_token_failed)
+    ptree.put("status", XBU::test_token_passed);
 }
 
 TestPreemptionOverhead::TestPreemptionOverhead()
