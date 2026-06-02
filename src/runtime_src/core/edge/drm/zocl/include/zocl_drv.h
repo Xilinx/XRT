@@ -358,6 +358,7 @@ zocl_get_zdev(void)
 	return platform_get_drvdata(pdev);
 }
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
+int get_apt_index_by_addr_and_slot(struct drm_zocl_dev *zdev, phys_addr_t addr, int slot_idx);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);
 void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx);
 

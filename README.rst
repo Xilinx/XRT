@@ -1,9 +1,11 @@
-==============
-Xilinx Runtime
-==============
+..
+   comment:: SPDX-License-Identifier: Apache-2.0
+   comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+   comment:: Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
-.. image:: https://travis-ci.org/Xilinx/XRT.svg?branch=master
-    :target: https://travis-ci.org/Xilinx/XRT
+================
+FleXible RunTime
+================
 
 .. image:: https://scan.coverity.com/projects/17781/badge.svg
     :target: https://scan.coverity.com/projects/xilinx-xrt-5f9a8a18-9d52-4cb2-b2ac-2d8d1b59477f
@@ -14,11 +16,19 @@ Xilinx Runtime
    :align: center
 
 
-Xilinx Runtime (XRT) is implemented as as a combination of userspace and kernel
-driver components. XRT supports both PCIe based boards like U30, U50, U200, U250,
-U280, VCK190 and MPSoC based embedded platforms. XRT provides a standardized software
-interface to Xilinx FPGA. The key user APIs are defined in
-`xrt.h <src/runtime_src/core/include/xrt.h>`_ header file.
+FleXible RunTime (**XRT**) is implemented as a combination of user-space and kernel driver components. It provides
+an abstracted runtime software interface for AMD NPUs and AMD FPGAs, enabling seamless access across
+`AMD Ryzen™ <https://www.amd.com/en/products/processors/desktops/ryzen.html>`_ client,
+`AMD Ryzen™ Embedded <https://www.amd.com/en/products/embedded/ryzen.html>`_ ,
+`AMD Versal™ Adaptive SoCs <https://www.amd.com/en/products/adaptive-socs-and-fpgas/versal.html>`_ ,
+`AMD Alveo™ Adaptable Accelerator Cards <https://www.amd.com/en/products/accelerators/alveo.html>`_ , and
+`AMD Zynq™ UltraScale+™ MPSoCs <https://www.amd.com/en/products/adaptive-socs-and-fpgas/soc/zynq-ultrascale-plus-mpsoc.html>`_ .
+XRT runs on both Linux and Windows, hosted on *x86_64* or *aarch64* host CPU architectures. XRT uses Linux
+*accel* driver model on Linux and
+Windows *MCDM* driver model on Windows. XRT ships with a command line tool,
+``xrt-smi``, which may be used to examine, configure and validate NPU and FPGA devices.
+
+`XRT API header files <https://github.com/Xilinx/XRT/tree/master/src/runtime_src/core/include/xrt>`_
 
 -------------------------------------------------------------------------------
 
@@ -30,10 +40,6 @@ interface to Xilinx FPGA. The key user APIs are defined in
 
 -------------------------------------------------------------------------------
 
-`Test Instructions <https://xilinx.github.io/XRT/master/html/test.html>`_
-
--------------------------------------------------------------------------------
-
-Comprehensive documentation on `xilinx.github.io/XRT <https://xilinx.github.io/XRT>`_
+`Documentation xilinx.github.io/XRT <https://xilinx.github.io/XRT>`_
 
 -------------------------------------------------------------------------------

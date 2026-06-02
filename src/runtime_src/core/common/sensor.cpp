@@ -242,7 +242,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
     ptree_type pt;
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
-    pt.put("temp_C", tmp.input);
+    pt.put("temp_C", xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 2));
     pt.put("is_present", "true");
     thermal_array.push_back({"", pt});
   }

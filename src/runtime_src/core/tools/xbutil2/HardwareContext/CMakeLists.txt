@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+
+file(GLOB HARDWARE_CONTEXT_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+)
+
+list(APPEND XBUTIL_V2_SUBCMD_FILES ${HARDWARE_CONTEXT_FILES})
+set(XBUTIL_V2_SUBCMD_FILES ${XBUTIL_V2_SUBCMD_FILES} PARENT_SCOPE)

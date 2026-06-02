@@ -31,14 +31,13 @@ namespace xrt_core {
 
 class TestRunner : public JSONConfigurable {
   public:
-    virtual boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) = 0;
-    
-    // Overloaded version with archive support for individual test implementations
-    // We'll remove the default run implementation once all tests overload this version
-    virtual boost::property_tree::ptree 
-    run(const std::shared_ptr<xrt_core::device>& dev, 
+    // Default forwards to archive overload; legacy tests override only run(dev).
+    virtual boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>& dev);
+
+    // Archive-aware entry point used by validate; archive-only tests override this.
+    virtual boost::property_tree::ptree
+    run(const std::shared_ptr<xrt_core::device>& dev,
         const xrt_core::archive* /*archive*/) {
-      // Default implementation ignores archive and calls original run method
       return run(dev);
     }
     

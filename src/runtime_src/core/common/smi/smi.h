@@ -3,8 +3,8 @@
 
 #pragma once
 // Local include files
-#include "config.h"
-#include "query_requests.h"
+#include "core/common/config.h"
+#include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -116,6 +116,18 @@ public:
   boost::property_tree::ptree 
   construct_subcommand_json() const;
 
+  const std::string&
+  get_name() const
+  { return m_name; }
+
+  const std::string&
+  get_description() const
+  { return m_description; }
+
+  const std::string&
+  get_type() const
+  { return m_type; }
+
   subcommand(std::string name, 
              std::string description, 
              std::string type, 
@@ -153,6 +165,17 @@ public:
   tuple_vector
   get_option_options(const std::string& subcommand) const;
 
+  bool
+  empty() const
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_subcommands.empty();
+  }
+
+  XRT_CORE_COMMON_EXPORT
+  tuple_vector
+  get_subcommands_list() const;
+
 };
 
 // class config_generator
@@ -182,7 +205,7 @@ public:
   // This subcommand is used for device and host configuration.
   // Derived classes must implement this method to define hardware-specific configuration logic.
   virtual subcommand 
-  create_configure_subcommand() = 0; 
+  create_configure_subcommand() = 0;
 };
 
 // class smi_hardware_config
@@ -202,6 +225,8 @@ public:
     npu3_f1, // XXXXX
     npu3_f2, // XXXXX
     npu3_f3, // XXXXX
+    npu3_f4, // XXXXX
+    npu3_f5, // XXXXX
     npu3_B01, // XXXXX
     npu3_B02, // XXXXX
     npu3_B03, // XXXXX
@@ -243,5 +268,10 @@ get_list(const std::string& subcommand, const std::string& suboption);
 XRT_CORE_COMMON_EXPORT
 tuple_vector
 get_option_options(const std::string& subcommand);
+
+// Top-level xrt-smi subcommand names (and metadata) for the current smi singleton state.
+XRT_CORE_COMMON_EXPORT
+tuple_vector
+get_subcommands_list();
 
 } // namespace xrt_core::smi

@@ -332,6 +332,7 @@ enum class key_type
   firmware_log_state,
   firmware_log_config,
   archive_path,
+  hardware_context_reset,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -604,6 +605,7 @@ struct xrt_smi_lists : request
     validate_tests,
     examine_reports,
     configure_option_options,
+    subcommands,
   };
   using result_type = std::vector<std::tuple<std::string, std::string, std::string>>;
   static const key_type key = key_type::xrt_smi_lists;
@@ -1817,6 +1819,8 @@ struct aie_partition_info : request
     uint64_t    command_completions = 0;
     uint64_t    migrations = 0;
     uint64_t    preemptions = 0;
+    uint64_t    preemption_frame_event = 0;
+    uint64_t    preemption_layer_event = 0;
     uint64_t    errors = 0;
     uint64_t    pasid = 0;
     qos_info    qos {};
@@ -4110,10 +4114,21 @@ struct archive_path : request
   get(const device*) const override = 0;
 };
 
+/* Enable (1) or disable (0) hardware-context reset policy (shim ioctl; KMD optional). */
+struct hardware_context_reset : request
+{
+  using value_type = uint32_t;
+
+  static const key_type key = key_type::hardware_context_reset;
+
+  void
+  put(const device*, const std::any&) const override = 0;
+};
+
 /*
  * this request force enables or disables frame boundary pre-emption globally
  * 1: enable; 0: disable
-*/
+ */
 struct frame_boundary_preemption : request
 {
   using result_type = uint32_t;  // get value type

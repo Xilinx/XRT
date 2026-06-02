@@ -332,6 +332,8 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 	if (slot->ip) {
 		for (i = 0; i < slot->ip->m_count; ++i) {
 			ip = &slot->ip->m_ip_data[i];
+			if (ip->m_base_address == EMPTY_APT_VALUE)
+				continue;
 			apt_idx = get_next_free_apt_index(zdev);
 			if (apt_idx < 0) {
 				DRM_ERROR("No more free apertures\n");

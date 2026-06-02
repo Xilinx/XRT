@@ -8,7 +8,7 @@
 #include "tools/common/SubCmd.h"
 #include "tools/common/Report.h"
 #include "tools/common/OptionOptions.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>

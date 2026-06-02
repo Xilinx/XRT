@@ -13,7 +13,7 @@
 #include "common/message.h"
 #include "common/system.h"
 #include "common/sysinfo.h"
-#include "common/smi.h"
+#include "common/smi/smi.h"
 #include "common/module_loader.h"
 #include "xrt/detail/version-slim.h"
 
@@ -24,10 +24,12 @@
 #include <boost/tokenizer.hpp>
 
 // System - Include Files
+#include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <regex>
-#include <filesystem>
+#include <stdexcept>
 
 
 #ifdef _WIN32
@@ -88,6 +90,43 @@ XBUtilities::Timer::format_time(std::chrono::duration<double> duration)
 
 
 boost::property_tree::ptree
+XBUtilities::get_available_bdfs(bool inUserDomain)
+{
+  // Minimal listing for BDF selection and str_available_devs.
+  xrt_core::device_collection deviceCollection;
+  collect_devices(std::set<std::string> {"_all_"}, inUserDomain, deviceCollection);
+  boost::property_tree::ptree pt;
+  for (const auto & device : deviceCollection) {
+    boost::property_tree::ptree pt_dev;
+    pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
+
+    const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+    pt_dev.put("device_class", xrt_core::query::device_class::enum_to_str(device_class));
+
+    const auto is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device, false);
+
+    if (is_mfg) {
+      auto mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(device);
+      std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN_"+ std::to_string(mGoldenVer);
+      pt_dev.put("vbnv", vbnv);
+    }
+    else {
+      switch (device_class) {
+      case xrt_core::query::device_class::type::alveo:
+        pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        break;
+      case xrt_core::query::device_class::type::ryzen:
+        pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        break;
+      }
+    }
+
+    pt.push_back(std::make_pair("", pt_dev));
+  }
+  return pt;
+}
+
+boost::property_tree::ptree
 XBUtilities::get_available_devices(bool inUserDomain)
 {
   xrt_core::device_collection deviceCollection;
@@ -120,7 +159,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
         break;
       }
-      
+
       if (device_class == xrt_core::query::device_class::type::ryzen) {
         try { // Ryzen/NPU: derive UUID from PCIe BDF
           pt_dev.put("id", xrt_core::query::pcie_bdf::to_uuid(
@@ -196,6 +235,8 @@ XBUtilities::get_available_devices(bool inUserDomain)
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f4:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f5:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
@@ -230,13 +271,73 @@ XBUtilities::get_available_devices(bool inUserDomain)
   return pt;
 }
 
+void
+XBUtilities::resolve_device(bool is_user_domain,
+                            const boost::program_options::variables_map& vm,
+                            std::string& device_bdf)
+{
+  const auto& device_var = vm["device"];
+  if (device_var.defaulted()) {
+    if (boost::iequals(device_bdf, "default")) {
+      device_bdf.clear();
+      boost::property_tree::ptree available_devices = get_available_bdfs(is_user_domain);
+      if (available_devices.empty())
+        throw std::runtime_error("No devices found.");
+      if (available_devices.size() > 1) {
+        std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
+        std::cerr << str_available_devs(is_user_domain) << std::endl;
+        std::cout << std::endl;
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
+      const auto kd = available_devices.begin();
+      device_bdf = kd->second.get<std::string>("bdf");
+    }
+  }
+  else if (device_bdf.empty() || boost::iequals(device_bdf, "default")) {
+    std::cerr << "\nERROR: Option --device (-d) requires a BDF.\n";
+    std::cerr << str_available_devs(is_user_domain) << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
+std::vector<std::shared_ptr<SubCmd>>
+XBUtilities::filter_subcmds(bool is_user_domain,
+                            const std::string& device_bdf,
+                            const std::vector<std::shared_ptr<SubCmd>>& all_subcmds)
+{
+  if (!is_user_domain || device_bdf.empty())
+    return {};
+
+  try {
+    auto device = get_device(boost::algorithm::to_lower_copy(device_bdf), is_user_domain);
+    const auto rows = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(
+      device, xrt_core::query::xrt_smi_lists::type::subcommands);
+
+    std::vector<std::shared_ptr<SubCmd>> out;
+    for (const auto& cmd : all_subcmds) {
+      const std::string& name = cmd->getName();
+      for (const auto& row : rows) {
+        const std::string& n = std::get<0>(row);
+        if (!n.empty() && n == name) {
+          out.emplace_back(cmd);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+  catch (const std::exception&) {
+    return {};
+  }
+}
+
 std::string
 XBUtilities::str_available_devs(bool _inUserDomain)
 {
   //gather available devices for user to pick from
   std::stringstream available_devs;
   available_devs << "\n Available devices:\n";
-  boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(_inUserDomain);
+  boost::property_tree::ptree available_devices = XBUtilities::get_available_bdfs(_inUserDomain);
   for (auto& kd : available_devices) {
     boost::property_tree::ptree& dev = kd.second;
     if (boost::iequals(dev.get<std::string>("device_class"), xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::alveo)))
@@ -939,6 +1040,8 @@ is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f4:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f5:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
     case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:

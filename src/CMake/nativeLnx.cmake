@@ -12,6 +12,10 @@
 # --- PkgConfig ---
 INCLUDE (FindPkgConfig)
 
+# By default DKMS is enabled, but can be disabled at
+# configuation time with -DXRT_ENABLE_DKMS=OFF
+option(XRT_ENABLE_DKMS "Enable DKMS by default" ON)
+
 # --- DRM ---
 pkg_check_modules(DRM REQUIRED libdrm)
 IF(DRM_FOUND)
@@ -154,7 +158,7 @@ if (NOT XRT_UPSTREAM)
    include (CMake/cpackLin.cmake)
 endif() 
 
-if (XRT_ALVEO)
+if (XRT_ALVEO AND XRT_ENABLE_DKMS)
   message("-- XRT Alveo drivers will be bundled with the XRT package")
   set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
   include (CMake/dkms.cmake)

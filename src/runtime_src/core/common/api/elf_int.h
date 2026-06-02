@@ -243,6 +243,7 @@ protected:
   // NOLINTBEGIN
   ELFIO::elfio m_elfio;
   xrt::elf::platform m_platform;
+  std::string m_path; // file path from which elf was loaded, empty if loaded from stream/buffer
 
   /* Parsed ELF data structures */
   // lookup map for section index to group index
@@ -287,10 +288,15 @@ protected:
   static constexpr uint32_t addend_shift = 4;
   static constexpr uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
   static constexpr uint32_t schema_mask = ~addend_mask;
+
   // NOLINTEND
 
-  // Protected constructor - takes already-loaded ELFIO and platform
-  elf_impl(ELFIO::elfio&& elfio, elf::platform platform);
+  // elf_impl() - constructor
+  // 
+  // @elfio:  In memory ELFIO object
+  // @platform: ?
+  // @path: file path if ELFIO was loaded from from a file, empty otherwise
+  elf_impl(ELFIO::elfio&& elfio, elf::platform platform, std::string path);
 
   // Parse sections in the ELF and populate internal maps
   void
@@ -358,6 +364,13 @@ public:
   get_elfio() const
   {
     return m_elfio;
+  }
+
+  // Get the filename this ELF was loaded from (empty if loaded from buffer/stream)
+  const std::string&
+  get_filename() const
+  {
+    return m_path;
   }
 
   // Get configuration UUID from ELF
@@ -467,6 +480,11 @@ static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
 std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
 get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name);
+
+// get_filename() - Return the filename this ELF was loaded from
+// Empty string if ELF was loaded from buffer/stream
+std::string
+get_filename(const xrt::elf_impl* elf_impl);
 
 } // namespace xrt_core::elf_int
 

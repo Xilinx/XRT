@@ -7,6 +7,8 @@
 
 #include "xrt/detail/version-git.h"
 
+#include <cstdlib>
+
 namespace xrt_core::sysinfo {
 
 void
@@ -45,6 +47,9 @@ get_os_info()
 bool
 is_advanced()
 {
+  if (std::getenv("XRTSMIAdvanced") != nullptr) // NOLINT(concurrency-mt-unsafe)
+    return true;
+
   return xrt_core::sysinfo::detail::is_advanced();
 }
 

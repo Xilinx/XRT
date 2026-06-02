@@ -32,7 +32,7 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
+SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("advanced", 
              "Low level command operations"),
       m_device("")
@@ -48,8 +48,6 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
-
-  m_commandConfig = configurations;
 
   addSubOption(std::make_shared<OO_MemRead>("read-mem"));
   addSubOption(std::make_shared<OO_MemWrite>("write-mem"));

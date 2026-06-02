@@ -7,6 +7,8 @@
 #include "config_reader.h"
 #include "utils.h"
 
+#include "detail/syslog.h"  // for syslog_dispatch
+
 #include "xrt/detail/version-git.h"
 
 #include <algorithm>
@@ -19,13 +21,9 @@
 #include <mutex>
 #include <thread>
 #ifdef __linux__
-# include <syslog.h>
 # include <linux/limits.h>
 # include <sys/stat.h>
 # include <sys/types.h>
-#endif
-#ifdef _WIN32
-# include <winsock.h>
 #endif
 
 namespace {
@@ -54,17 +52,7 @@ get_exe_path()
 
 
 using severity_level = xrt_core::message::severity_level;
-
-//--
-class message_dispatch
-{
-public:
-  message_dispatch() {}
-  virtual ~message_dispatch() {}
-  static message_dispatch* make_dispatcher(const std::string& choice);
-public:
-  virtual void send(severity_level l, const char* tag, const char* msg) = 0;
-};
+using message_dispatch = xrt_core::message::message_dispatch;
 
 //--
 class null_dispatch : public message_dispatch
@@ -82,6 +70,7 @@ public:
   console_dispatch();
   virtual ~console_dispatch() {}
   virtual void send(severity_level l, const char* tag, const char* msg) override;
+
 private:
   std::map<severity_level, const char*> severityMap = {
     { severity_level::emergency, "EMERGENCY: "},
@@ -94,34 +83,6 @@ private:
     { severity_level::debug,     "DEBUG: "}
   };
 };
-
-//--
-#ifndef _WIN32
-class syslog_dispatch : public message_dispatch
-{
-public:
-  syslog_dispatch()
-  { openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER); }
-
-  virtual ~syslog_dispatch()
-  { closelog(); }
-
-  virtual void send(severity_level l, const char* tag, const char* msg) override
-  { syslog(severityMap[l], "%s", msg); }
-
-private:
-  std::map<severity_level, int> severityMap = {
-    { severity_level::emergency, LOG_EMERG},
-    { severity_level::alert,     LOG_ALERT},
-    { severity_level::critical,  LOG_CRIT},
-    { severity_level::error,     LOG_ERR},
-    { severity_level::warning,   LOG_WARNING},
-    { severity_level::notice,    LOG_NOTICE},
-    { severity_level::info,      LOG_INFO},
-    { severity_level::debug,     LOG_DEBUG}
-  };
-};
-#endif
 
 //--
 class file_dispatch : public message_dispatch
@@ -144,34 +105,6 @@ private:
     { severity_level::debug,     "DEBUG: "}
   };
 };
-
-//-------
-message_dispatch*
-message_dispatch::
-make_dispatcher(const std::string& choice)
-{
-  if( (choice == "null") || (choice == ""))
-    return new null_dispatch;
-  else if(choice == "console")
-    return new console_dispatch;
-  else if(choice == "syslog") {
-#ifndef _WIN32
-    return new syslog_dispatch;
-#else
-    throw std::runtime_error("syslog not supported on windows");
-#endif
-  }
-  else {
-    if(choice.front() == '"') {
-      std::string file = choice;
-      file.erase(0, 1);
-      file.erase(file.size()-1);
-      return new file_dispatch(file);
-    }
-    else
-      return new file_dispatch(choice);
-  }
-}
 
 //file ops
 file_dispatch::
@@ -233,6 +166,25 @@ send(severity_level l, const char* tag, const char* msg)
 
 namespace xrt_core { namespace message {
 
+std::unique_ptr<message_dispatch>
+message_dispatch::
+make_dispatcher(const std::string& choice)
+{
+  if ((choice == "null") || (choice == ""))
+    return std::make_unique<null_dispatch>();
+  if (choice == "console")
+    return std::make_unique<console_dispatch>();
+  if (choice == "syslog")
+    return std::make_unique<syslog_dispatch>();
+
+  std::string file = choice;
+  if (file.front() == '"') {
+    file.erase(0, 1);
+    file.erase(file.size()-1);
+  }
+  return std::make_unique<file_dispatch>(file);
+}
+
 void
 send(severity_level l, const char* tag, const char* msg)
 {
@@ -241,7 +193,7 @@ send(severity_level l, const char* tag, const char* msg)
   int lev = static_cast<int>(l);
 
   if(ver >= lev) {
-    static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
+    static auto dispatcher = message_dispatch::make_dispatcher(logger);
     dispatcher->send(l, tag, msg);
   }
 }

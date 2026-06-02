@@ -7,22 +7,12 @@
 XRT Installation
 ----------------
 
-Install XRT Pre-requests on Deployment Server
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install XRT Prerequisites on Deployment Server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT requires EPEL to install dependencies during installation process. Please use the folloing steps to install EPEL on your system if it hasn't been installed. 
+XRT requires EPEL to install dependencies during installation process. Please use the following steps to install EPEL on your system if it hasn't been installed.
 
 .. Warning:: If it's on the XRT build server, EPEL should have been installed by ``xrtdeps.sh``. This step can be skipped.
-
-Steps for RHEL 7.x::
-
-	sudo yum-config-manager --enable rhel-7-server-optional-rpms
-	sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-
-Steps for RHEL 8.x::
-
-	sudo subscription-manager repos --enable "codeready-builder-for-rhel-8-x86_64-rpms"
-	sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 
 Steps for RHEL 9.x::
 
@@ -33,22 +23,6 @@ Steps for RHEL 10.x::
 
         sudo subscription-manager repos --enable "codeready-builder-for-rhel-10-x86_64-rpms"
         sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
-
-Steps for CENTOS 7.x::
-
-	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-
-Steps for CENTOS 8.x::
-
-	yum config-manager --set-enabled PowerTools
-	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	yum config-manager --set-enabled AppStream
-
-Steps for AlmaLinux 8.x/Rocky 8.x::
-
-        sudo dnf config-manager --set-enabled powertools
-        sudo dnf config-manager --set-enabled appstream
-        sudo dnf install epel-release
 
 Steps for AlmaLinux 9.x/Rocky 9.x::
 
@@ -81,6 +55,13 @@ Steps to reinstall XRT on RHEL/CentOS::
 Steps to reinstall XRT on Ubuntu::
 
     sudo apt install --reinstall ./xrt_<version>.deb
+
+Starting with 2026.1 XRT comes with separate *deployment* and *development* packages. The deployment package is sufficient to execute a precompiled XRT application. However, the development package is required to compile an XRT application. The development package includes XRT header files, CMake package files for discovery by CMake based application build environments, and XRT dynamic/static libraries for linking.
+
+.. note::
+
+   .deb style XRT development packages have a *-dev* suffix in the package name. .rpm style XRT development packages have a *-devl* suffix in the package name.
+
 
 .. Warning::
 

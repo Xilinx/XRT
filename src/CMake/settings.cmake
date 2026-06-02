@@ -14,6 +14,16 @@ message("-- CMake version: ${CMAKE_VERSION}")
 message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 
+# Move to options.cmake
+# Option to enable/disable adding static libraries to xrt-target.cmake
+option(XRT_INSTALL_STATIC_LIBRARY "Enable CMake static library targets" ON)
+if (XRT_YOCTO)
+  set(XRT_INSTALL_STATIC_LIBRARY OFF)
+endif()
+
+# Option to enable/disable emulation libraries
+option(XRT_ENABLE_EMULATION "Enable Alveo emulation" ON)
+
 # Indicate that we are building XRT
 add_compile_definitions("XRT_BUILD")
 
@@ -59,10 +69,12 @@ endif (NOT CMAKE_BUILD_TYPE)
 # --- version settings ---
 # XRT-2.21 is branched at 2.21
 # vai-6.1 branched at 2.22
-# Version adjusted to 2.23 for 2026.1
-set(XRT_VERSION_RELEASE 202610)
+# 2026.1 is 2.23
+# vai_6.2 is 2.24
+# Version adjusted to 2.25 for 2026.2
+set(XRT_VERSION_RELEASE 202620)
 set(XRT_VERSION_MAJOR 2)
-set(XRT_VERSION_MINOR 23)
+set(XRT_VERSION_MINOR 25)
 
 # Upstream builds cannot set XRT_VERSION_PATCH directory as it is
 # reset by project(xrt).  Instead upstream builds sets

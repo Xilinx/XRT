@@ -6,7 +6,7 @@
 // Local - Include Files
 #include "core/common/system.h"
 #include "core/common/sysinfo.h"
-#include "core/common/smi.h"
+#include "core/common/query_requests.h"
 #include "SmiDefault.h"
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
@@ -21,6 +21,8 @@ namespace XBU = XBUtilities;
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include <sstream>
+
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -31,8 +33,7 @@ namespace po = boost::program_options;
 void  main_(int argc, char** argv, 
             const std::string & _executable,
             const std::string & _description,
-            const SubCmdsCollection &_subCmds,
-            const boost::property_tree::ptree& configurations) 
+            const SubCmdsCollection &_subCmds) 
 {
   bool isUserDomain = boost::iequals(_executable, "xrt-smi"); 
 
@@ -41,6 +42,7 @@ void  main_(int argc, char** argv,
   bool bTrace = false;
   bool bHelp = false;
   bool bBatchMode = false;
+  bool bShowHidden = false;
   bool bAdvance = false;
   bool bForce = false;
   bool bVersion = false;
@@ -66,14 +68,15 @@ void  main_(int argc, char** argv,
   const std::string device_default = xrt_core::get_total_devices(isUserDomain).first == 1 ? "default" : "";
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
-    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
+    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "Specify a BDF. If the option is omitted and there is only 1 device, that device is used\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
+    ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
   if (xrt_core::sysinfo::is_advanced()) {
-    hiddenOptions.add_options()
-      ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
+    globalOptions.add_options()
+      ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows advanced options and commands")
     ;
   }
 
@@ -85,12 +88,16 @@ void  main_(int argc, char** argv,
   po::positional_options_description positionalCommand;
   positionalCommand.add("subCmd", 1 /* max_count */);
 
-  // Parse the command line arguments
+  SubCmdsCollection parsedSubCmds = _subCmds;
   po::variables_map vm;
   po::command_line_parser parser(argc, argv);
   SubCmd::SubCmdOptions subcmd_options;
   try {
     subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+    XBU::resolve_device(isUserDomain, vm, sDevice);
+    const auto filtered = XBU::filter_subcmds(isUserDomain, sDevice, _subCmds);
+    if (!filtered.empty())
+      parsedSubCmds = filtered;
     if (sCmd.empty() && !subcmd_options.empty())
     {
       std::string error_str;
@@ -101,7 +108,7 @@ void  main_(int argc, char** argv,
     }
   } catch (po::error& ex) {
     std::cerr << ex.what() << std::endl;
-    XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
+    XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, parsedSubCmds);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -117,55 +124,9 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
+  XBU::setShowHidden( bShowHidden );
   XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
-
-  // Was default device requested?
-  if (boost::iequals(sDevice, "default")) {
-    sDevice.clear();
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
-
-    // DRC: Are there any devices
-    if (available_devices.empty()) 
-      throw std::runtime_error("No devices found.");
-
-    // DRC: Are there multiple devices, if so then no default device can be found.
-    if (available_devices.size() > 1) {
-      std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
-      std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
-
-      std::cout << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-
-    // We have only 1 item in the array, get it
-    for (const auto &kd : available_devices) 
-      sDevice = kd.second.get<std::string>("bdf"); // Exit after the first item
-
-  }
-
-  // If there is a device value, parse for valid subcommands for this device.
-  SubCmdsCollection devSubCmds;
-  if (!sDevice.empty()) {
-    std::string deviceClass;
-    try {
-      deviceClass = XBU::get_device_class(sDevice, isUserDomain); //can throw
-    } catch (const std::runtime_error& e) {
-      // Catch only the exceptions that we have generated earlier
-      std::cerr << boost::format("ERROR: %s\n") % e.what();
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-    const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
-    for (auto & subCmdEntry : _subCmds) {
-      auto it = configs.find(subCmdEntry->getName());
-      for (const auto& [device_name, device_config] : it->second) {
-        if (device_name.compare(deviceClass) == 0)
-          devSubCmds.emplace_back(subCmdEntry);
-      }
-    }
-  }
-
-  const SubCmdsCollection parsedSubCmds = sDevice.empty() ? _subCmds : devSubCmds;
 
   // Search for the subcommand (case sensitive)
   std::shared_ptr<SubCmd> subCommand;
@@ -208,7 +169,7 @@ void  main_(int argc, char** argv,
     boost::property_tree::ptree configTreeMain;
     std::string config;
 
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
+    boost::property_tree::ptree available_devices = XBU::get_available_bdfs(isUserDomain);
 
     if (available_devices.empty()) //no device
       config = xrt_smi_default::get_default_smi_config();

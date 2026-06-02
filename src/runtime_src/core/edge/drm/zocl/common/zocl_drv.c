@@ -415,6 +415,31 @@ int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr)
 }
 
 /**
+ * Get the aperture index matching both a physical address and slot index.
+ * Used when multiple slots may contain IPs at the same address.
+ *
+ * @param	zdev:     zocl device struct
+ * @param	addr:     physical address of the aperture
+ * @param	slot_idx: slot index to match
+ *
+ * Returns the index if aperture was found, -EINVAL if not found.
+ */
+int get_apt_index_by_addr_and_slot(struct drm_zocl_dev *zdev,
+				   phys_addr_t addr, int slot_idx)
+{
+	struct addr_aperture *apts = zdev->cu_subdev.apertures;
+	int i;
+
+	mutex_lock(&zdev->cu_subdev.lock);
+	for (i = 0; i < zdev->cu_subdev.num_apts; ++i)
+		if (apts[i].addr == addr && apts[i].slot_idx == slot_idx)
+			break;
+	mutex_unlock(&zdev->cu_subdev.lock);
+
+	return (i == zdev->cu_subdev.num_apts) ? -EINVAL : i;
+}
+
+/**
  * Get the index of the geiven phys address,
  *		   if it is the start of an aperture
  *

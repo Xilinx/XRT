@@ -201,6 +201,156 @@ cmd_state_to_string(ert_cmd_state state)
     : itr->second;
 }
 
+static std::string
+ctx_status_to_string(uint32_t ctx_status)
+{
+  static constexpr std::array<const char*, 6> ctx_status_names {{
+    "CTX_STATUS_UNASSIGNED",
+    "CTX_STATUS_ERROR",
+    "CTX_STATUS_IDLE",
+    "CTX_STATUS_RUNNABLE",
+    "CTX_STATUS_RUNNING",
+    "CTX_STATUS_PREEMPTING",
+  }};
+
+  if (ctx_status >= ctx_status_names.size())
+    return "UNKNOWN";
+  return ctx_status_names[ctx_status];
+}
+
+static std::string
+uc_fwstate_to_string(uint32_t fw_status)
+{
+  static const std::map<uint32_t, const char*> fw_state_string {
+    {0x1001, "FW_STATE_LEADER_HOST_QUEUE_POP"},
+    {0x1002, "FW_STATE_LEADER_DISTRIBUTE_WORK"},
+    {0x1003, "FW_STATE_LEADER_POST_DIST_BARRIER"},
+    {0x1004, "FW_STATE_LEADER_POST_WORK_BARRIER"},
+    {0x1005, "FW_STATE_LEADER_RUN"},
+    {0x1006, "FW_STATE_LEADER_HOST_QUEUE_FINISH"},
+    {0x2001, "FW_STATE_WORKER_PRE_WORK_BARRIER"},
+    {0x2002, "FW_STATE_WORKER_POST_WORK_BARRIER"},
+    {0x2003, "FW_STATE_WORKER_RUN"},
+    {0x0FFE, "FW_STATE_HANDSHAKE"},
+    {0x0001, "FW_STATE_INIT_BARRIER"},
+    {0x0002, "FW_STATE_CONFIGURE_PARTITION"},
+    {0x0003, "FW_STATE_HSA_CONFIG"},
+    {0x0004, "FW_STATE_EXEC_PAGEIN"},
+    {0x0005, "FW_STATE_EXEC_INITIAL_PASS"},
+    {0x0006, "FW_STATE_EXEC_EVENTLOOP"},
+    {0x0007, "FW_STATE_OOO_OPCODE"},
+    {0x0008, "FW_STATE_OOO_PREFETCH"},
+    {0x0009, "FW_STATE_EMPTY_PAGE"},
+    {0x000A, "FW_STATE_WAKENUP_AFTER_PREEMPT"},
+    {0x000B, "FW_STATE_EXEC_PAGE"},
+    {0x000C, "FW_STATE_CHECK_NEWPAGE"},
+    {0x000D, "FW_STATE_RUN_TASK_COMPLETION"},
+    {0x000E, "FW_STATE_PREFETCH_IN_ORDER"},
+    {0x000F, "FW_STATE_RELOAD_OOO"},
+    {0x0010, "FW_STATE_RUN_SAVE"},
+    {0x0011, "FW_STATE_RELOAD_CORE"},
+    {0x0012, "FW_STATE_NO_PAGE"},
+    {0x0013, "FW_STATE_PREFETCH_OOO"},
+    {0x0014, "FW_STATE_WAIT_PAGE_LOAD"},
+    {0x0015, "FW_STATE_INVALID_PKT"},
+    {0x0016, "FW_STATE_ASYNC_DM2MM_HANG"},
+    {0x0017, "FW_STATE_SYNC_DM2MM_HANG"},
+    {0x0018, "FW_STATE_ASYNC_MM2DM_HANG"},
+    {0x0019, "FW_STATE_CTRL_CODE_HANG"},
+    {0x001A, "FW_STATE_FW_EXCEPTION"},
+    {0x001B, "FW_STATE_BARRIER_HANG"},
+    {0x001C, "FW_STATE_HW_UNCORRECTABLE_ERROR"},
+    {0x001D, "FW_STATE_HW_CORRECTABLE_ERROR"},
+    {0x001E, "FW_STATE_AXI_ERROR"},
+    {0x001F, "FW_STATE_ATOMIC_DM2MM_HANG"},
+    {0x0020, "FW_STATE_HSA_CRITICAL_ERROR"},
+    {0x0021, "FW_STATE_WAKENUP_AFTER_SWITCH_REQ"},
+    {0x0022, "FW_STATE_SYNC_MM2DM_HANG"},
+    {0x0FFF, "FW_STATE_EXIT"},
+  };
+
+  auto itr = fw_state_string.find(fw_status);
+  return itr == fw_state_string.end()
+    ? "UNKNOWN"
+    : itr->second;
+}
+static std::string
+ctx_error_type_to_string(uint32_t ctx_error_type)
+{
+  static constexpr std::array<const char*, 7> ctx_error_type_names {{
+    "NPU_ASYNC_EVENT_CTX_ERR_HWSCH_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_STOP_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_AIE_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_PREEMPTION_TIMEOUT",
+    "NPU_ASYNC_EVENT_CTX_ERR_NEW_PROCESS_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_UC_CRITICAL_ERROR",
+    "NPU_ASYNC_EVENT_CTX_ERR_UC_COMPLETION_TIMEOUT",
+  }};
+
+  if (ctx_error_type >= ctx_error_type_names.size())
+    return "UNKNOWN";
+
+  return ctx_error_type_names[ctx_error_type];
+}
+
+template <size_t N>
+static std::string
+flags_to_string(uint32_t value, const std::array<std::pair<uint32_t, const char*>, N>& flags)
+{
+  if (value == 0)
+    return "NONE";
+
+  std::string result;
+  uint32_t unknown = value;
+  for (const auto& entry : flags) {
+    if (!(value & entry.first))
+      continue;
+
+    if (!result.empty())
+      result += " | ";
+
+    result += entry.second;
+    unknown &= ~entry.first;
+  }
+  if (unknown != 0) {
+    if (!result.empty())
+      result += " | ";
+
+    result += (boost::format("UNKNOWN(0x%x)") % unknown).str();
+  }
+  return result;
+}
+
+// misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
+static std::string
+uc_misc_status_flags_to_string(uint32_t misc_status)
+{
+  static constexpr std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
+    {0x1U,  "FW_EXCEPTION"},
+    {0x2U,  "CTRL_HANG"},
+    {0x4U,  "ASYNC_DM2MM_HANG"},
+    {0x8U,  "ASYNC_MM2DM_HANG"},
+    {0x10U, "SYNC_DM2MM_HANG"},
+    {0x20U, "SYNC_MM2DM_HANG"},
+    {0x40U, "MISC_UNRECOVERABLE_ERROR"},
+  }};
+
+  return flags_to_string(misc_status, misc_status_flags);
+}
+
+// uc_idle_status is a bit mask (ert_uc_health_info / hsa_lite_status).
+std::string
+uc_idle_status_flags_to_string(uint32_t idle_status)
+{
+  static constexpr std::array<std::pair<uint32_t, const char*>, 3> idle_status_flags {{
+    {0x1U, "HSA_QUEUE_NOT_EMPTY"},
+    {0x2U, "PREEMPTION_SAVE_COMPLETE"},
+    {0x4U, "CERT_IS_IDLE"},
+  }};
+
+  return flags_to_string(idle_status, idle_status_flags);
+}
+
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
 // the kernel argument as provided by user and its size in number of
@@ -1402,6 +1552,7 @@ public:
 
 private:
   std::string name;                           // kernel name
+  std::string m_full_name;                    // full "kernel:instance" string, empty if no instance
   std::shared_ptr<device_type> device;        // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
   xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
@@ -1755,6 +1906,7 @@ public:
   // construction and shared ownership must be tied to the kernel_impl
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
+    , m_full_name(nm)                                          // full name as passed (with or without ':')
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
@@ -1811,6 +1963,7 @@ public:
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
+    , m_full_name(nm)                                                   // full name as passed (with or without ':')
     , device(std::move(dev))                                            // share ownership
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
@@ -1894,6 +2047,12 @@ public:
   get_name() const
   {
     return name;
+  }
+
+  std::string
+  get_full_name() const
+  {
+    return m_full_name;
   }
 
   uint32_t
@@ -2290,8 +2449,10 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   xrt::bo
   validate_bo_at_index(size_t index, const xrt::bo& bo)
   {
-    // ELF flow doesn't have arg connectivity, so skip validation
-    if (!kernel->get_xclbin())
+    // ELF flow doesn't have arg connectivity, so skip validation.
+    // Imported BOs have fixed physical backing from another device
+    // and bank re-mapping is not applicable.
+    if (!kernel->get_xclbin() || xrt_core::bo::is_imported(bo))
       return bo;
 
     // Check if connectivity validation should be skipped via INI option
@@ -2394,8 +2555,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
-
-  const runlist_impl* m_runlist = nullptr;// runlist that owns this run (optional)
+  std::atomic<uint64_t> m_runlist_counter{0}; // number of runlists containing this run
   std::mutex m_mutex;                     // mutex synchronization
   // Run-level dtrace ct file: stored so clone inherits it
   std::string m_dtrace_control_file;
@@ -2424,6 +2584,7 @@ public:
   void
   set_dtrace_control_file(const std::string& path)
   {
+    XRT_TRACE_POINT_SCOPE(xrt_run_set_dtrace_control_file);
     std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_module) {
       throw xrt_core::error(
@@ -2437,12 +2598,13 @@ public:
           "Cannot set dtrace control file: run has already been started and is "
           "still in progress");
 
+    xrt_core::module_int::set_dtrace_control_file(m_module, path);
+    if (m_dpu_payload)
+      xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
+
+    // Store only after module and command payload are updated
+    // clone inherits this
     m_dtrace_control_file = path;
-    if (m_module) {
-      xrt_core::module_int::set_dtrace_control_file(m_module, path);
-      if (m_dpu_payload)
-        xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
-    }
   }
 
   // run_type() - constructor
@@ -2537,6 +2699,12 @@ public:
     return kernel.get();
   }
 
+  const xrt::module&
+  get_module() const
+  {
+    return m_module;
+  }
+
   kernel_command*
   get_cmd() const
   {
@@ -2551,20 +2719,15 @@ public:
   }
 
   void
-  set_runlist(const runlist_impl* rl)
+  set_runlist(const runlist_impl*)
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_runlist)
-      throw std::runtime_error("Run object already associated with a runlist");
-
-    m_runlist = rl;
+    ++m_runlist_counter;
   }
 
   void
   clear_runlist()
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_runlist = nullptr;
+    --m_runlist_counter;
   }
 
   // Use to explicitly restrict what CUs can be used
@@ -2782,7 +2945,7 @@ public:
   virtual void
   start()
   {
-    if (m_runlist)
+    if (m_runlist_counter)
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
 
     prep_start();
@@ -2899,6 +3062,33 @@ public:
     return state;
   }
 
+  // abort_coredump_or_noop() - AIE coredump if enabled
+  // Dump core and abort, or do nothing.
+  void
+  abort_coredump_or_noop(ert_cmd_state state) const
+  {
+    if (state != ERT_CMD_STATE_TIMEOUT)
+      return;
+
+    auto file = xrt_core::config::get_aie_coredump_file();
+    if (file.empty())
+      return;
+
+    try {
+      auto hwctx = kernel->get_hw_context();
+      auto core = hwctx.get_aie_coredump();  // may throw
+
+      std::ofstream ostr{file, std::ios::binary};
+      if (!ostr)
+        throw std::runtime_error("Could not open '" + file + "' for writing");
+      ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
+      std::abort();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(std::string("Failed to create core dump: ") + ex.what());
+    }
+  }
+
   void
   throw_command_error(ert_cmd_state state) const
   {
@@ -2918,6 +3108,7 @@ public:
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      abort_coredump_or_noop(state);
       throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
     default:
       throw xrt::run::command_error(state, msg);
@@ -3397,7 +3588,6 @@ public:
     , m_state(m_run.state())
     , m_message(std::move(msg))
   {}
-
 };
 
 // class runlist_impl - The internals of a runlist
@@ -3582,6 +3772,7 @@ class runlist_impl
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      rhdl->abort_coredump_or_noop(state);
       throw xrt::runlist::aie_error(run, state, msg);
     default:
       throw xrt::runlist::command_error(run, state, msg);
@@ -3729,11 +3920,11 @@ public:
     cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size);
 
     // Once a run object is added to a list it will be in a state that
-    // makes it impossible to add to another list or to same list
-    // twice.  This state is managed by the run object itself by
-    // recording this runlist with the run object, but it doesn't
-    // proctect against caller manually controlling the run object,
-    // which is undefined behavior.  No exceptions after this point.
+    // makes it impossible to start the run explicitly.  A run can be
+    // added to multiple runlists, but it is undefined behavior to
+    // call runlist::execute() on two or more runlists that contain
+    // the same run object without calling runlist::wait() in between.
+    // No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
 
     // Non throwing state change
@@ -4706,73 +4897,154 @@ what() const noexcept
 }
 
 static std::string
-aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
+aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
+                     const std::string& elf_filename, const std::string& kernel_instance,
+                     const std::string& elf_uuid)
 {
   constexpr auto indent8 = 8;
   auto ctx_health = get_ert_ctx_health_data_v1(epkt);
   std::ostringstream oss;
   oss << msg << "\n";
+  // Print kernel and ELF identity to aid post-mortem triage.
+  // ELF UUID (from .note.xrt.UID) is used when the filename is unavailable
+  // (e.g. ELF loaded from a buffer rather than a file path).
+  if (!kernel_instance.empty())
+    oss << "Kernel Instance: " << kernel_instance;
+
+  if (!elf_filename.empty())
+    oss << "\nELF File:        " << elf_filename;
+
+  if (!elf_uuid.empty())
+    oss << "\nELF UUID:        " << elf_uuid;
+
   if ( ctx_health->npu_gen == NPU_GEN_AIE2) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->aie2.txn_op_idx
-      << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->aie2.ctx_pc
-      << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_type
-      << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_type
-      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_pc
-      << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_app_module
-      << "\n";
-  } else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
+    oss << "\ntxn_op_idx = 0x" << std::setw(indent8)
+        << ctx_health->aie2.txn_op_idx
+        << "\nctx_pc = 0x"<< std::setw(indent8)
+        << ctx_health->aie2.ctx_pc
+        << "\nfatal_error_type = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_type
+        << "\nfatal_error_exception_type = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_exception_type
+        << "\nfatal_error_exception_pc = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_exception_pc
+        << "\nfatal_error_app_module = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_app_module
+        << "\n";
+  }
+  else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
-      << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type
-      << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
+    oss << "\nctx_state = 0x" << std::setw(indent8)
+        << ctx_health->aie4.ctx_state
+        << " (" <<ctx_status_to_string(ctx_health->aie4.ctx_state) << ")"
+        << "\nctx_error_type = 0x" << std::setw(indent8)
+        << ctx_health->aie4.ctx_error_type
+        << " ("<<ctx_error_type_to_string(ctx_health->aie4.ctx_error_type) << ")"
+        << "\nnumber of uC reported = " << std::dec
+        << ctx_health->aie4.num_uc;
+
     for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
-        << "\nuc_idx=0x" << std::setw(indent8) <<std::hex << ctx_health->aie4.uc_info[i].uc_idx
-        << "\nuc_idle_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_idle_status
-        << "\nmisc_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].misc_status
-        << "\nfw_state=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].fw_state
-        << "\npage_idx=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].page_idx
-        << "\noffset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].offset
-        << "\nrestore_page=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_page
-        << "\nrestore_offset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_offset
-        << "\nuc_ear=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_ear
-        << "\nuc_esr=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_esr
-        << "\n";
+          << "\nuc_idx=0x" << std::setw(indent8) << std::hex
+          << ctx_health->aie4.uc_info[i].uc_idx
+          << "\nuc_idle_status=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_idle_status
+          << " (" << uc_idle_status_flags_to_string(ctx_health->aie4.uc_info[i].uc_idle_status) << ")"
+          << "\nmisc_status=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].misc_status
+          << " ("<<uc_misc_status_flags_to_string(ctx_health->aie4.uc_info[i].misc_status) << ")"
+          << "\nfw_state=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].fw_state
+          << " ("<<uc_fwstate_to_string(ctx_health->aie4.uc_info[i].fw_state) << ")"
+          << "\npage_idx=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].page_idx
+          << "\noffset=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].offset
+          << "\nrestore_page=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].restore_page
+          << "\nrestore_offset=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].restore_offset
+          << "\nuc_ear=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_ear
+          << "\nuc_esr=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_esr
+          << "\n";
     }
   }
   return oss.str();
 }
 
-static std::string
-amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
+// get_elf_identity_from_run() - Extract ELF identity
+//
+// The identity is tuple of filename, kernel instance name, and UUID
+// from a run object.
+//
+// Values are empty if the run has no associated ELF (non-ELF flow).
+// UUID (from .note.xrt.UID) serves as a fallback identifier when the
+// filename is unavailable.
+static std::tuple<std::string, std::string, std::string>
+get_elf_identity_from_run(const xrt::run& run)
 {
+  auto impl = run.get_handle();
+  if (!impl)
+    return {};
+
+  const auto& mod = impl->get_module();
+  if (!mod)
+    return {};
+
+  try {
+    auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
+    return {xrt_core::elf_int::get_filename(elf_handle.get()),
+            impl->get_kernel()->get_full_name(),
+            elf_handle->get_cfg_uuid().to_string()};
+  }
+  catch (const std::exception&) {
+    return {};
+  }
+}
+
+static std::string
+amend_aie_error_message(const xrt::run& run, const std::string& msg)
+{
+  const auto* epkt = run.get_ert_packet();
   constexpr auto indent8 = 8;
   if (epkt->state != ERT_CMD_STATE_TIMEOUT)
     return msg;
-  if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1)
-    return aie_error_message_v1(epkt, msg);
+
+  if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1) {
+    auto [elf_filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
+    return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid);
+  }
   else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
     return msg;
-  //below is for printing V0 exception message
+
+  // Below is for printing V0 exception message
   std::ostringstream oss;
   oss << msg << "\n";
   auto ctx_health = get_ert_ctx_health_data(epkt);
 
   oss << std::uppercase << std::hex << std::setfill('0');
-  oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->txn_op_idx
-    << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->ctx_pc
-    << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_type
-    << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_type
-    << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_pc
-    << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->fatal_error_app_module
-    << "\n";
+  oss << "txn_op_idx = 0x" << std::setw(indent8)
+      << ctx_health->txn_op_idx
+      << "\nctx_pc = 0x"<< std::setw(indent8)
+      << ctx_health->ctx_pc
+      << "\nfatal_error_type = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_type
+      << "\nfatal_error_exception_type = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_exception_type
+      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_exception_pc
+      << "\nfatal_error_app_module = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_app_module
+      << "\n";
   return oss.str();
 }
 
 run::aie_error::
 aie_error(const xrt::run& run, const std::string& what)
-  : command_error(run, amend_aie_error_message(run.get_ert_packet(), what))
+  : command_error{run, amend_aie_error_message(run, what)}
 {}
 
 } // xrt
@@ -4789,7 +5061,7 @@ command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
 
 runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
-  : command_error(run, state, amend_aie_error_message(run.get_ert_packet(), what))
+  : command_error{run, state, amend_aie_error_message(run, what)}
 {}
 
 xrt::run

@@ -727,6 +727,8 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		goto skip;
 
 	if (kds->ert_disable || kds->xgq_enable) {
+		int timeout_ms = 2000;
+
 		wait_ms = 500;
 		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
 
@@ -735,6 +737,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 			kds_warn(client, "%ld outstanding command(s) on Domain(%d) CU(%d)",
 				 submitted - completed, domain, cu_idx);
 			msleep(wait_ms);
+			timeout_ms -= wait_ms;
 			if (domain == DOMAIN_PL) {
 				submitted = client_stat_read(client, hw_ctx, s_cnt[cu_idx]);
 				completed = client_stat_read(client, hw_ctx, c_cnt[cu_idx]);
@@ -742,7 +745,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 				submitted = client_stat_read(client, hw_ctx, scu_s_cnt[cu_idx]);
 				completed = client_stat_read(client, hw_ctx, scu_c_cnt[cu_idx]);
 			}
-		} while (submitted != completed);
+			if (submitted == completed)
+				break;
+		} while (timeout_ms > 0);
 
 		bad_state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
 	} else if (!kds->ert->abort_sync) {

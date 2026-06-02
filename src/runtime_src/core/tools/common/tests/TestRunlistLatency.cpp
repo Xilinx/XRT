@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "TestCmdChainLatency.h"
+#include "TestRunlistLatency.h"
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_device.h"
@@ -15,19 +15,12 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-TestCmdChainLatency::TestCmdChainLatency()
-  : TestRunner("cmd-chain-latency", "Run end-to-end latency test using command chaining")
+TestRunlistLatency::TestRunlistLatency()
+  : TestRunner("runlist-latency", "Run end-to-end latency test using runlist")
 {}
 
 boost::property_tree::ptree
-TestCmdChainLatency::run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
-
-boost::property_tree::ptree
-TestCmdChainLatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+TestRunlistLatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
 

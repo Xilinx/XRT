@@ -140,7 +140,7 @@ uc_log_schema = {
     {85, "Page-in last elf to slot %u\n"},
     {86, "load elf skip\n"},
     {87, "load elf ...\n"},
-    {88, "fw_state: 0x%x\n"},
+    {88, "fw_state before hang is detected: 0x%x\n"},
     {89, "qh: 0x%x ql: 0x%x\n"},
     {90, "mpnpu base time: high 0x%x low 0x%x\n"},
     {91, "shim dma mm2s status: addr 0x%x value 0x%x\n"},
