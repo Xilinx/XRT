@@ -118,13 +118,6 @@ get_profile()
 }
 
 inline bool
-get_sc_profile()
-{
-  static bool value = detail::get_bool_value("Debug.sc_profile", false);
-  return value ;
-}
-
-inline bool
 get_container()
 {
   static bool value = detail::get_bool_value("Debug.container",false);
@@ -212,14 +205,6 @@ get_aie_status_interval_us()
 {
   // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.aie_status_interval_us", 1000);
-  return value;
-}
-
-inline unsigned int
-get_noc_profile_interval_ms()
-{
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.noc_profile_interval_ms", 20);
   return value;
 }
 
