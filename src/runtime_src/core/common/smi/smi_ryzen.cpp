@@ -108,19 +108,6 @@ config_gen_ryzen::create_configure_subcommand()
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
 }
 
-subcommand
-config_gen_ryzen::create_advanced_subcommand()
-{
-  std::map<std::string, std::shared_ptr<option>> advanced_suboptions;
-  advanced_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
-  advanced_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
-  advanced_suboptions.emplace("read-aie-reg", std::make_shared<option>("read-aie-reg", "", "Read given aie register from given row and column", "hidden", "", "string", true));
-  advanced_suboptions.emplace("aie-clock", std::make_shared<option>("aie-clock", "", "AIE clock frequency operations", "hidden", "", "string", true));
-  advanced_suboptions.emplace("report", std::make_shared<option>("report", "", "Advanced report output", "hidden", "", "string", true));
-
-  return {"advanced", "Low level command operations", "hidden", std::move(advanced_suboptions)};
-}
-
 config_gen_npu3::
 config_gen_npu3()
 {
@@ -193,7 +180,6 @@ populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* 
     smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
     smi_instance->add_subcommand("examine",  generator->create_examine_subcommand());
     smi_instance->add_subcommand("configure",  generator->create_configure_subcommand());
-    smi_instance->add_subcommand("advanced",  generator->create_advanced_subcommand());
   }
 }
 

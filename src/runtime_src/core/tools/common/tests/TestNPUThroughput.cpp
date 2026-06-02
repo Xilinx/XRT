@@ -14,6 +14,18 @@
 using json = nlohmann::json;
 #include <filesystem>
 
+namespace {
+
+double
+get_throughput_ops(const json& report)
+{
+  if (report.contains("executions") && !report["executions"].empty())
+    return report["executions"][0]["cpu"]["throughput"].get<double>();
+
+  return report["cpu"]["throughput"].get<double>();
+}
+
+} // namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestNPUThroughput::TestNPUThroughput()
@@ -46,7 +58,7 @@ TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_c
     runner.wait();
 
     auto report = json::parse(runner.get_report());
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f op/s") % report["cpu"]["throughput"].get<double>()));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f op/s") % get_throughput_ops(report)));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
