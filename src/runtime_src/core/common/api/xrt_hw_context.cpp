@@ -53,9 +53,6 @@ constexpr double
 operator""_mhz(long double v) { return static_cast<double>(v) * 1'000'000.0; }
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
 
-static constexpr uint16_t PHOENIX_DEVICE_ID = 0x1502;
-static constexpr uint16_t STRIX_DEVICE_ID   = 0x17f0;
-
 template <typename T>
 using span = xrt::detail::span<T>;
 
@@ -290,9 +287,12 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   static bool
   skip_uc_log(const std::shared_ptr<xrt_core::device>& device)
   {
+    constexpr uint16_t phoenix_device_id = 0x1502;
+    constexpr uint16_t strix_device_id   = 0x17f0;
+
     try {
       const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device.get());
-      return pcie_id.device_id == PHOENIX_DEVICE_ID || pcie_id.device_id == STRIX_DEVICE_ID;
+      return pcie_id.device_id == phoenix_device_id || pcie_id.device_id == strix_device_id;
     }
     catch (const std::exception&) {
       return false;
