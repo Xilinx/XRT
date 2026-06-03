@@ -38,6 +38,15 @@ XRT_CORE_COMMON_EXPORT
 void
 send(severity_level l, const char* tag, const char* msg);
 
+// Send a uC log line directly to the given sink ("syslog" or "console"),
+// bypassing runtime_log and verbosity filtering.
+// Used by buffer_dumper for uc_log_dump routing.
+// TODO: severity_level is currently always info; in future it can be decoded
+// from the uC log entry and passed by buffer_dumper for finer event classification.
+XRT_CORE_COMMON_EXPORT
+void
+send_uc_log(const std::string& sink, severity_level l, const char* tag, const char* msg);
+
 void
 sendv(severity_level l, const char* tag, const char* format, va_list args);
 

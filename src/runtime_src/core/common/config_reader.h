@@ -1256,6 +1256,19 @@ get_uc_log_size_per_uc_kb()
   return value;
 }
 
+inline std::string
+get_uc_log_dump()
+{
+  // Sink for parsed uC log output: "file" (default), "syslog", "console", or "null"
+  // "file"    -> write to timestamped per-chunk files
+  // "syslog"  -> route to OS system log (Linux syslog / Windows Event Log under AMD_XRT)
+  // "console" -> write to stderr
+  // "null"    -> discard
+  // Note: uc_log_bin_format=true always writes raw binary to 'file' regardless of this setting.
+  static std::string value = detail::get_string_value("Debug.uc_log_dump", "file");
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif

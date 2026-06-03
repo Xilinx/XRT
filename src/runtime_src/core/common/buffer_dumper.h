@@ -48,6 +48,10 @@ public:
     xrt::bo dump_buffer;              // xrt buffer object to dump
     bool dump_bin_format = false;     // Dump in binary format when enabled
     bool enable_dumper_thread = false; // Enable background dumper thread
+    // Sink for parsed uC log text output:
+    // "file" (default), "syslog", "console", or "null"
+    // Ignored when dump_bin_format=true (binary always writes to file)
+    std::string uc_log_dump = "file";
   };
 
   // Log entry layout: shared definition in uc_log.h

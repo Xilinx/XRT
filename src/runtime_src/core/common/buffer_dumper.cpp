@@ -93,20 +93,30 @@ void
 buffer_dumper::
 dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
 {
-  std::ofstream& fs = get_or_open_stream(chunk_index);
+  // Determine if we need to open a file stream based on the sink configuration
+  // Binary dump always writes to file
+  // Default behavior is to write parsed logs to file
+  const bool use_file_sink = m_config.dump_bin_format
+                             || m_config.uc_log_dump == "file"
+                             || m_config.uc_log_dump.empty();
 
-  // Check if stream is in good state before writing
-  if (!fs.good()) {
-    throw std::runtime_error("File stream for chunk " + std::to_string(chunk_index) +
-                             " is in bad state before write");
+  // Open a file stream only when the sink requires it
+  std::ofstream* fs_ptr = nullptr;
+  if (use_file_sink) {
+    std::ofstream& fs = get_or_open_stream(chunk_index);
+    if (!fs.good())
+      throw std::runtime_error("File stream for chunk " + std::to_string(chunk_index) +
+                               " is in bad state before write");
+    fs_ptr = &fs;
   }
 
   // Calculate start offset and bytes to end for circular buffer wrapping
   const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
   const size_t bytes_to_end = m_config.chunk_size - start_offset;
 
-  // UC log dump in binary format
+  // uC log dump in binary format (always uses file regardless of uc_log_dump setting)
   if (m_config.dump_bin_format) {
+    std::ofstream& fs = *fs_ptr;
     // Always write/update metadata since this function is called when there's new data
     // and metadata(count) gets updated when there is new data
     // Seek to beginning and write/update metadata
@@ -222,12 +232,29 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
     // log entries may have been lost at the boundary before the next read.
     parsed_stream << "[0.000000000] [CERT] [Dumper]--------------[Separator]--------------\n";
 
-    // Append parsed output to file
-    fs.seekp(0, std::ios::end);
-    fs << parsed_stream.str();
-
-    if (!fs)
-      throw std::runtime_error("Failed to write parsed UC log for chunk " + std::to_string(chunk_index));
+    // Dispatch parsed output to the configured sink
+    const std::string& sink = m_config.uc_log_dump;
+    if (sink == "file" || sink.empty()) {
+      // Write to file
+      fs_ptr->seekp(0, std::ios::end);
+      *fs_ptr << parsed_stream.str();
+      if (!*fs_ptr)
+        throw std::runtime_error("Failed to write parsed UC log for chunk " + std::to_string(chunk_index));
+    }
+    else if (sink != "null") {
+      // syslog or console: send each line as a separate message so the sink can
+      // format/route it correctly
+      std::istringstream lines(parsed_stream.str());
+      std::string line;
+      while (std::getline(lines, line)) {
+        if (!line.empty())
+          // TODO: Pass decoded severity from uC log entry. For now all entries
+          // are sent with info severity. Also may be pass uC index in tag for better traceability.
+          xrt_core::message::send_uc_log(sink, xrt_core::message::severity_level::info,
+                                         "xrt_uc_log", line.c_str());
+      }
+    }
+    // sink == "null": discard
   }
   catch (const std::exception& e) {
     // Log parsing error, log warning and continue
@@ -235,9 +262,11 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
                             std::string{"UC log parsing failed: "} + e.what());
   }
 
-  fs.flush();
-  if (!fs)
-    throw std::runtime_error("Failed to flush chunk " + std::to_string(chunk_index));
+  if (fs_ptr) {
+    fs_ptr->flush();
+    if (!*fs_ptr)
+      throw std::runtime_error("Failed to flush chunk " + std::to_string(chunk_index));
+  }
 }
 
 void
