@@ -79,7 +79,20 @@ private:
   size_t
   read_logged_count(uint8_t* chunk);
 
-  // Write chunk data to file (metadata header + new data payload)
+  // Write raw binary data (metadata + payload) to file
+  void
+  dump_chunk_data_binary(size_t chunk_index, size_t start_offset, size_t bytes_to_end,
+                         size_t length, uint8_t* chunk);
+
+  // Parse log entries from chunk data into a formatted string
+  std::string
+  parse_log_entries(size_t start_offset, size_t bytes_to_end, size_t length, uint8_t* chunk);
+
+  // Route parsed log text to the configured sink (file, syslog, console, or null)
+  void
+  dispatch_parsed_log(size_t chunk_index, const std::string& text);
+
+  // Coordinate binary or parsed log dump for a chunk
   void
   dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk);
 

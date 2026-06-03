@@ -91,72 +91,146 @@ read_logged_count(uint8_t* chunk)
 
 void
 buffer_dumper::
-dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
+dump_chunk_data_binary(size_t chunk_index, size_t start_offset, size_t bytes_to_end,
+                       size_t length, uint8_t* chunk)
 {
-  // Determine if we need to open a file stream based on the sink configuration
-  // Binary dump always writes to file
-  // Default behavior is to write parsed logs to file
-  const bool use_file_sink = m_config.dump_bin_format
-                             || m_config.uc_log_dump == "file"
-                             || m_config.uc_log_dump.empty();
+  std::ofstream& fs = get_or_open_stream(chunk_index);
+  if (!fs.good())
+    throw std::runtime_error("File stream for chunk " + std::to_string(chunk_index) +
+                             " is in bad state before write");
 
-  // Open a file stream only when the sink requires it
-  std::ofstream* fs_ptr = nullptr;
-  if (use_file_sink) {
+  // Rewrite metadata at the start on every call: the count field in the metadata
+  // is updated by the device each time new data is written, so we must keep it
+  // in sync with the appended payload.
+  fs.seekp(0);
+  fs.write(reinterpret_cast<const char*>(chunk),
+           static_cast<std::streamsize>(m_config.metadata_size));
+  if (!fs)
+    throw std::runtime_error("Failed to write metadata for chunk " + std::to_string(chunk_index));
+
+  // Append payload after existing file content
+  fs.seekp(0, std::ios::end);
+
+  if (length <= bytes_to_end) {
+    // Payload fits before the circular buffer wrap point; write in one shot
+    fs.write(reinterpret_cast<const char*>(chunk + start_offset),
+             static_cast<std::streamsize>(length));
+    if (!fs)
+      throw std::runtime_error("Failed to write " + std::to_string(length) +
+                               " bytes to chunk " + std::to_string(chunk_index));
+  }
+  else {
+    // Payload straddles the wrap point; write the two contiguous segments separately
+    fs.write(reinterpret_cast<const char*>(chunk + start_offset),
+             static_cast<std::streamsize>(bytes_to_end));
+    if (!fs)
+      throw std::runtime_error("Failed to write first part (" + std::to_string(bytes_to_end) +
+                               " bytes) to chunk " + std::to_string(chunk_index));
+
+    fs.write(reinterpret_cast<const char*>(chunk + m_config.metadata_size),
+             static_cast<std::streamsize>(length - bytes_to_end));
+    if (!fs)
+      throw std::runtime_error("Failed to write wrapped part (" +
+                               std::to_string(length - bytes_to_end) +
+                               " bytes) to chunk " + std::to_string(chunk_index));
+  }
+
+  fs.flush();
+  if (!fs)
+    throw std::runtime_error("Failed to flush chunk " + std::to_string(chunk_index));
+}
+
+std::string
+buffer_dumper::
+parse_log_entries(size_t start_offset, size_t bytes_to_end, size_t length,
+                  uint8_t* chunk)
+{
+  std::ostringstream out;
+  size_t parsed_bytes = 0;
+
+  while (parsed_bytes < length) {
+    // Resolve the byte offset of the current entry, accounting for circular buffer wrap
+    size_t entry_offset = (parsed_bytes < bytes_to_end)
+      ? start_offset + parsed_bytes
+      : m_config.metadata_size + (parsed_bytes - bytes_to_end);
+
+    log_entry log;
+    std::memcpy(&log, chunk + entry_offset, sizeof(log_entry));
+
+    // Look up format string in the schema; fall back to a generic placeholder
+    // when the log_id is unrecognized. The fallback is chosen by argument count
+    // (derived from entry length) so the output still shows available data.
+    constexpr std::array<const char*, 3> default_formats = {
+      "unknown !\n",
+      "unknown %d !!\n",
+      "unknown %d unknown %d !!!\n"
+    };
+
+    auto log_schema_it = uc_log_schema.logs.find(log.log_id);
+    const char* log_format = (log_schema_it != uc_log_schema.logs.end())
+      ? log_schema_it->second.c_str()
+      : default_formats[std::min(
+          static_cast<std::size_t>(
+              log.length - (offsetof(log_entry, argument1) / sizeof(uint32_t))),
+          default_formats.size() - 1)];
+
+    // Reconstruct 64-bit nanosecond timestamp from the two 32-bit halves
+    constexpr uint64_t ts_high_shift = 32;
+    uint64_t timestamp_ns =
+        (static_cast<uint64_t>(log.ts_high) << ts_high_shift) | log.ts_low;
+    out << "[" << xrt_core::get_timestamp_for_uc_log(timestamp_ns) << "] [CERT] ";
+
+    // Format the log message according to the number of arguments encoded in entry length
+    std::array<char, 1024> log_message{}; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    if (log.length == (offsetof(log_entry, argument1) / sizeof(uint32_t))) {
+      out << log_format;
+    }
+    else if (log.length == (offsetof(log_entry, argument2) / sizeof(uint32_t))) {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+      static_cast<void>(std::snprintf(log_message.data(), log_message.size(),
+                                      log_format, log.argument1));
+      out << log_message.data();
+    }
+    else if (log.length == (sizeof(log_entry) / sizeof(uint32_t))) {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+      static_cast<void>(std::snprintf(log_message.data(), log_message.size(),
+                                      log_format, log.argument1, log.argument2));
+      out << log_message.data();
+    }
+    else {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
+                              "Invalid UC log entry length: " + std::to_string(log.length));
+    }
+
+    parsed_bytes += m_config.metadata_size;
+  }
+
+  // Separator marks the read boundary; entries may have been lost before the next read
+  out << "[0.000000000] [CERT] [Dumper]--------------[Separator]--------------\n";
+  return out.str();
+}
+
+void
+buffer_dumper::
+dispatch_parsed_log(size_t chunk_index, const std::string& text)
+{
+  const std::string& sink = m_config.uc_log_dump;
+
+  // "null" sink: silently discard
+  if (sink == "null")
+    return;
+
+  if (sink == "file" || sink.empty()) {
+    // Append the entire text block to the per-chunk file
     std::ofstream& fs = get_or_open_stream(chunk_index);
     if (!fs.good())
       throw std::runtime_error("File stream for chunk " + std::to_string(chunk_index) +
                                " is in bad state before write");
-    fs_ptr = &fs;
-  }
-
-  // Calculate start offset and bytes to end for circular buffer wrapping
-  const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
-  const size_t bytes_to_end = m_config.chunk_size - start_offset;
-
-  // uC log dump in binary format (always uses file regardless of uc_log_dump setting)
-  if (m_config.dump_bin_format) {
-    std::ofstream& fs = *fs_ptr;
-    // Always write/update metadata since this function is called when there's new data
-    // and metadata(count) gets updated when there is new data
-    // Seek to beginning and write/update metadata
-    fs.seekp(0);
-    fs.write(reinterpret_cast<const char*>(chunk),
-            static_cast<std::streamsize>(m_config.metadata_size));
-
-    if (!fs)
-      throw std::runtime_error("Failed to write metadata for chunk " + std::to_string(chunk_index));
-
-    // Seek to end to append actual data
     fs.seekp(0, std::ios::end);
-
-    if (length <= bytes_to_end) { // data doesn't wrap around
-      fs.write(reinterpret_cast<const char*>(chunk + start_offset),
-              static_cast<std::streamsize>(length));
-
-      if (!fs)
-        throw std::runtime_error("Failed to write " + std::to_string(length) +
-                                " bytes to chunk " + std::to_string(chunk_index));
-    }
-    else {
-      // data wraps around
-      // write the first part
-      fs.write(reinterpret_cast<const char*>(chunk + start_offset),
-              static_cast<std::streamsize>(bytes_to_end));
-
-      if (!fs)
-        throw std::runtime_error("Failed to write first part (" + std::to_string(bytes_to_end) +
-                                " bytes) to chunk " + std::to_string(chunk_index));
-
-      // write the wrapped part
-      fs.write(reinterpret_cast<const char*>(chunk + m_config.metadata_size),
-              static_cast<std::streamsize>(length - bytes_to_end));
-
-      if (!fs)
-        throw std::runtime_error("Failed to write wrapped part (" +
-                                std::to_string(length - bytes_to_end) +
-                                " bytes) to chunk " + std::to_string(chunk_index));
-    }
+    fs << text;
+    if (!fs)
+      throw std::runtime_error("Failed to write parsed UC log for chunk " +
+                               std::to_string(chunk_index));
 
     fs.flush();
     if (!fs)
@@ -165,107 +239,42 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
     return;
   }
 
-  // UC log parsing and writing log messages to file using log schema
+  // syslog or console: each line is dispatched as a discrete message so the
+  // sink can apply its own formatting and routing per entry
+  std::istringstream lines(text);
+  std::string line;
+  while (std::getline(lines, line)) {
+    if (!line.empty())
+      // TODO: Pass decoded severity from uC log entry.
+      // For now all entries are sent with info severity.
+      // Also may be pass uC index in tag for better traceability.
+      xrt_core::message::send_uc_log(sink,
+                                     xrt_core::message::severity_level::info,
+                                     "xrt_uc_log", line.c_str());
+  }
+}
+
+void
+buffer_dumper::
+dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
+{
+  const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
+  const size_t bytes_to_end = m_config.chunk_size - start_offset;
+
+  if (m_config.dump_bin_format) {
+    dump_chunk_data_binary(chunk_index, start_offset, bytes_to_end, length, chunk);
+    return;
+  }
+
+  // Dump in parsed text format
+  // Parse log entries and route to the configured sink.
   try {
-    std::ostringstream parsed_stream;
-    size_t parsed_bytes = 0;
-    // Iterate and parse each log entry in dumped data
-    while (parsed_bytes < length) {
-      size_t entry_offset = 0;
-
-      // Handle circular buffer wrapping
-      if (parsed_bytes < bytes_to_end)
-        entry_offset = start_offset + parsed_bytes; // No wrap around
-      else
-        entry_offset = m_config.metadata_size + (parsed_bytes - bytes_to_end); // Wrapped around
-
-      // Current log entry in chunk
-      const uint8_t* entry = chunk + entry_offset;
-      // Extract log entry fields
-      log_entry log;
-      std::memcpy(&log, entry, sizeof(log_entry));
-
-      // Format log message using log schema
-      // If log_id is not found in log schema, use default format string
-      constexpr std::array<const char*, 3> default_formats = {
-        "unknown !\n",
-        "unknown %d !!\n",
-        "unknown %d unknown %d !!!\n"
-      };
-      auto log_schema_it = uc_log_schema.logs.find(log.log_id);
-      const char* log_format = (log_schema_it != uc_log_schema.logs.end())
-        ? log_schema_it->second.c_str()
-        : default_formats[std::min(static_cast<std::size_t>(log.length - (offsetof(log_entry, argument1) / sizeof(uint32_t))),
-                          (default_formats.size() - 1))];
-
-      // log marker [<seconds>.<nanoseconds>] [CERT]
-      uint64_t timestamp_ns = (static_cast<uint64_t>(log.ts_high) << 32) | log.ts_low; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-      parsed_stream << "[" << xrt_core::get_timestamp_for_uc_log(timestamp_ns) << "] [CERT] ";
-
-      std::array<char, 1024> log_message{}; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-      if (log.length == (offsetof(log_entry, argument1) / sizeof(uint32_t)))
-      { // Log message without arguments
-        parsed_stream << log_format;
-      }
-      else if (log.length == (offsetof(log_entry, argument2) / sizeof(uint32_t)))
-      { // Log message with one argument
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
-        static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1));
-        parsed_stream << log_message.data();
-      }
-      else if (log.length == (sizeof(log_entry) / sizeof(uint32_t)))
-      { // Log message with two arguments
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
-        static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1, log.argument2));
-        parsed_stream << log_message.data();
-      }
-      else
-      { // Unexpected entry length
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
-                                "Invalid UC log entry length: " + std::to_string(log.length));
-      }
-
-      parsed_bytes += m_config.metadata_size;
-    }
-
-    // Separator between dumper reads; the separator marks read boundaries and indicates
-    // log entries may have been lost at the boundary before the next read.
-    parsed_stream << "[0.000000000] [CERT] [Dumper]--------------[Separator]--------------\n";
-
-    // Dispatch parsed output to the configured sink
-    const std::string& sink = m_config.uc_log_dump;
-    if (sink == "file" || sink.empty()) {
-      // Write to file
-      fs_ptr->seekp(0, std::ios::end);
-      *fs_ptr << parsed_stream.str();
-      if (!*fs_ptr)
-        throw std::runtime_error("Failed to write parsed UC log for chunk " + std::to_string(chunk_index));
-    }
-    else if (sink != "null") {
-      // syslog or console: send each line as a separate message so the sink can
-      // format/route it correctly
-      std::istringstream lines(parsed_stream.str());
-      std::string line;
-      while (std::getline(lines, line)) {
-        if (!line.empty())
-          // TODO: Pass decoded severity from uC log entry. For now all entries
-          // are sent with info severity. Also may be pass uC index in tag for better traceability.
-          xrt_core::message::send_uc_log(sink, xrt_core::message::severity_level::info,
-                                         "xrt_uc_log", line.c_str());
-      }
-    }
-    // sink == "null": discard
+    const std::string text = parse_log_entries(start_offset, bytes_to_end, length, chunk);
+    dispatch_parsed_log(chunk_index, text);
   }
   catch (const std::exception& e) {
-    // Log parsing error, log warning and continue
     xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
                             std::string{"UC log parsing failed: "} + e.what());
-  }
-
-  if (fs_ptr) {
-    fs_ptr->flush();
-    if (!*fs_ptr)
-      throw std::runtime_error("Failed to flush chunk " + std::to_string(chunk_index));
   }
 }
 
