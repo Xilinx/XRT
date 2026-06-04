@@ -14,6 +14,7 @@
 #include "core/common/message.h"
 #include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/runner/capture.h"
 
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <elfio/elfio.hpp>
@@ -220,6 +221,7 @@ load_elfio(std::istream& stream)
   ELFIO::elfio elfio;
   if (!elfio.load(stream))
     throw std::runtime_error("not a valid ELF stream");
+
   return elfio;
 }
 
@@ -231,6 +233,7 @@ load_elfio(const void* data, size_t size)
   boost::interprocess::ibufferstream istr(static_cast<const char*>(data), size);
   if (!elfio.load(istr))
     throw std::runtime_error("not valid ELF data");
+
   return elfio;
 }
 
@@ -1512,22 +1515,34 @@ valid_or_error(const std::shared_ptr<elf_impl>& handle)
 elf::
 elf(const std::string& fnm)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(fnm), fnm)}
-{}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), fnm);
+}
 
 elf::
 elf(std::istream& stream)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(stream))}
-{}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), stream);
+}
 
 elf::
 elf(const void* data, size_t size)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(data, size))}
-{}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), data, size);
+}
 
 elf::
 elf(const std::string_view& sv)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(sv.data(), sv.size()))}
-{}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), sv.data(), sv.size());
+}
 
 xrt::uuid
 elf::

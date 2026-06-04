@@ -372,7 +372,7 @@ get(const std::string& key) const
 
 span<char>
 repository::
-get(const std::string& key, file_mode hint)
+get(const std::string& key, file_mode hint) const
 {
   return handle->get(key, hint);
 }

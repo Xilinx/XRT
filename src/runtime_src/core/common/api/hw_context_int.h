@@ -14,7 +14,7 @@
 // Provide access to xrt::xclbin data that is not directly exposed
 // to end users via xrt::xclbin.   These functions are used by
 // XRT core implementation.
-namespace xrt_core { namespace hw_context_int {
+namespace xrt_core::hw_context_int {
 
 // Get the core_device from this context
 // Exported for xdp access
@@ -50,6 +50,11 @@ create_hw_context_from_implementation(void* hwctx_impl);
 // throws if no ELF is found with given kernel name
 xrt::elf
 get_elf(const xrt::hw_context& hwctx, const std::string& kname);
+
+// get_config_elfs() - Return list of configuration elfs for hwctx
+// In non-elf flow, this function return empty set.
+std::vector<xrt::elf>
+get_config_elfs(const xrt::hw_context& hwctx);
 
 // Get the partition size (number of columns).  May not be available
 // in xclbin mode.
@@ -98,15 +103,16 @@ XRT_CORE_COMMON_EXPORT
 xrt::hw_context::qos_type
 get_qos_map(const xrt::hw_context& hwctx);
 
-// Get the configuration parameters from the hw context.
-// The returned map contains key-value pairs
-// key: string, value: string for both QoS-related settings and
-// other hw context configuration parameters.
-// Throws std::runtime_error if the context currently does not store cfg_type
+// get_cfg_map() - Get the configuration parameters
+//
+// The returned map contains string to string key-value pairs both
+// QoS-related settings and other hw context configuration parameters.
+// If hwctx was configured with string to integral key-value pairs,
+// then the integral values are converted to strings.
 XRT_CORE_COMMON_EXPORT
 xrt::hw_context::cfg_type
 get_cfg_map(const xrt::hw_context& hwctx);
 
-}} // hw_context_int, xrt_core
+} // xrt_core::hw_context_int
 
 #endif

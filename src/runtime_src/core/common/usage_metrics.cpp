@@ -474,9 +474,9 @@ log_kernel_run_info(const xrt::kernel_impl* krnl_impl, const xrt::run_impl* run_
   auto ts_now = std::chrono::high_resolution_clock::now();
   try {
     auto kernel =
-        xrt_core::kernel_int::create_kernel_from_implementation(krnl_impl);
+        xrt_core::kernel_int::get_kernel_from_impl(krnl_impl);
 
-    auto hw_ctx = xrt_core::kernel_int::get_hw_ctx(kernel);
+    auto hw_ctx = xrt_core::kernel_int::get_hwctx(kernel);
     auto hwctx_handle = static_cast<xrt_core::hwctx_handle*>(hw_ctx);
 
     auto dev_id = xrt_core::hw_context_int::get_core_device(hw_ctx)->get_device_id();
