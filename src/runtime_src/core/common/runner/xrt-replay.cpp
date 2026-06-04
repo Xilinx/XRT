@@ -5,9 +5,22 @@
 #include "detail/streambuf.h"
 
 #include "core/common/debug.h"
+#include "core/common/time.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/api/kernel_int.h"
+
+#if defined(__GNUC__) && (__GNUC__ >= 16)
+// GCC 16 tightened the -Warray-bounds family and made it catch more
+// patterns in libstdc++ internals, especially around std::shared_ptr
+// and std::allocator‑backed objects. The diagnostic is spurious
+// (false‑positive) in this case.
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
 #include "core/common/json/nlohmann/json.hpp"
+#if defined(__GNUC__) && (__GNUC__ >= 16)
+# pragma GCC diagnostic pop
+#endif
 
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
@@ -29,6 +42,14 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+# include <windows.h>
+# include <psapi.h>
+# pragma warning (disable: 4702)
+#else
+# include <sys/resource.h>
+#endif
 
 // Replay a captured XRT application. Capturing is enabled through
 // xrt.ini by specifying how many frames to capture.  A frame is
@@ -69,6 +90,26 @@ load_json(const std::string& input)
   throw std::runtime_error("Failed to load json, could not open: " + input);
 }
 
+constexpr double
+to_mb(size_t bytes)
+{
+  return bytes / (1024.0 * 1024.0); // NOLINT
+}
+
+size_t
+get_peak_rss()
+{
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS pmc {};
+  GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+  return pmc.PeakWorkingSetSize;
+#else
+  rusage usage_data {};
+  getrusage(RUSAGE_SELF, &usage_data);
+  return size_t(usage_data.ru_maxrss)* 1024; // NOLINT (ru_maxrss is in KB)
+#endif
+}
+
 static void
 usage()
 {
@@ -76,6 +117,7 @@ usage()
   std::cout << " [--replay <replay.json>] replay scrpt to run\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--iter <num>] iterate the frame set\n";
+  std::cout << " [--report [<file>]] output metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
   std::cout << "% xrt-replay.exe --replay replay.json [--dir <path>] [--iter <num>]\n";
 }
@@ -579,11 +621,18 @@ struct replayer
         frame.wait();
     }
 
+    size_t
+    num_frames() const
+    {
+      return m_frames.size();
+    }
+
   }; // class execution
 
 
   resources m_resources;
   execution m_execution;
+  mutable json m_report;
 
   replayer(json j, repo_type repo)
     : m_device{0}
@@ -596,8 +645,28 @@ struct replayer
   void
   run(size_t iterations)
   {
-    for (size_t i = 0; i < iterations; ++i)
-      m_execution.run();
+    unsigned long long time_ns = 0;
+    {
+      xrt_core::time_guard tg(time_ns);
+      for (size_t i = 0; i < iterations; ++i)
+        m_execution.run();
+    }
+
+    // NOLINTBEGIN
+    // Calculations are based on the how many times (depth) the
+    // runlist is duplicated.
+    auto elapsed = time_ns / 1000;
+    // NOLINTEND
+
+    m_report["cpu"]["elapsed_us"] = elapsed;
+    m_report["iterations"] = iterations;
+    m_report["frames"] = m_execution.num_frames();
+  }
+
+  json
+  get_report() const
+  {
+    return m_report;
   }
 }; // class replayer
 
@@ -608,12 +677,28 @@ run(int argc, char* argv[])
   std::string cur;
   std::string script;
   std::string dir = ".";
+  std::string report;
   uint32_t iterations = 1;
 
   for (auto& arg : args) {
     if (arg == "--help" || arg == "-h" || arg == "-help") {
       usage();
       return;
+    }
+
+    // Special handling to process --report options
+    if (arg == "-r" || arg == "--report") {
+      // --report
+      report = "-";      // default stdout
+      cur = "--report";  // try next token
+      continue;
+    }
+
+    if (cur == "--report" && (arg == "-" || arg[0] != '-')) {
+      // --report -
+      // --report <file>
+      report = arg;
+      continue;
     }
 
     if (arg[0] == '-' && cur.empty()) {
@@ -627,6 +712,8 @@ run(int argc, char* argv[])
       dir = arg;
     else if (cur == "--iterations" || cur == "-i" || cur == "--iter")
       iterations = std::stoi(arg);
+    else if (cur == "--report" || cur == "-r")
+      report = arg;
     else
       // Cannot use xrt::message::logf(...), before ini::set below
       std::cerr << "[replay] INFO: ignoring unknown argument value " << cur << " " << arg << '\n';
@@ -634,9 +721,27 @@ run(int argc, char* argv[])
     cur.clear();
   }
 
-  auto json = load_json(script);
+  if (!cur.empty() && cur != "--report")
+    std::cerr << "[runner] INFO: ignoring unknown argument value " << cur << '\n';
+
+  xrt_core::systime st;
   replayer replay(load_json(script), xrt_core::artifacts::repository{dir});
   replay.run(iterations);
+
+  if (report.empty())
+    return;
+
+  auto [real, user, system] = st.get_rusage();
+  auto jrpt = replay.get_report();
+  jrpt["system"] = { {"real_s", real.to_sec() }, {"user_s", user.to_sec() }, {"kernel_s", system.to_sec()} };
+  jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
+  
+  if (report == "-")
+    std::cout << jrpt.dump(2) << '\n';
+  else {
+    std::ofstream ostr(report);
+    ostr << jrpt.dump(2) << '\n';
+  }
 }
 
 } // namespace
