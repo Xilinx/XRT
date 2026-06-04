@@ -61,8 +61,7 @@ config_gen_ryzen::create_validate_subcommand()
   std::map<std::string, std::shared_ptr<option>> validate_suboptions;
   validate_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   validate_suboptions.emplace("format", std::make_shared<option>("format", "f", "Report output format. Valid values are:\n"
-                                "\tJSON        - Latest JSON schema\n"
-                                "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"));
+                                "\tJSON - Latest JSON schema", "common", "JSON", "string"));
   validate_suboptions.emplace("output", std::make_shared<option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   validate_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   validate_suboptions.emplace("run", std::make_shared<listable_description_option>("run", "r", "Run a subset of the test suite. Valid options are:\n",
@@ -80,8 +79,7 @@ config_gen_ryzen::create_examine_subcommand()
   std::map<std::string, std::shared_ptr<option>> examine_suboptions;
   examine_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   examine_suboptions.emplace("format", std::make_shared<option>("format", "f", "Report output format. Valid values are:\n"
-                                "\tJSON        - Latest JSON schema\n"
-                                "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"));
+                                "\tJSON - Latest JSON schema", "common", "JSON", "string"));
   examine_suboptions.emplace("output", std::make_shared<option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   examine_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   examine_suboptions.emplace("watch", std::make_shared<option>("watch", "", "Refresh interval in seconds between examine updates. Exit with Ctrl+C.", "hidden", "0", "string"));
