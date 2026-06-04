@@ -110,7 +110,7 @@ setup_capture_environment(const capture_options& opts)
 {
   std::cout << "Configuring capture via environment...\n";
   std::cout << "  Runtime.capture_frames=" << opts.frames << "\n";
-  std::cout << "  Runtime.capture_output_dir=" << opts.output_dir << "\n";
+  std::cout << "  Runtime.capture_output_dir=" << opts.output_dir.string() << "\n";
 
   // Set environment variables using the same key format as xrt.ini
   // The config reader will check these before reading xrt.ini
@@ -132,7 +132,7 @@ run(int argc, char* argv[])
   std::cout << "===================\n";
   std::cout << "Application: " << opts.app_args[0] << "\n";
   std::cout << "Frames: " << opts.frames << "\n";
-  std::cout << "Output: " << opts.output_dir << "\n\n";
+  std::cout << "Output: " << opts.output_dir.string() << "\n\n";
 
   // Configure capture via environment variables
   setup_capture_environment(opts);
@@ -147,14 +147,14 @@ run(int argc, char* argv[])
   std::filesystem::path replay_json = opts.output_dir / "replay.json";
   if (std::filesystem::exists(replay_json)) {
     std::cout << "\nCapture successful!\n";
-    std::cout << "  Replay script: " << replay_json << "\n";
-    std::cout << "  Artifacts: " << opts.output_dir << "\n\n";
+    std::cout << "  Replay script: " << replay_json.string() << "\n";
+    std::cout << "  Artifacts: " << opts.output_dir.string() << "\n\n";
     std::cout << "To replay:\n";
-    std::cout << "  xrt-replay --replay " << replay_json
-              << " --dir " << opts.output_dir << "\n";
+    std::cout << "  xrt-replay --replay " << replay_json.string()
+              << " --dir " << opts.output_dir.string() << "\n";
   }
   else {
-    std::cout << "\nWarning: No replay.json found in " << opts.output_dir << "\n";
+    std::cout << "\nWarning: No replay.json found in " << opts.output_dir.string() << "\n";
     std::cout << "  Check that the application executed at least " << opts.frames << " frames\n";
   }
 }
