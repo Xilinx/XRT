@@ -1,24 +1,14 @@
-/**
- * Copyright (C) 2016-2025 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#include "utils.h"
+#include "detail/utils.h"
+
 #include "config_reader.h"
 #include "device.h"
-#include "query_requests.h"
 #include "sysinfo.h"
-#include "utils.h"
+
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -26,16 +16,8 @@
 #include <mutex>
 #include <sstream>
 #include <string>
-#include <boost/algorithm/string.hpp>
 
-#ifdef __linux__
-# include <unistd.h>
-# include "core/common/linux/linux_utils.h"
-#endif
-#ifdef _WIN32
-# include <process.h>
-# include "core/common/windows/win_utils.h"
-#endif
+#include <boost/algorithm/string.hpp>
 
 namespace {
 
@@ -53,10 +35,9 @@ precision(double value, int p)
   return stream.str();
 }
 
+} // namespace
 
-}
-
-namespace xrt_core { namespace utils {
+namespace xrt_core::utils {
 
 std::string
 get_hostname()
@@ -291,7 +272,7 @@ load_host_trace()
 
   static std::mutex loadLock;
   static bool loaded = false;
-  std::lock_guard<std::mutex> lock(loadLock);
+  std::lock_guard lock(loadLock);
 
   bool result = xrt_core::config::get_host_trace() && !loaded;
   loaded = true;
@@ -352,7 +333,13 @@ get_pid()
 std::string
 get_sys_last_err_msg()
 {
-  return sys_dep_get_last_err_msg();
+  return detail::sys_dep_get_last_err_msg();
 }
 
-}} // utils, xrt_core
+std::string
+getenv(const char* name)
+{
+  return detail::getenv(name);
+}
+
+} // xrt_core::utils

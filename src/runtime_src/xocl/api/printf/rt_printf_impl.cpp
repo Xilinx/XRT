@@ -1,23 +1,8 @@
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-// Copyright 2015 Xilinx, Inc. All rights reserved.
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2015-2017 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "rt_printf_impl.h"
-#include "core/common/detail/env.h"
+#include "core/common/utils.h"
 
 #include <array>
 #include <cstdio>
@@ -27,9 +12,6 @@
 #include <stdexcept>
 #include <iomanip>
 #include <algorithm>
-
-// Removed Windows-specific banned API workaround - now using C++ standard library
-
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -1173,12 +1155,12 @@ size_t getPrintfBufferSize(const std::array<size_t,3>& globalSize, const std::ar
   size_t retval = workgroupCount * workgroupBufferSize;
 
   // Use xrt_core wrapper for safe cross-platform environment variable access
-  auto buf_size_str = xrt_core::detail::getenv("XCL_PRINTF_BUFFER_SIZE");
+  auto buf_size_str = xrt_core::utils::getenv("XCL_PRINTF_BUFFER_SIZE");
   if (!buf_size_str.empty()) {
     retval = std::strtoul(buf_size_str.c_str(), nullptr, 10);
   }
 
-  if (!xrt_core::detail::getenv("XCL_PRINTF_DEBUG").empty()) {
+  if (!xrt_core::utils::getenv("XCL_PRINTF_DEBUG").empty()) {
     std::cout << "DEBUG: Workgroup_Count=" << workgroupCount << "  Workgroup_Buffer_Size=" << workgroupBufferSize << std::endl;
     std::cout << "DEBUG: Global_Size=" << totalGlobal << "  Local_Size=" << totalLocal << std::endl;
     std::cout << "DEBUG: XCL_PRINTF_BUFFER_SIZE=" << retval << std::endl;
