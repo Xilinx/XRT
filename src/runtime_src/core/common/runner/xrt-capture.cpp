@@ -95,7 +95,7 @@ parse_args(int argc, char* argv[])
     throw std::runtime_error("--frames is required and must be > 0");
 
   // Remaining arguments are the application and its args
-  opts.app_args.assign(args.begin() + i, args.end());
+  opts.app_args.assign(args.begin() + i, args.end()); // NOLINT
 
   if (opts.app_args.empty())
     throw std::runtime_error("No application specified after '--'");
@@ -118,8 +118,8 @@ setup_capture_environment(const capture_options& opts)
   _putenv_s("Runtime.capture_frames", std::to_string(opts.frames).c_str());
   _putenv_s("Runtime.capture_output_dir", opts.output_dir.string().c_str());
 #else
-  setenv("Runtime.capture_frames", std::to_string(opts.frames).c_str(), 1);
-  setenv("Runtime.capture_output_dir", opts.output_dir.string().c_str(), 1);
+  setenv("Runtime.capture_frames", std::to_string(opts.frames).c_str(), 1);  // NOLINT
+  setenv("Runtime.capture_output_dir", opts.output_dir.string().c_str(), 1); // NOLINT
 #endif
 }
 

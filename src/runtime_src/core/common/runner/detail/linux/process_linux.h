@@ -27,12 +27,14 @@ execute_process(const std::vector<std::string>& args)
   c_args.reserve(args.size() + 1);
 
   for (const auto& arg : args)
-    c_args.push_back(const_cast<char*>(arg.c_str()));
+    c_args.push_back(const_cast<char*>(arg.c_str()));  // NOLINT
+
   c_args.push_back(nullptr);
 
   pid_t pid = fork();
 
   if (pid < 0) {
+    // NOLINTNEXTLINE(concurrency-mt-unsafe)
     throw std::runtime_error("Failed to fork process: " + std::string(strerror(errno)));
   }
   else if (pid == 0) {
@@ -40,19 +42,21 @@ execute_process(const std::vector<std::string>& args)
     execvp(c_args[0], c_args.data());
 
     // If execvp returns, it failed
+    // NOLINTNEXTLINE(concurrency-mt-unsafe)
     std::cerr << "Failed to execute '" << args[0] << "': " << strerror(errno) << "\n";
-    _exit(127);
+    _exit(127); // NOLINT
   }
   else {
     // Parent process - wait for child
-    int status;
+    int status = 0;
     if (waitpid(pid, &status, 0) < 0)
+      // NOLINTNEXTLINE(concurrency-mt-unsafe)
       throw std::runtime_error("Failed to wait for process: " + std::string(strerror(errno)));
 
     if (WIFEXITED(status))
       return WEXITSTATUS(status);
     else if (WIFSIGNALED(status))
-      return 128 + WTERMSIG(status);
+      return 128 + WTERMSIG(status); // NOLINT
     else
       return -1;
   }
