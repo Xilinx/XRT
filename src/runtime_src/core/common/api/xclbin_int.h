@@ -1,15 +1,16 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
- */
-#ifndef _XRT_COMMON_XCLBIN_INT_H_
-#define _XRT_COMMON_XCLBIN_INT_H_
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_COMMON_XCLBIN_INT_H_
+#define XRT_COMMON_XCLBIN_INT_H_
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"
+
+#include "xrt/detail/span.h"
 
 #include <cstring>
 #include <string>
@@ -19,6 +20,9 @@
 // to end users via xrt::xclbin.   These functions are used by
 // XRT core implementation.
 namespace xrt_core { namespace xclbin_int {
+
+template<typename T>
+using span = xrt::detail::span<T>;
 
 // get_axlf() - Retrieve complete axlf from handle
 const axlf*
@@ -40,6 +44,10 @@ get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
 // read_xclbin() - Read specified xclbin file
 std::vector<char>
 read_xclbin(const std::string& fnm);
+
+// get_xclbin_data() - Access raw xclbin data
+span<const char>
+get_xclbin_data(const xrt::xclbin&);
 
 // get_properties() - Get kernel properties
 XRT_CORE_COMMON_EXPORT

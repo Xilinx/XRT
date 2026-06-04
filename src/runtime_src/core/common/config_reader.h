@@ -743,6 +743,20 @@ get_rw_shared()
   return value;
 }
 
+inline unsigned int
+get_capture_frames()
+{
+  static auto value = detail::get_uint_value("Runtime.capture_frames", 0);
+  return value;
+}
+
+inline std::string
+get_capture_dir()
+{
+  static auto value = detail::get_string_value("Runtime.capture_output_dir", "./");
+  return value;
+}
+
 /**
  * Indicate whether Block automation based Emulation Models are
  * used. By default, it is turned off.  This is used to turn on

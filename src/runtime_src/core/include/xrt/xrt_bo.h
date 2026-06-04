@@ -781,6 +781,20 @@ public:
   XCL_DRIVER_DLLESPEC
   ~bo();
 
+  /**
+   * operator < () - Weak ordering
+   *
+   * @param rhs
+   *  Object to compare with
+   * @return
+   *  True if object is ordered less that compared with other
+   */
+  bool
+  operator < (const xrt::bo& rhs) const
+  {
+    return handle < rhs.handle;
+  }
+
 public:
   /// @cond
   const std::shared_ptr<bo_impl>&
