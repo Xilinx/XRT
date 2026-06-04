@@ -148,6 +148,8 @@ exit $python_exit_code
 import json
 import os
 import re
+import subprocess
+import shlex
 import sys
 
 temp_python_status = sys.argv[1]
@@ -198,11 +200,17 @@ for device in working_devices:
   print("\n")
   print("=====================================================================")
   print("%d / %d [%s] : %s" % (device_count, len(working_devices), device["bdf"], device["vbnv"]))
-  cmd = xrt_bin_dir + "/" + xrt_app + " --device " + device["bdf"] + " " + prog_args
+  cmd_list = [os.path.join(xrt_bin_dir, xrt_app), "--device", device["bdf"]]
+  if prog_args:
+    cmd_list.extend(shlex.split(prog_args))
   print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-  print("Command: %s\n" % cmd)
-  exit_code = os.system(cmd)
-
+  print("Command: %s\n" % " ".join(shlex.quote(a) for a in cmd_list))
+  try:
+    exit_code = subprocess.run(cmd_list).returncode
+  except OSError as e:
+    print("Error: %s" % e)
+    exit_code = 1
+ 
   if exit_code == 0:
     print("\nCommand Return Value: 0 [Operation successful]");
     passed_devices += 1
