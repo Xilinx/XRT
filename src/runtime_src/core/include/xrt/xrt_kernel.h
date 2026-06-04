@@ -925,6 +925,20 @@ public:
   xrt::xclbin
   get_xclbin() const;
 
+  /**
+   * operator < () - Weak ordering
+   *
+   * @param rhs
+   *  Object to compare with
+   * @return
+   *  True if object is ordered less that compared with other
+   */
+  bool
+  operator < (const xrt::kernel& rhs) const
+  {
+    return handle < rhs.handle;
+  }
+
 public:
   /// @cond
   const std::shared_ptr<kernel_impl>&

@@ -91,6 +91,17 @@ to_cfg_param_type(const xrt::hw_context::cfg_type& cfg)
   return out;
 }
 
+// Convert cfg_param_type scalar map to cfg_type string map
+static xrt::hw_context::cfg_type
+to_cfg_type(const xrt::hw_context::cfg_param_type& cfg)
+{
+  xrt::hw_context::cfg_type out;
+  for (const auto& [key, val] : cfg)
+    out[key] = std::to_string(val);
+
+  return out;
+}
+
 } // namespace
 
 namespace xrt {
@@ -105,7 +116,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   using access_mode = xrt::hw_context::access_mode;
   using cfg_storage = std::variant<cfg_param_type, cfg_type>;
 
-  // Get the effective configuration parameters based on the storage type
+  // Get the effective configuration parameters as cfg_param_type
   static cfg_param_type
   effective_cfg_param(const cfg_storage& st)
   {
@@ -115,6 +126,19 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         return v;
       else
         return to_cfg_param_type(v);
+    }, st);
+  }
+
+  // Get the effective configuration parameters as cfg_type
+  static cfg_type
+  effective_cfg_type(const cfg_storage& st)
+  {
+    return std::visit([] (const auto& v) -> cfg_type {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_same_v<T, cfg_type>)
+        return v;
+      else
+        return to_cfg_type(v);
     }, st);
   }
 
@@ -520,6 +544,17 @@ public:
     throw std::runtime_error("no ELF found with given kernel name in ctx");
   }
 
+  // Return unique set of configuration elf used by this hwctx
+  std::vector<xrt::elf>
+  get_config_elfs() const
+  {
+    std::set<xrt::elf> elfs;
+    for (const auto& [nm, elf] : m_elf_map)
+      elfs.insert(elf);
+
+    return {elfs.begin(), elfs.end()};
+  }
+
   bool
   get_elf_flow() const
   {
@@ -647,15 +682,12 @@ public:
   }
 
   // Get the configuration as cfg_type (string values).
-  // Only valid when the context was created with experimental cfg_type.
+  // Converts to string values if necessary
   xrt::hw_context::cfg_type
   get_cfg_map() const
   {
     std::lock_guard lk(m_mutex);
-    if (!std::holds_alternative<cfg_type>(m_cfg_storage))
-      throw std::runtime_error(
-          "get_cfg_map: hardware context does not use experimental cfg_type configuration");
-    return std::get<cfg_type>(m_cfg_storage);
+    return effective_cfg_type(m_cfg_storage);
   }
 };
 
@@ -698,6 +730,12 @@ xrt::elf
 get_elf(const xrt::hw_context& ctx, const std::string& kname)
 {
   return ctx.get_handle()->get_elf(kname);
+}
+
+std::vector<xrt::elf>
+get_config_elfs(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_config_elfs();
 }
 
 size_t

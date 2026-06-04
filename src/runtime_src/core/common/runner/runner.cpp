@@ -10,6 +10,8 @@
 
 #include "runner.h"
 #include "cpu.h"
+#include "detail/module_cache.h"
+#include "detail/streambuf.h"
 
 #include "core/common/debug.h"
 #include "core/common/dlfcn.h"
@@ -160,92 +162,15 @@ public:
   }
 };
 
-// struct streambuf - wrap a std::streambuf around an external buffer
-//
-// This is used create elf files from memory through a std::istream
-struct streambuf : public std::streambuf
-{
-  streambuf(char* begin, char* end)
-  {
-    setg(begin, begin, end);
-  }
-
-  template <typename T>
-  streambuf(T* begin, T* end)
-    : streambuf(reinterpret_cast<char*>(begin), reinterpret_cast<char*>(end))
-  {}
-
-  template <typename T>
-  streambuf(const T* begin, const T* end) // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-    : streambuf(const_cast<T*>(begin), const_cast<T*>(end))
-  {}
-
-  std::streampos
-  seekpos(std::streampos pos, std::ios_base::openmode which) override
-  {
-    setg(eback(), eback() + pos, egptr());
-    return gptr() - eback();
-  }
-
-  std::streampos
-  seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode which) override
-  {
-    if (way == std::ios_base::cur)
-      gbump(static_cast<int>(off));
-    else if (way == std::ios_base::end)
-      setg(eback(), egptr() + off, egptr());
-    else if (way == std::ios_base::beg)
-      setg(eback() + off, gptr(), egptr());
-    return gptr() - eback();
-  }
-};
+using streambuf = xrt_core::detail::streambuf;
+namespace module_cache = xrt_core::detail::module_cache;
 
 // Artifacts are encoded / referenced in recipe by string.
 // The artifacts can be stored in a file system or in memory
 // depending on how the recipe is loaded
 namespace xartifacts {
-
 using repo = xrt_core::artifacts::repository;  
-
 } // namespace artifacts
-
-namespace module_cache {
-
-// Cache of elf files to modules to avoid recreating modules
-// referring to the same elf file.
-static std::map<std::string, xrt::elf> s_path2elf; // NOLINT
-static std::map<xrt::elf, xrt::module> s_elf2mod;  // NOLINT
-
-static xrt::module
-get(const xrt::elf& elf)
-{
-  if (auto it = s_elf2mod.find(elf); it != s_elf2mod.end())
-    return (*it).second;
-
-  xrt::module mod{elf};
-  s_elf2mod.emplace(elf, mod);
-  return mod;
-}
-
-static xrt::module
-get(const std::string& path, const xartifacts::repo& repo)
-{
-  //auto key = repo->get_id() + path; // must be unique to repo
-  auto id = std::to_string(repo.get_uid());
-  auto key = id + path; // must be unique to repo
-  if (auto it = s_path2elf.find(key); it != s_path2elf.end())
-    return get((*it).second);
-
-  auto data = repo.get(path);
-  streambuf buf{data.data(), data.data() + data.size()};
-  std::istream is{&buf};
-  xrt::elf elf{is};
-  s_path2elf.emplace(key, elf);
-
-  return get(elf);
-}
-
-} // module_cache
 
 // class recipe - Runner recipe
 class recipe
@@ -353,7 +278,7 @@ class recipe
       static bool
       is_external(type t)
       {
-        return t == type::input || t == type::output || t == type::weight;
+        return t == type::input || t == type::output || t == type::weight || t == type::inout;
       }
 
       static xrt::bo
@@ -1184,7 +1109,7 @@ public:
       xrt::hw_context
       get_xrt_hwctx() const
       {
-        return xrt_core::kernel_int::get_hw_ctx(get_xrt_run());
+        return xrt_core::kernel_int::get_hwctx(get_xrt_run());
       }
 
       xrt::run
