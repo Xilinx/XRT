@@ -1,18 +1,6 @@
-/*
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "xclbin_parser.h"
 #include "config_reader.h"
@@ -47,6 +35,46 @@ static size_t
 convert(const std::string& str)
 {
   return str.empty() ? 0 : std::stoul(str,nullptr,0);
+}
+
+// Bounds check helper for xclbin section parsing
+// Validates that [offset, offset+size) lies within [0, section_size)
+// Returns true if valid, false otherwise
+static bool
+is_valid_range(uint64_t offset, uint64_t size, uint64_t section_size)
+{
+  // Check for overflow: offset + size
+  if (size > 0 && offset > section_size - size)
+    return false;
+
+  // Check that range is within bounds
+  return (offset + size <= section_size);
+}
+
+// Validate offset/size pair and throw descriptive error if invalid
+static void
+validate_offset_size(uint64_t offset, uint64_t size, uint64_t section_size,
+                     const char* field_name)
+{
+  if (is_valid_range(offset, size, section_size))
+    return;
+
+  throw xrt_core::error(-EINVAL,
+     boost::str(boost::format("%s offset/size out of bounds "
+        "(offset=%llu, size=%llu, section_size=%llu)")
+        % field_name % offset % size % section_size));
+}
+
+// Validate that a pointer offset is within section bounds
+static void
+validate_pointer_offset(uint64_t offset, uint64_t element_size, uint64_t count,
+                        uint64_t section_size, const char* field_name)
+{
+  uint64_t total_size = element_size * count;
+  if (count > 0 && total_size / count != element_size)  // overflow check
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("%s size overflow") % field_name));
+  
+  validate_offset_size(offset, total_size, section_size, field_name);
 }
 
 static kernel_type
@@ -857,30 +885,88 @@ get_aie_partition(const axlf* top)
   if (!pSection)
     return {};
 
-  auto topbase = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+  // Validate section offset/size against total xclbin length
+  const uint64_t xclbin_size = top->m_header.m_length;
+  const uint64_t section_offset = pSection->m_sectionOffset;
+  const uint64_t section_size = pSection->m_sectionSize;
+
+  validate_offset_size(section_offset, section_size, xclbin_size, "AIE_PARTITION section");
+
+  // Validate section is large enough for aie_partition header
+  if (section_size < sizeof(aie_partition))
+    throw error(-EINVAL, "AIE_PARTITION section too small for header");
+
+  auto topbase = reinterpret_cast<const char*>(top) + section_offset;
   auto aiep = reinterpret_cast<const aie_partition*>(topbase);
+
+  // Validate start_columns array
+  validate_pointer_offset(aiep->info.start_columns.offset,
+                          sizeof(uint16_t),
+                          aiep->info.start_columns.size,
+                          section_size,
+                          "info.start_columns");
+
   auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
 
-  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, topbase + aiep->mpo_name, aiep->operations_per_cycle};
+  aie_partition_obj obj{aiep->info.column_width,
+                        {scp, scp + aiep->info.start_columns.size},
+                        topbase + aiep->mpo_name,
+                        aiep->operations_per_cycle};
+
+  // Validate aie_pdi array bounds
+  validate_pointer_offset(aiep->aie_pdi.offset,
+                          sizeof(aie_pdi),
+                          aiep->aie_pdi.size,
+                          section_size,
+                          "aie_pdi");
 
   for (uint32_t i = 0; i < aiep->aie_pdi.size; i++) {
     aie_pdi_obj pdiobj;
-    auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aiep->aie_pdi.offset + i * sizeof(aie_pdi));
 
-    if (aiepdip->pdi_image.size > PDI_IMAGE_MAX_SIZE)
-      throw std::runtime_error("PDI image size too big");
+    const uint64_t aie_pdi_offset = aiep->aie_pdi.offset + i * sizeof(aie_pdi);
+    auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aie_pdi_offset);
+
+    // Validate pdi_image offset and size
+    const uint64_t pdi_image_offset = aiepdip->pdi_image.offset;
+    const uint64_t pdi_image_size = aiepdip->pdi_image.size;
+
+    if (pdi_image_size > static_cast<uint64_t>(PDI_IMAGE_MAX_SIZE))
+      throw error(-EINVAL, "PDI image size exceeds maximum");
+
+    validate_offset_size(pdi_image_offset, pdi_image_size, section_size, "AIE_PARTITION pdi_image");
 
     pdiobj.uuid = aiepdip->uuid;
-    pdiobj.pdi.resize(aiepdip->pdi_image.size);
-    memcpy(pdiobj.pdi.data(), topbase + aiepdip->pdi_image.offset, pdiobj.pdi.size());
+    pdiobj.pdi.resize(pdi_image_size);
+    memcpy(pdiobj.pdi.data(), topbase + pdi_image_offset, pdi_image_size);
+
+    // Validate cdo_groups array
+    validate_pointer_offset(aiepdip->cdo_groups.offset,
+                            sizeof(cdo_group),
+                            aiepdip->cdo_groups.size,
+                            section_size,
+                            "AIE_PARTITION cdo_groups");
+
     for (uint32_t j = 0; j < aiepdip->cdo_groups.size; j++) {
       std::vector<uint64_t> dpu_kernel_ids;
-      auto cdop = reinterpret_cast<const cdo_group*>(topbase + aiepdip->cdo_groups.offset + j * sizeof(cdo_group));
+
+      const uint64_t cdo_group_offset = aiepdip->cdo_groups.offset + j * sizeof(cdo_group);
+      auto cdop = reinterpret_cast<const cdo_group*>(topbase + cdo_group_offset);
+
+      // Validate dpu_kernel_ids array
+      validate_pointer_offset(cdop->dpu_kernel_ids.offset,
+                              sizeof(uint64_t),
+                              cdop->dpu_kernel_ids.size,
+                              section_size,
+                              "AIE_PARTITION dpu_kernel_ids");
+
       auto kernel_idp = reinterpret_cast<const uint64_t*>(topbase + cdop->dpu_kernel_ids.offset);
       for (uint32_t k = 0; k < cdop->dpu_kernel_ids.size; ++k)
         dpu_kernel_ids.push_back(kernel_idp[k]);
 
-      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id, std::move(dpu_kernel_ids)});
+      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name,
+                                                          cdop->cdo_type,
+                                                          cdop->pdi_id,
+                                                          std::move(dpu_kernel_ids)});
     }
 
     obj.pdis.emplace_back(std::move(pdiobj));

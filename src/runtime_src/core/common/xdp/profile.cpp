@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
-#define XRT_CORE_COMMON_SOURCE
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in same dll as coreutil
 #include "core/common/xdp/profile.h"
 
 #include "core/common/api/kernel_int.h"

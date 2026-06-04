@@ -14,11 +14,13 @@
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_mailbox.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 #include "core/include/xrt/detail/ert.h"
+#include "core/include/xrt/detail/span.h"
 #include "core/include/ert_fa.h"
 
 #include "bo.h"
@@ -47,6 +49,7 @@
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/runner/capture.h"
 #include "core/common/xdp/profile.h"
 
 #include <boost/format.hpp>
@@ -143,6 +146,9 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 ////////////////////////////////////////////////////////////////
 
 namespace {
+
+template <typename T>
+using span = xrt::detail::span<T>;
 
 constexpr size_t mailbox_input_write = 1;
 constexpr size_t mailbox_output_read = 1;
@@ -375,7 +381,8 @@ uc_idle_status_flags_to_string(uint32_t idle_status)
 template <typename ValueType>
 class arg_range
 {
-  const ValueType* uval;
+  using value_type = ValueType;
+  const value_type* uval;
   size_t words;
 
   // Number of bytes must multiple of sizeof(ValueType)
@@ -393,13 +400,13 @@ public:
     , words(validate_bytes(bytes) / sizeof(ValueType))
   {}
 
-  const ValueType*
+  const value_type*
   begin() const
   {
     return uval;
   }
 
-  const ValueType*
+  const value_type*
   end() const
   {
     return uval + words;
@@ -414,13 +421,19 @@ public:
   size_t
   bytes() const
   {
-    return words * sizeof(ValueType);
+    return words * sizeof(value_type);
   }
 
-  const ValueType*
+  const value_type*
   data() const
   {
     return uval;
+  }
+
+  const span<const value_type>
+  data_as_span() const
+  {
+    return {uval, words};
   }
 };
 
@@ -1552,7 +1565,7 @@ public:
 
 private:
   std::string name;                           // kernel name
-  std::string m_full_name;                    // full "kernel:instance" string, empty if no instance
+  std::string m_full_name;                    // full "kernel:instance" string
   std::shared_ptr<device_type> device;        // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
   xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
@@ -2053,6 +2066,12 @@ public:
   get_full_name() const
   {
     return m_full_name;
+  }
+
+  xrt::elf
+  get_ctrlcode_elf() const
+  {
+    return xrt::elf{xrt_core::module_int::get_elf_handle(m_module)};
   }
 
   uint32_t
@@ -2767,13 +2786,13 @@ public:
     return get_arg_setter()->get_arg_value(arg);
   }
 
-  void
+  virtual void
   set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
   {
     get_arg_setter()->set_arg_value(arg, value);
   }
 
-  void
+  virtual void
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
@@ -3036,7 +3055,7 @@ public:
   // Deprecated wait() semantics.
   // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
   // Return ert cmd state otherwise
-  ert_cmd_state
+  virtual ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -3119,7 +3138,7 @@ public:
   // Return std::cv_status::timeout on timeout
   // Return std::cv_status::no_timeout on successful completion
   // Throw on abnormal command termination
-  std::cv_status
+  virtual std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -3210,7 +3229,7 @@ private:
       // update usage logger in success cases
       m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_COMPLETED);
   }
-};
+}; // class run_impl
 
 // class mailbox_impl - Extension of run_impl for mailbox support
 //
@@ -3463,6 +3482,57 @@ public:
   }
 };
 
+// class run_impl_debug - config enabled impl class
+//
+// Provides overrides for debug capture.  Maybe an overkill here since
+// quite possibly XRT_REPLAY_CAPTURE is faster than the vtbl indirect
+// call, but this class allows adding more bells and whistles in the
+// future.
+template <typename RunImplType>
+class run_impl_debug : public RunImplType
+{
+  void
+  set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
+  {
+    RunImplType::set_arg_value(arg, value);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), value.data_as_span());
+  }
+    
+  void
+  set_arg_value(const argument& arg, const xrt::bo& bo) override
+  {
+    RunImplType::set_arg_value(arg, bo);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), bo);
+  }
+  
+  void
+  start() override
+  {
+    RunImplType::start();
+    XRT_REPLAY_CAPTURE(run_start, this);
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto status = RunImplType::wait_throw_on_error(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this); // TODO: revisit for timeout
+    return status;
+  }
+
+  ert_cmd_state
+  wait(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto state = RunImplType::wait(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this);
+    return state;
+    
+  }
+  
+public:
+  using RunImplType::RunImplType;
+}; // run_impl_debug
+
 // struct run_update_type - RTP update
 //
 // Asynchronous runtime update of kernel arguments.  Each argument is
@@ -3598,6 +3668,8 @@ public:
 // point will be dyanmic.
 class runlist_impl
 {
+  friend class runlist_impl_debug;
+
   static constexpr size_t submit_size = 24;
   static constexpr size_t noidx = std::numeric_limits<size_t>::max();
   static constexpr size_t execbuf_size = sizeof(ert_packet) + sizeof(ert_cmd_chain_data) + submit_size * sizeof(uint64_t);
@@ -3849,7 +3921,7 @@ class runlist_impl
   // successfully submitted command must be waited for before the list
   // can be reset. Pre-condition ensured by execute() is that size of
   // runlist is greater than 0.
-  void
+  virtual void
   submit()
   {
     m_submitted_cmds.clear();
@@ -3880,6 +3952,7 @@ public:
     , m_hwqueue{m_hwctx}
   {}
 
+  virtual
   ~runlist_impl()
   {
     // Make sure all run objects are severed from this list
@@ -3891,7 +3964,7 @@ public:
     }
   }
 
-  void
+  virtual void
   add(xrt::run run)
   {
     if (m_state != state::idle)
@@ -3970,8 +4043,8 @@ public:
 
   // Wait for runlist completion.  Throw exception with first failing
   // command if any.
-  std::cv_status
-  wait_throw_on_error(const std::chrono::milliseconds& timeout)
+  virtual std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout) const
   {
     if (m_state != state::running)
       return std::cv_status::no_timeout;
@@ -4040,7 +4113,40 @@ public:
     m_cmds.clear();
     m_state = state::idle;
   }
-};
+}; // class runlist_impl
+
+// class runlist_impl_debug - config enabled impl class
+//
+// Provides overrides for debug capture
+// Consider templatizing on runlist_impl concrete type
+class runlist_impl_debug : public runlist_impl
+{
+  void
+  submit() override
+  {
+    runlist_impl::submit();
+    XRT_REPLAY_CAPTURE(runlist_start, this);
+  }
+
+  void
+  add(xrt::run run) override
+  {
+    runlist_impl::add(run);
+    XRT_REPLAY_CAPTURE(runlist_add_run, this, run.get_handle().get());
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout) const override
+  {
+    auto status = runlist_impl::wait_throw_on_error(timeout);
+    XRT_REPLAY_CAPTURE(runlist_wait, this); // TODO: revisit for tiemout
+    return status;
+  }
+  
+public:
+  using runlist_impl::runlist_impl;
+}; // class runlist_impl_debug
+
 
 // runlist::command_error_impl is in anticipation of additional
 // implementation data over that of run::command_error_impl
@@ -4152,6 +4258,14 @@ get_run_update(xrtRunHandle rhdl)
 static std::unique_ptr<xrt::run_impl>
 alloc_run(const std::shared_ptr<xrt::kernel_impl>& khdl)
 {
+  if (xrt_core::config::get_capture_frames()) {
+    // For some reason ternary doesn't work here
+    if (khdl->has_mailbox())
+      return std::make_unique<xrt::run_impl_debug<xrt::mailbox_impl>>(khdl);
+    else
+      return std::make_unique<xrt::run_impl_debug<xrt::run_impl>>(khdl);
+  }
+  
   return khdl->has_mailbox()
     ? std::make_unique<xrt::mailbox_impl>(khdl)
     : std::make_unique<xrt::run_impl>(khdl);
@@ -4201,6 +4315,15 @@ get_mailbox_impl(const xrt::run& run)
   if (!mimpl)
     throw xrt_core::error("Mailbox not supported by this run object");
   return mimpl;
+}
+
+static std::shared_ptr<xrt::runlist_impl>
+alloc_runlist(const xrt::hw_context& hwctx)
+{
+  if (xrt_core::config::get_capture_frames())
+    return std::make_shared<xrt::runlist_impl_debug>(hwctx);
+
+  return std::make_shared<xrt::runlist_impl>(hwctx);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -4403,25 +4526,49 @@ get_regmap_size(const xrt::kernel& kernel)
     return kernel.get_handle()->get_regmap_size();
 }
 
+std::string
+get_instance_name(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_full_name();
+}
+
+xrt::elf
+get_ctrlcode(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_ctrlcode_elf();
+}  
+
 xrt::hw_context
-get_hw_ctx(const xrt::kernel& kernel)
+get_hwctx(const xrt::kernel& kernel)
 {
   return kernel.get_handle()->get_hw_context();
 }
 
 xrt::hw_context
-get_hw_ctx(const xrt::run& run)
+get_hwctx(const xrt::run& run)
 {
   return run.get_handle()->get_kernel()->get_hw_context();
 }
 
 xrt::kernel
-create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
+get_kernel(const xrt::run& run)
+{
+  return run.get_handle()->get_kernel()->get_shared_ptr();
+}
+
+xrt::kernel
+get_kernel_from_impl(const xrt::kernel_impl* kernel_impl)
 {
   if (!kernel_impl)
     throw std::runtime_error("Invalid kernel context implementation.");
 
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
+}
+
+xrt::run
+get_run_from_impl(const xrt::run_impl* run_impl)
+{
+  return xrt::run{const_cast<xrt::run_impl*>(run_impl)->get_shared_ptr()}; // NOLINT
 }
 
 void
@@ -4740,7 +4887,7 @@ set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
 
 runlist::
 runlist(const xrt::hw_context& hwctx)
-  : detail::pimpl<runlist_impl>(std::make_shared<runlist_impl>(hwctx))
+  : detail::pimpl<runlist_impl>(alloc_runlist(hwctx))
 {}
 
 runlist::

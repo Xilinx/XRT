@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_xclbin.h
@@ -16,7 +16,8 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/xclbin_swemu.h"
 
-#include "core/include/xrt/detail/xclbin.h"
+#include "xrt/detail/span.h"
+#include "xrt/detail/xclbin.h"
 
 #include "handle.h"
 #include "native_profile.h"
@@ -660,6 +661,12 @@ public:
     throw std::runtime_error("not implemented");
   }
 
+  virtual xrt::detail::span<const char>
+  data() const
+  {
+    throw std::runtime_error("not implemented");
+  }
+
   virtual
   uuid
   get_uuid() const
@@ -880,6 +887,12 @@ public:
     : m_axlf(copy_axlf(top))
   {
     init();
+  }
+
+  xrt::detail::span<const char>
+  data() const override
+  {
+    return {m_axlf.data(), m_axlf.size()};
   }
 
   uuid
@@ -1668,6 +1681,12 @@ std::string
 get_project_name(const xrt::xclbin& xclbin)
 {
   return xclbin.get_handle()->get_project_name();
+}
+
+xrt::detail::span<const char>
+get_xclbin_data(const xrt::xclbin& xclbin)
+{
+  return xclbin.get_handle()->data();
 }
 
 } // xrt_core::xclbin_int
