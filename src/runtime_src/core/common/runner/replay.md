@@ -105,10 +105,12 @@ Use `xrt-replay` executable to replay captured execution:
 xrt-replay [options]
 
 Options:
-  --replay <replay.json>  Replay script to execute (required)
-  --dir <path>           Directory containing artifacts (default: current directory)
-  --iter <num>           Number of iterations to execute (default: 1)
-  --help, -h             Show help message
+  --replay <replay.json> Replay script to execute (required)
+  [--dir <path>]         Directory containing artifacts (default: current directory)
+  [--iter <num>]         Number of iterations to execute (default: 1)
+  [--report [<file>]]    Output metrics to <file> or use stdout for no <file>
+
+  [--help, -h]           Show help message
 ```
 
 ### Examples
