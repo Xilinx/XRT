@@ -17,9 +17,49 @@ The captured data includes:
 
 ## Capturing an Application
 
-### Configuration
+### Method 1: Using xrt-capture (Recommended)
 
-Enable capture through `xrt.ini`:
+The `xrt-capture` utility automatically configures and launches your application with capture enabled:
+
+```bash
+% xrt-capture --frames 10 --output-dir /tmp/xrt_capture -- ./my_xrt_application [args]
+```
+
+**Options:**
+- `--frames <num>` - Number of frames to capture (required)
+- `--output-dir <path>` - Output directory for artifacts (default: ./xrt_capture)
+
+**Examples:**
+
+```bash
+# Basic capture
+% xrt-capture --frames 10 -- ./my_app
+
+# Capture with custom output directory
+% xrt-capture --frames 20 --output-dir /tmp/capture -- ./my_app arg1 arg2
+```
+
+**How it works:**
+1. Sets environment variables for capture configuration
+2. Launches your application (inherits environment)
+3. Waits for completion
+4. Reports capture location and replay command
+
+The capture settings are passed via environment variables (`Runtime.capture_frames` and `Runtime.capture_output_dir`), which XRT's config reader checks before consulting `xrt.ini`. This avoids modifying any files on disk.
+
+### Method 2: Manual Configuration via Environment Variables
+
+Set environment variables before running your application:
+
+```bash
+% export Runtime.capture_frames=10
+% export Runtime.capture_output_dir=/tmp/xrt_capture
+% ./my_xrt_application
+```
+
+### Method 3: Manual Configuration via xrt.ini
+
+Create or edit `xrt.ini` in your application's directory:
 
 ```ini
 [Runtime]
@@ -30,18 +70,13 @@ capture_frames=10
 capture_output_dir=/tmp/xrt_capture
 ```
 
-### Running the Application
-
-Simply run your XRT application with the configured `xrt.ini`:
+Then run your application:
 
 ```bash
-% cat xrt.ini
-[Runtime]
-capture_frames=10
-capture_output_dir=/tmp/xrt_capture
-
 % ./my_xrt_application
 ```
+
+Note: Environment variables take precedence over `xrt.ini` settings.
 
 ### Captured Output
 
