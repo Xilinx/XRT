@@ -89,6 +89,10 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
   catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
+
+    // Restore the original preemption state
+    xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
+    return;
   }
 
   // Restore the original preemption state
@@ -116,6 +120,10 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
   catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
+
+    // Restore the original preemption state
+    xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
+    return;
   }
 
   // Restore the original preemption state
