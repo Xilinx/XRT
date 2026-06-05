@@ -21,7 +21,6 @@
 #include "device_offload.h"
 #include "hal_trace.h"
 #include "pl_deadlock.h"
-#include "sc_profile.h"
 
 #include "plugin_loader.h"
 
@@ -38,8 +37,6 @@ namespace xdp::hw_emu {
       if (xrt_core::config::get_device_trace() != "off" ||
           xrt_core::config::get_device_counters())
         xdp::hw_emu::device_offload::load() ;
-      if (xrt_core::config::get_sc_profile())
-        xdp::hw_emu::sc::load();
       if (xrt_core::config::get_pl_deadlock_detection())
         xdp::hw_emu::pl_deadlock::load();
     }
