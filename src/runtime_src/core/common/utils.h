@@ -146,6 +146,14 @@ XRT_CORE_COMMON_EXPORT
 std::string
 getenv(const char* name);
 
+XRT_CORE_COMMON_EXPORT
+bool
+is_env(const char* name);
+
+XRT_CORE_COMMON_EXPORT
+std::string
+strerror(int err);
+
 } // xrt_core::utils
 
 #endif

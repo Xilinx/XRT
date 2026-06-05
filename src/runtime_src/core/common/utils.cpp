@@ -342,4 +342,16 @@ getenv(const char* name)
   return detail::getenv(name);
 }
 
+bool
+is_env(const char* name)
+{
+  return !detail::getenv(name).empty();
+}
+
+std::string
+strerror(int err)
+{
+  return detail::strerror(err);
+}
+
 } // xrt_core::utils

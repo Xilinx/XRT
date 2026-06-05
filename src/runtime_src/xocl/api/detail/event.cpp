@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2017 Xilinx, Inc
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "event.h"
 #include "context.h"
 #include "command_queue.h"
@@ -20,12 +8,11 @@
 #include "xocl/core/command_queue.h"
 #include "xocl/core/event.h"
 #include "xocl/core/error.h"
+
+#include "core/common/utils.h"
+
 #include <algorithm>
 #include <cstdlib>
-
-#ifdef _WIN32
-# pragma warning( disable : 4996 )
-#endif
 
 namespace xocl { namespace detail {
 
@@ -42,7 +29,7 @@ validOrError(cl_context ctx, cl_uint num_events, const cl_event* event_list, boo
   if (num_events && !event_list)
     throw error(CL_INVALID_VALUE,"event_list is nullptr");
 
-  static bool conformance = (std::getenv("XCL_CONFORMANCE")!=nullptr);
+  static bool conformance = xrt_core::utils::is_env("XCL_CONFORMANCE");
   // Disable this check for conformance mode since program binaries are reused across contexts
   if (!conformance) {
     auto valid_event = [ctx,check_status](cl_event ev)

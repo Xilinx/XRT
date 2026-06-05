@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2020 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "hal2.h"
 
 #include "core/common/api/bo.h"
@@ -11,6 +11,7 @@
 #include "core/common/scope_guard.h"
 #include "core/common/system.h"
 #include "core/common/thread.h"
+#include "core/common/utils.h"
 #include "core/include/xrt/detail/ert.h"
 
 #include <boost/format.hpp>
@@ -23,7 +24,7 @@
 #include <string>
 
 #ifdef _WIN32
-# pragma warning( disable : 4267 4996 4244 4245 )
+# pragma warning( disable : 4100 4267)
 #endif
 
 namespace {
@@ -31,7 +32,7 @@ namespace {
 static bool
 is_emulation()
 {
-  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  static bool val = !xrt_core::utils::getenv("XCL_EMULATION_MODE").empty();
   return val;
 }
 
@@ -246,7 +247,7 @@ acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
     throw std::runtime_error(std::string("failed to acquire CU(")
                              + std::to_string(cuidx)
                              + ") context '"
-                             + std::strerror(errno)
+                             + xrt_core::utils::strerror(errno)
                              + "'");
   }
 }
@@ -265,7 +266,7 @@ release_cu_context(const uuid& uuid,size_t cuidx)
     throw std::runtime_error(std::string("failed to release CU(")
                              + std::to_string(cuidx)
                              + ") context '"
-                             + std::strerror(errno)
+                             + xrt_core::utils::strerror(errno)
                              + "'");
   }
 }
@@ -312,7 +313,7 @@ allocExecBuffer(size_t sz)
   ubo->owner = m_handle;
   ubo->data = ubo->handle->map(xrt_core::buffer_handle::map_type::write);
   if (!ubo->data || ubo->data == (void*)(-1))
-    throw std::runtime_error(std::string("map failed: ") + std::strerror(errno));
+    throw std::runtime_error(std::string("map failed: ") + xrt_core::utils::strerror(errno));
   return execbuffer_object_handle(ubo.release(),delBufferObject);
 }
 
@@ -474,7 +475,7 @@ exec_buf(const execbuffer_object_handle& boh)
     throw;
   }
   catch (...) {
-    throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
+    throw std::runtime_error(std::string("failed to launch exec buffer '") + xrt_core::utils::strerror(errno) + "'");
   }
 }
 
@@ -488,7 +489,7 @@ exec_wait(int timeout_ms) const
     if (errno == EINTR)
       retval = 0;
     else
-      throw std::runtime_error(std::string("exec wait failed '") + std::strerror(errno) + "'");
+      throw std::runtime_error(std::string("exec wait failed '") + xrt_core::utils::strerror(errno) + "'");
   }
   return retval;
 }
