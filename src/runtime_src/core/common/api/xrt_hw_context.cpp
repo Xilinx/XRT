@@ -307,15 +307,29 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     return cfg;
   }
 
+  // Skip UC logs for unsupported devices (Phoenix, Strix)
+  static bool
+  skip_uc_log(const std::shared_ptr<xrt_core::device>& device)
+  {
+    constexpr uint16_t phoenix_device_id = 0x1502;
+    constexpr uint16_t strix_device_id   = 0x17f0;
+
+    try {
+      const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device.get());
+      return pcie_id.device_id == phoenix_device_id || pcie_id.device_id == strix_device_id;
+    }
+    catch (const std::exception&) {
+      return false;
+    }
+  }
+
   // Initializes uc log buffer
-  // Creates log buffer and starts a thread to dump the log buffer contents
-  // periodically per column to a file
   static std::unique_ptr<uc_log_buffer>
   init_uc_log_buf(const std::shared_ptr<xrt_core::device>& device, xrt_core::hwctx_handle* ctx_hdl)
   {
     // If uc log buffer is not supported then this function returns nullptr
     static auto uc_log_enabled = xrt_core::config::get_uc_log();
-    if (!ctx_hdl || !uc_log_enabled)
+    if (!ctx_hdl || !uc_log_enabled || skip_uc_log(device))
       return nullptr;
 
     try {
