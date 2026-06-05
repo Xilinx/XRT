@@ -12,7 +12,7 @@
 #include "OO_Preemption.h"
 #include "EventTracing/OO_EventTrace.h"
 #include "FirmwareLogging/OO_FirmwareLog.h"
-#include "HardwareContext/OO_HardwareContextReset.h"
+#include "AutoCoreDump/OO_AutoCoreDump.h"
 #include "common/device.h"
 #include "tools/common/XBUtilities.h"
 
@@ -36,7 +36,7 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
     {std::make_shared<OO_Preemption>("force-preemption")}, //hidden
     {std::make_shared<OO_EventTrace>("event-trace")}, //hidden
     {std::make_shared<OO_FirmwareLog>("firmware-log")}, //hidden
-    {std::make_shared<OO_HardwareContextReset>("hardware-context", true)} // hidden
+    {std::make_shared<OO_AutoCoreDump>("auto-coredump", true)} // hidden
 
   };
 

@@ -55,7 +55,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
 
 add_subdirectory(EventTracing)
 add_subdirectory(FirmwareLogging)
-add_subdirectory(HardwareContext)
+add_subdirectory(AutoCoreDump)
 add_subdirectory(ContextHealth)
 
 # Merge the files into one collection
