@@ -21,7 +21,7 @@ buffer_dumper(config cfg)
   : m_config(std::move(cfg))
   , m_data_size(m_config.chunk_size - m_config.metadata_size)
   , m_dumped_counts(m_config.num_chunks, 0)
-  , m_file_streams(m_config.num_chunks)
+  , m_file_streams(needs_file_streams() ? m_config.num_chunks : 0)
 {
   // Files are opened lazily in get_or_open_stream() when first data is available
   // start background dumping only when enabled
@@ -245,6 +245,7 @@ dispatch_parsed_log(size_t chunk_index, const std::string& text)
   std::string line;
   while (std::getline(lines, line)) {
     if (!line.empty())
+      // Sink argument sent is cached and dispatcher is created inf first call.
       // TODO: Pass decoded severity from uC log entry.
       // For now all entries are sent with info severity.
       // Also may be pass uC index in tag for better traceability.

@@ -71,6 +71,10 @@ private:
   std::vector<std::ofstream> m_file_streams;
   std::string m_session_timestamp;  // Set on first file open for consistent naming
 
+  bool
+  needs_file_streams() const
+  { return m_config.dump_bin_format || m_config.uc_log_dump == "file" || m_config.uc_log_dump.empty(); }
+
   // Open file for chunk lazily when first data is available; returns stream
   std::ofstream&
   get_or_open_stream(size_t chunk_index);

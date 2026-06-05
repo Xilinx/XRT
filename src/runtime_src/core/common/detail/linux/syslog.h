@@ -6,7 +6,6 @@
 #include "core/common/message.h"
 
 #include <map>
-#include <string>
 #include <syslog.h>
 
 namespace xrt_core::message {
@@ -28,8 +27,7 @@ public:
   void
   send(severity_level l, const char* tag, const char* msg) override
   {
-    std::string full_msg = std::string("[") + tag + "] : " + msg;
-    syslog(m_severity_map[l], "%s", full_msg.c_str());
+    syslog(m_severity_map[l], "[%s] : %s", tag, msg);
   }
 
 private:

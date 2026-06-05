@@ -1260,7 +1260,7 @@ inline std::string
 get_uc_log_dump()
 {
   // Sink for parsed uC log output: "file" (default), "syslog", "console", or "null"
-  // "file"    -> write to timestamped per-chunk files
+  // "file" or "" (default) -> write to timestamped per-chunk files
   // "syslog"  -> route to OS system log (Linux syslog / Windows Event Log under AMD_XRT)
   // "console" -> write to stderr
   // "null"    -> discard
