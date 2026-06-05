@@ -158,19 +158,22 @@ namespace sysfs {
 static constexpr const char* dev_root = "/sys/bus/pci/devices/";
 
 static std::string
+get_dev_path(const std::string& name)
+{
+  if (!name.empty() && name.front() == '/')
+    return name;
+  return dev_root + name;
+}
+
+static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
 {
+  auto base = get_dev_path(name);
   std::string subdir;
-  if (get_subdev_dir_name(dev_root + name, subdev, subdir) != 0)
+  if (get_subdev_dir_name(base, subdev, subdir) != 0)
     return "";
 
-  std::string path = dev_root;
-  path += name;
-  path += "/";
-  path += subdir;
-  path += "/";
-  path += entry;
-  return path;
+  return base + "/" + subdir + "/" + entry;
 }
 
 static std::fstream
@@ -206,7 +209,7 @@ open(const std::string& name,
   if (path.empty()) {
     std::stringstream ss;
     ss << "Failed to find subdirectory for " << subdev
-       << " under " << dev_root + name << std::endl;
+       << " under " << get_dev_path(name) << std::endl;
     err = ss.str();
   } else {
     fs = open_path(path, err, write, binary);
@@ -458,24 +461,25 @@ dev(std::shared_ptr<const drv> driver, std::string sysfs)
   , m_driver(std::move(driver))
 {
   std::string err;
+  std::string sysfs_path = sysfs::get_dev_path(m_sysfs_name);
+  bool is_pci = sscanf(m_sysfs_name.c_str(), "%hx:%hx:%hx.%hx",
+                        &m_domain, &m_bus, &m_dev, &m_func) >= 4;
 
-  if(sscanf(m_sysfs_name.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
-    throw std::invalid_argument(m_sysfs_name + " is not valid BDF");
+  m_instance = get_render_value(
+    sysfs_path + "/" + m_driver->sysfs_dev_node_dir(),
+    m_driver->dev_node_prefix());
 
-  m_is_mgmt = !m_driver->is_user();
-
-  if (m_is_mgmt) {
-    sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
+  if (is_pci) {
+    m_is_mgmt = !m_driver->is_user();
+    if (m_is_mgmt)
+      sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
+    sysfs_get<int>("", "userbar", err, m_user_bar, 0);
+    m_user_bar_size = bar_size(sysfs_path, m_user_bar);
+    sysfs_get<bool>("", "ready", err, m_is_ready, false);
+  } else {
+    m_is_ready = true;
   }
-  else {
-    m_instance = get_render_value(
-      sysfs::dev_root + m_sysfs_name + "/" + m_driver->sysfs_dev_node_dir(),
-      m_driver->dev_node_prefix());
-  }
 
-  sysfs_get<int>("", "userbar", err, m_user_bar, 0);
-  m_user_bar_size = bar_size(sysfs::dev_root + m_sysfs_name, m_user_bar);
-  sysfs_get<bool>("", "ready", err, m_is_ready, false);
   m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 }
 
