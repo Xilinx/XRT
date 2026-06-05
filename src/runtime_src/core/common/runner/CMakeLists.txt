@@ -14,19 +14,25 @@ target_include_directories(core_common_runner_objects
   )
 
 xrt_configure_version_file(xrt-runner APP)
-add_executable(xrt-runner xrt-runner-version.rc main.cpp)
+add_executable(xrt-runner xrt-runner-version.rc xrt-runner.cpp)
 target_link_libraries(xrt-runner PRIVATE xrt_coreutil)
 
 xrt_configure_version_file(xrt-replay APP)
-add_executable(xrt-replay xrt-replay-version.rc replay.cpp)
+add_executable(xrt-replay xrt-replay-version.rc xrt-replay.cpp)
 target_link_libraries(xrt-replay PRIVATE xrt_coreutil)
+
+xrt_configure_version_file(xrt-capture APP)
+add_executable(xrt-capture xrt-capture-version.rc xrt-capture.cpp)
+target_include_directories(xrt-capture PRIVATE ${XRT_SOURCE_DIR}/runtime_src)
+target_link_libraries(xrt-capture PRIVATE xrt_coreutil)
 
 if (NOT WIN32)
   target_link_libraries(xrt-replay PRIVATE pthread)
   target_link_libraries(xrt-runner PRIVATE pthread)
+  target_link_libraries(xrt-capture PRIVATE pthread)
 endif()
 
-install(TARGETS xrt-replay xrt-runner
+install(TARGETS xrt-replay xrt-runner xrt-capture
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 
 
