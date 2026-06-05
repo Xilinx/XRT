@@ -118,13 +118,6 @@ get_profile()
 }
 
 inline bool
-get_sc_profile()
-{
-  static bool value = detail::get_bool_value("Debug.sc_profile", false);
-  return value ;
-}
-
-inline bool
 get_container()
 {
   static bool value = detail::get_bool_value("Debug.container",false);
@@ -215,21 +208,6 @@ get_aie_status_interval_us()
   return value;
 }
 
-inline bool
-get_noc_profile()
-{
-  static bool value = detail::get_bool_value("Debug.noc_profile",false);
-  return value;
-}
-
-inline unsigned int
-get_noc_profile_interval_ms()
-{
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.noc_profile_interval_ms", 20);
-  return value;
-}
-
 inline std::string
 get_stall_trace()
 {
@@ -284,21 +262,6 @@ inline unsigned int
 get_ml_timeline_settings_num_buffer_segments()
 {
   static unsigned int value = detail::get_uint_value("ML_timeline_settings.num_buffer_segments", 0);
-  return value;
-}
-
-
-inline bool
-get_aie_pc()
-{
-  static bool value = detail::get_bool_value("Debug.aie_pc",false);
-  return value;
-}
-
-inline std::string
-get_aie_pc_settings()
-{
-  static std::string value = detail::get_string_value("AIE_pc_settings.addresses", "");
   return value;
 }
 

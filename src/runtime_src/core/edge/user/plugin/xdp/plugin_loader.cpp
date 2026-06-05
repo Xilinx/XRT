@@ -29,8 +29,6 @@
 #ifndef __HWEM__
 #include "aie_trace.h"
 #include "hal_device_offload.h"
-#include "noc_profile.h"
-#include "sc_profile.h"
 #include "vart_profile.h"
 #else
 // Only device offload supported for hardware emulation on edge
@@ -60,18 +58,12 @@ bool load()
   if (xrt_core::config::get_aie_debug())
     xdp::aie::debug::load();
 
-  if (xrt_core::config::get_noc_profile())
-    xdp::noc::profile::load();
-
 #if 0 
   // Not currently supported on edge
   if (xrt_core::config::get_power_profile()) {
     xdp::power::profile::load() ;
   }
 #endif 
-
-  if (xrt_core::config::get_sc_profile())
-    xdp::sc::profile::load();
 
   if (xrt_core::config::get_aie_trace())
     xdp::aie::trace::load();
