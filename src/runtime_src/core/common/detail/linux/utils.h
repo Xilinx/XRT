@@ -22,7 +22,7 @@ namespace xrt_core::utils::detail {
 inline std::string
 sys_dep_get_last_err_msg()
 {
-  return  std::string(strerror(errno));
+  return strerror(errno);  // NOLINT(concurrency-mt-unsafe)
 }
 
 // Safe cross-platform environment variable retrieval.
@@ -30,7 +30,7 @@ sys_dep_get_last_err_msg()
 inline std::string
 getenv(const char* name)
 {
-  if (const char* value = std::getenv(name))
+  if (const char* value = std::getenv(name)) // NOLINT(concurrency-mt-unsafe)
     return value;
 
   return {};

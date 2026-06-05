@@ -1038,27 +1038,27 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
 
   switch ( arg.m_typeInfo ) {
     case PrintfArg::AT_PTR: {
-      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.ptr);
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.ptr); // NOLINT
       retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_STR: {
-      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.str.c_str());
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.str.c_str()); // NOLINT
       retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_INT: {
-      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.int_arg);
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.int_arg); // NOLINT
       retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_UINT: {
-      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.uint_arg);
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.uint_arg); // NOLINT
       retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_FLOAT: {
-      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.float_arg);
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.float_arg); // NOLINT
       retval = printBuf.data();
       break;
     }
@@ -1066,7 +1066,7 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       size_t comma = 0;
       for (auto val : arg.intVec) {
         if (comma++) retval += ",";
-        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val);
+        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val); // NOLINT
         retval += printBuf.data();
       }
       break;
@@ -1075,7 +1075,7 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       size_t comma = 0;
       for (auto val : arg.uintVec) {
         if (comma++) retval += ",";
-        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val);
+        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val); // NOLINT
         retval += printBuf.data();
       }
       break;
@@ -1084,7 +1084,7 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       size_t comma = 0;
       for (auto val : arg.floatVec) {
         if (comma++) retval += ",";
-        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val);
+        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val); // NOLINT
         retval += printBuf.data();
       }
       break;
