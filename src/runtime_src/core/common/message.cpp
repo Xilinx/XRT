@@ -223,4 +223,13 @@ sendv(severity_level l, const char* tag, const char* format, va_list args)
   send(l, tag, buf.data());
 }
 
+void
+send_uc_log(const std::string& sink, severity_level l, const char* tag, const char* msg)
+{
+  // Dedicated dispatcher for uC log output, driven by Debug.uc_log_dump (not runtime_log).
+  // No verbosity filtering — all uC log lines are forwarded unconditionally.
+  static auto dispatcher = message_dispatch::make_dispatcher(sink);
+  dispatcher->send(l, tag, msg);
+}
+
 }} // message,xrt

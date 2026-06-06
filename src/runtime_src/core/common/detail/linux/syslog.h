@@ -14,7 +14,7 @@ class syslog_dispatch : public message_dispatch
 {
 public:
   syslog_dispatch()
-  { openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER); }
+  { openlog("XRT", LOG_PID|LOG_CONS, LOG_USER); }
 
   syslog_dispatch(const syslog_dispatch&) = delete;
   syslog_dispatch& operator=(const syslog_dispatch&) = delete;
@@ -26,7 +26,9 @@ public:
 
   void
   send(severity_level l, const char* tag, const char* msg) override
-  { syslog(m_severity_map[l], "%s", msg); }
+  {
+    syslog(m_severity_map[l], "[%s] : %s", tag, msg);
+  }
 
 private:
   std::map<severity_level, int> m_severity_map = {

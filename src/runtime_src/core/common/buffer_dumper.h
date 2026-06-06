@@ -48,6 +48,10 @@ public:
     xrt::bo dump_buffer;              // xrt buffer object to dump
     bool dump_bin_format = false;     // Dump in binary format when enabled
     bool enable_dumper_thread = false; // Enable background dumper thread
+    // Sink for parsed uC log text output:
+    // "file" (default), "syslog", "console", or "null"
+    // Ignored when dump_bin_format=true (binary always writes to file)
+    std::string uc_log_dump = "file";
   };
 
   // Log entry layout: shared definition in uc_log.h
@@ -67,6 +71,10 @@ private:
   std::vector<std::ofstream> m_file_streams;
   std::string m_session_timestamp;  // Set on first file open for consistent naming
 
+  bool
+  needs_file_streams() const
+  { return m_config.dump_bin_format || m_config.uc_log_dump == "file" || m_config.uc_log_dump.empty(); }
+
   // Open file for chunk lazily when first data is available; returns stream
   std::ofstream&
   get_or_open_stream(size_t chunk_index);
@@ -75,7 +83,20 @@ private:
   size_t
   read_logged_count(uint8_t* chunk);
 
-  // Write chunk data to file (metadata header + new data payload)
+  // Write raw binary data (metadata + payload) to file
+  void
+  dump_chunk_data_binary(size_t chunk_index, size_t start_offset, size_t bytes_to_end,
+                         size_t length, uint8_t* chunk);
+
+  // Parse log entries from chunk data into a formatted string
+  std::string
+  parse_log_entries(size_t start_offset, size_t bytes_to_end, size_t length, uint8_t* chunk);
+
+  // Route parsed log text to the configured sink (file, syslog, console, or null)
+  void
+  dispatch_parsed_log(size_t chunk_index, const std::string& text);
+
+  // Coordinate binary or parsed log dump for a chunk
   void
   dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk);
 
