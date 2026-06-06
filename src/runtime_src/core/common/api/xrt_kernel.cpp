@@ -48,6 +48,7 @@
 #include "core/common/time.h"
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
+#include "core/common/utils.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/runner/capture.h"
 #include "core/common/xdp/profile.h"
@@ -79,7 +80,7 @@ using namespace std::chrono_literals;
 #endif
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4267 4996 4100 4201)
+# pragma warning(disable : 4100 4244 4267)
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -162,15 +163,15 @@ constexpr size_t mailbox_output_ctrl_reg = 0x18;
 constexpr size_t max_cus = 128;
 constexpr size_t cus_per_word = 32;
 
-XRT_CORE_UNUSED // debug enabled function
+[[maybe_unused]] // debug enabled function
 std::string
 debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
 {
-  static auto fnm = std::getenv("MBS_PRINT_REGMAP");
-  if (!fnm)
+  static auto fnm = xrt_core::utils::getenv("MBS_PRINT_REGMAP");
+  if (fnm.empty())
     return "";
 
-  std::ofstream ostr(fnm,std::ios::app);
+  std::ofstream ostr(fnm, std::ios::app);
   //std::ostringstream ostr;
   constexpr auto indent3 = 3; // stupid lint warnings
   constexpr auto indent8 = 8; // stupid lint warnings
@@ -453,8 +454,8 @@ to_uint64_t(ValueType value)
 inline bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swem = (xem.compare("sw_emu") == 0);
   return swem;
 }
 

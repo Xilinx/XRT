@@ -9,7 +9,8 @@
 #include <memory>
 #include <string>
 
-// Exclude rarely-used headers (e.g. Winsock) from <windows.h> for faster builds and fewer conflicts.
+// Exclude rarely-used headers (e.g. Winsock) from <windows.h> for
+// faster builds and fewer conflicts.
 #ifndef WIN32_LEAN_AND_MEAN
 # define WIN32_LEAN_AND_MEAN
 #endif

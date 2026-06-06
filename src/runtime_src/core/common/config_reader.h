@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef xrtcore_config_reader_h_
 #define xrtcore_config_reader_h_
@@ -56,7 +56,7 @@ bool
 get_bool_value(const char*, bool);
 
 XRT_CORE_COMMON_EXPORT
-const char*
+std::string
 get_env_value(const char*);
 
 XRT_CORE_COMMON_EXPORT
@@ -386,7 +386,7 @@ inline bool
 get_trace_logging()
 {
   static bool value = detail::get_bool_value("Runtime.trace_logging", false)
-    || detail::get_env_value("XRT_TRACE_LOGGING_ENABLE");
+    || !detail::get_env_value("XRT_TRACE_LOGGING_ENABLE").empty();
   return value;
 }
 

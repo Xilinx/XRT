@@ -39,10 +39,6 @@
 #include <utility>
 #include <variant>
 
-#ifdef _WIN32
-# pragma warning ( disable : 4996 )
-#endif
-
 namespace {
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)

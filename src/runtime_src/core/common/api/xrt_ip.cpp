@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx Inc. All rights reserved
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT IP APIs as declared in
 // core/include/experimental/xrt_ip.h
@@ -14,21 +14,18 @@
 #include "core/common/api/ip_int.h"
 #include "core/common/api/native_profile.h"
 
-#include "core/common/device.h"
 #include "core/common/config_reader.h"
 #include "core/common/cuidx_type.h"
 #include "core/common/debug.h"
+#include "core/common/device.h"
 #include "core/common/error.h"
+#include "core/common/utils.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <atomic>
 #include <memory>
 #include <string>
-
-#ifdef _WIN32
-# pragma warning( disable : 4244 4996)
-#endif
 
 namespace {
 
@@ -37,8 +34,8 @@ constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; } //N
 inline bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem.compare("sw_emu") == 0;
   return swem;
 }
 
