@@ -299,9 +299,14 @@ process_chunks_no_lock()
     size_t logged_wrap = logged_count / m_data_size;
     size_t dumped_wrap = dumped_count / m_data_size;
 
-    // Overwrite detected; catch up and resume dumping from current position.
-    if (logged_count > dumped_count && logged_wrap > dumped_wrap)
+    // Overwrite detected: dump entire buffer and catch up and resume dumping from current position.
+    if (logged_count > dumped_count && logged_wrap > dumped_wrap) {
+      m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, m_data_size,
+                                chunk_offset + m_config.metadata_size);
+      dump_chunk_data(i, logged_count - m_data_size, m_data_size, chunk);
       dumped_count = logged_count;
+      continue;
+    }
 
     if (dumped_count != logged_count) {
       size_t to_dump = logged_count - dumped_count;
