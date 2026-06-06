@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 include_directories(
   ${Boost_INCLUDE_DIRS}
   ${XRT_SOURCE_DIR}/include/1_2
@@ -62,6 +62,10 @@ target_link_libraries(xilinxopencl
   PRIVATE
   xrt++
   xrt_coreutil
+  )
+
+target_compile_options(xocl PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/wd4100>
   )
 
 else ()

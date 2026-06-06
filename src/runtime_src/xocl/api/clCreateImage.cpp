@@ -1,21 +1,6 @@
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2020 Xilinx, Inc
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "xocl/config.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
@@ -23,17 +8,14 @@
 #include "detail/memory.h"
 #include "detail/context.h"
 #include "plugin/xdp/profile_v2.h"
-//#include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
+
+#include "core/common/utils.h"
+
 #include <CL/opencl.h>
 #include <cstdlib>
 
-#ifdef _WIN32
-# pragma warning ( disable : 4996 )
-#endif
-
 namespace {
-
 // Hack to determine if a context is associated with exactly one
 // device.  Additionally, in emulation mode, the device must be
 // active, e.g. loaded through a call to loadBinary.
@@ -52,7 +34,7 @@ singleContextDevice(cl_context context)
   if (!device)
     return nullptr;
 
-  static bool emulation = std::getenv("XCL_EMULATION_MODE");
+  static bool emulation = xrt_core::utils::is_env("XCL_EMULATION_MODE");
   return (!emulation || device->is_active())
     ? device
     : nullptr;

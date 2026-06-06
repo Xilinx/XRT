@@ -1,37 +1,22 @@
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2017 Xilinx, Inc
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "xocl/config.h"
 #include "xocl/core/kernel.h"
 #include "detail/kernel.h"
 #include "plugin/xdp/profile_v2.h"
+
+#include "core/common/utils.h"
+
 #include <CL/opencl.h>
 #include <cstdlib>
-
-#ifdef _WIN32
-# pragma warning ( disable : 4996 )
-#endif
 
 namespace {
 
 inline bool
 xcl_conformancecollect()
 {
-  static bool val = getenv("XCL_CONFORMANCECOLLECT") != nullptr;
+  static bool val = xrt_core::utils::is_env("XCL_CONFORMANCECOLLECT");
   return val;
 }
 

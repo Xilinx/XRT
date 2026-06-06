@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrt_device_hal2_h
 #define xrt_device_hal2_h
 
@@ -28,6 +28,11 @@
 #include <stdexcept>
 
 #include <boost/optional/optional.hpp>
+
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning ( disable : 4100 )
+#endif
 
 namespace xrt_xocl { namespace hal2 {
 
@@ -631,5 +636,9 @@ public:
 };
 
 }} // hal2,xrt
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif

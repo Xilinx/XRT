@@ -63,6 +63,14 @@ getenv(const char* name)
   return std::string(guard.get());
 }
 
+inline std::string
+strerror(int err)
+{
+  char buffer[256];
+  strerror_s(buffer, sizeof(buffer), err);
+  return buffer;
+}
+
 } // xrt_core::utils::detail
 #endif
 
