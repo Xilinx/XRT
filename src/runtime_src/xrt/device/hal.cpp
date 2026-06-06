@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2021 Xilinx, Inc
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "hal.h"
 
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
 #include "core/common/module_loader.h"
-#include "core/include/xrt/experimental/xrt_system.h"
+#include "core/common/utils.h"
+
+#include "xrt/experimental/xrt_system.h"
 
 #include <filesystem>
-
-#ifdef _WIN32
-# pragma warning ( disable : 4996 4706 4505 )
-#endif
 
 namespace hal = xrt_xocl::hal;
 namespace sfs = std::filesystem;
@@ -30,6 +28,7 @@ ends_with(const std::string& str, const std::string& sub)
     : (str.size() - p) == sub.size();
 }
 
+[[maybe_unused]]
 static void
 directoryOrError(const sfs::path& path)
 {
@@ -66,34 +65,38 @@ dllpath(const std::filesystem::path& root, const std::string& libnm)
 #endif
 }
 
+[[maybe_unused]]
 static bool
 is_emulation()
 {
-  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  static bool val = !xrt_core::utils::getenv("XCL_EMULATION_MODE").empty();
   return val;
 }
 
+[[maybe_unused]]
 static bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem.empty() ? false : xem.compare("sw_emu")==0;
   return swem;
 }
 
+[[maybe_unused]]
 static bool
 is_hw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool hwem = xem ? (std::strcmp(xem,"hw_emu")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool hwem = xem.empty() ? false : xem.compare("hw_emu")==0;
   return hwem;
 }
 
+[[maybe_unused]]
 static bool
 is_noop_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool noop = xem.empty() ? false : xem.compare("noop")==0;
   return noop;
 }
 

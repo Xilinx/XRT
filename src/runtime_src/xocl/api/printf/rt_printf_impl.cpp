@@ -1160,7 +1160,7 @@ size_t getPrintfBufferSize(const std::array<size_t,3>& globalSize, const std::ar
     retval = std::strtoul(buf_size_str.c_str(), nullptr, 10);
   }
 
-  if (!xrt_core::utils::getenv("XCL_PRINTF_DEBUG").empty()) {
+  if (xrt_core::utils::is_env("XCL_PRINTF_DEBUG")) {
     std::cout << "DEBUG: Workgroup_Count=" << workgroupCount << "  Workgroup_Buffer_Size=" << workgroupBufferSize << std::endl;
     std::cout << "DEBUG: Global_Size=" << totalGlobal << "  Local_Size=" << totalLocal << std::endl;
     std::cout << "DEBUG: XCL_PRINTF_BUFFER_SIZE=" << retval << std::endl;

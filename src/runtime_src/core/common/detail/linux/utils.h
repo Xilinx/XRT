@@ -10,6 +10,12 @@
 
 namespace xrt_core::utils::detail {
 
+inline std::string
+strerror(int err)
+{
+  return std::strerror(err);   // NOLINT(concurrency-mt-unsafe)
+}
+
 /**
  * @brief Retrieves the last error message from the Linux operating system.
  *
@@ -22,7 +28,7 @@ namespace xrt_core::utils::detail {
 inline std::string
 sys_dep_get_last_err_msg()
 {
-  return strerror(errno);  // NOLINT(concurrency-mt-unsafe)
+  return strerror(errno);
 }
 
 // Safe cross-platform environment variable retrieval.
