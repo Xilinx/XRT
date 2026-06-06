@@ -196,6 +196,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       config.dump_buffer = std::move(bo);
       config.dump_bin_format = xrt_core::config::get_uc_log_bin_format();
       config.enable_dumper_thread = xrt_core::config::get_uc_log_dumper_thread();
+      config.uc_log_dump = xrt_core::config::get_uc_log_dump();
 
       return std::make_unique<xrt_core::buffer_dumper>(std::move(config));
     }
