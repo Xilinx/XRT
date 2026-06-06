@@ -113,10 +113,7 @@ else()
   xrt_add_subdirectory(tools/scripts)
   xrt_add_subdirectory(core)
 
-  # Until fixed in xdp unreferenced formal parameter, due to changes in PR #9854
-  target_compile_options(xdp_device_offload_plugin PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/wd4100>) 
-
-# --- Optional HIP bindings ---
+  # --- Optional HIP bindings ---
   if (XRT_ENABLE_HIP)
     xrt_add_subdirectory(hip)
   endif(XRT_ENABLE_HIP)
