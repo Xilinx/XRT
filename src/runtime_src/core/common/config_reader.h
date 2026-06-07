@@ -720,6 +720,18 @@ get_capture_dir()
   return value;
 }
 
+// Enable residency trim in xrt core.  This is used to trim down the
+// residency of buffers in the system when the buffers are unused
+// since last trim notification.  Affects Winndows MCDM UMD only.  If
+// set, then UMD creates a thread that invokes trim operation every
+// set interval.  The option is in addition to OS trim notification.
+inline unsigned int
+get_residency_trim_interval_ms()
+{
+  static auto value = detail::get_uint_value("Runtime.residency_trim_interval_ms", 0);
+  return value;
+}
+
 /**
  * Indicate whether Block automation based Emulation Models are
  * used. By default, it is turned off.  This is used to turn on
