@@ -28,6 +28,7 @@
 #include "core/common/system.h"
 #include "core/common/trace.h"
 #include "core/common/unistd.h"
+#include "core/common/utils.h"
 #include "core/common/xclbin_parser.h"
 
 #include "core/common/runner/capture.h"
@@ -40,10 +41,6 @@
 #include <string>
 #include <vector>
 
-#ifdef _WIN32
-# pragma warning( disable : 4244 4100 4996 4505 26813)
-#endif
-
 // This file uses static globals, which clang-tidy warns about.  We
 // disable the warning for this file.
 namespace {
@@ -52,8 +49,8 @@ namespace {
 static bool
 is_noop_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE"); // NOLINT(concurrency-mt-unsafe)
-  static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool noop = xem.empty() ? false : xem.compare("noop")==0;
   return noop;
 }
 
@@ -61,8 +58,8 @@ is_noop_emulation()
 static bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE"); // NOLINT(concurrency-mt-unsafe)
-  static bool swemu = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swemu = xem.empty() ? false : xem.compare("sw_emu")==0;
   return swemu;
 }
 
@@ -292,7 +289,7 @@ public:
   {}
 
   // Not supported
-  bo_impl(device_type dev, xcl_buffer_handle xhdl)
+  bo_impl(device_type, xcl_buffer_handle)
   {} // throw xrt_core::error(std::errc::not_supported, "xcl type objects are no longer supported");
 
   // Share handle with parent
@@ -660,7 +657,7 @@ async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, s
 
 xrt::bo::async_handle
 bo_impl::
-async(xrt::bo& bo, xclBOSyncDirection dir, size_t sz, size_t offset)
+async(xrt::bo&, xclBOSyncDirection, size_t, size_t)
 {
   throw std::runtime_error("Unsupported feature");
 
