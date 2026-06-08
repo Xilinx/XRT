@@ -40,8 +40,6 @@ public:
   xrt_core::smi::subcommand
   create_configure_subcommand() override;
 
-  xrt_core::smi::subcommand
-  create_advanced_subcommand();
 };
 
 class config_gen_phoenix : public config_gen_ryzen {
