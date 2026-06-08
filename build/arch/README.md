@@ -4,7 +4,13 @@ This directory contains PKGBUILDs for creating Arch Linux packages from XRT buil
 
 ## Prerequisites
 
-1. Build XRT first:
+1. Install build dependencies:
+```bash
+cd ../..
+sudo ./src/runtime_src/tools/scripts/xrtdeps.sh
+```
+
+2. Build XRT:
 ```bash
 cd ..
 ./build.sh -npu -opt
@@ -22,6 +28,9 @@ From this directory (`build/arch/`):
 # Build xrt-base package
 makepkg -p PKGBUILD-xrt-base
 
+# Install xrt-base first (required dependency)
+sudo pacman -U ./xrt-base-[0-9]*-x86_64.pkg.tar.zst
+
 # Build xrt-npu package
 makepkg -p PKGBUILD-xrt-npu
 ```
@@ -29,11 +38,7 @@ makepkg -p PKGBUILD-xrt-npu
 ## Installing Packages
 
 ```bash
-# Install xrt-base first (required dependency)
-sudo pacman -U xrt-base-*.pkg.tar.zst
-
-# Then install xrt-npu
-sudo pacman -U xrt-npu-*.pkg.tar.zst
+sudo pacman -U ./xrt-npu-[0-9]*-x86_64.pkg.tar.zst
 ```
 
 ## Customizing Build Directory
@@ -50,3 +55,9 @@ XRT_BUILD_DIR=/path/to/build/Release makepkg -p PKGBUILD-xrt-base
 - **xrt-npu**: NPU-specific XRT components (requires xrt-base)
 
 Both packages install to `/opt/xilinx/xrt/` following XRT's standard installation layout.
+
+## Notes
+
+- The `xrt-npu` package depends on `xrt-base` of the matching version
+- Version is automatically derived from the built tarball filename
+- Use `makepkg --nobuild` to verify PKGBUILD without building
