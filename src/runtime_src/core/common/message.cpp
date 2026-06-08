@@ -164,7 +164,7 @@ send(severity_level l, const char* tag, const char* msg)
 
 } //end unnamed namespace
 
-namespace xrt_core { namespace message {
+namespace xrt_core::message {
 
 std::unique_ptr<message_dispatch>
 message_dispatch::
@@ -232,4 +232,11 @@ send_uc_log(const std::string& sink, severity_level l, const char* tag, const ch
   dispatcher->send(l, tag, msg);
 }
 
-}} // message,xrt
+void
+send_syslog(severity_level l, const char* tag, const char* msg)
+{
+  static auto dispatcher = message_dispatch::make_dispatcher("syslog");
+  dispatcher->send(l, tag, msg);
+}
+
+} // xrt_core::message
