@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -227,11 +228,21 @@ public:
     npu3_f3, // XXXXX
     npu3_f4, // XXXXX
     npu3_f5, // XXXXX
+    npu3_f6, // XXXXX 
     npu3_B01, // XXXXX
     npu3_B02, // XXXXX
     npu3_B03, // XXXXX
     aie2ps, // Telluride aie2ps
     unknown // Unknown hardware type
+  };
+
+  // Coarse hardware grouping used for xrt-smi config, AIE arch strings, and test routing.
+  enum class hardware_family {
+    phoenix, // AIE2 (PHX)
+    strix,   // AIE2P (STX, KRK)
+    npu3,    // AIE4
+    aie2ps,
+    unknown
   };
 
   XRT_CORE_COMMON_EXPORT
@@ -241,6 +252,33 @@ public:
   XRT_CORE_COMMON_EXPORT
   hardware_type 
   get_hardware_type(const xq::pcie_id::data&) const;
+
+  // Maps a specific hardware_type to its family. All per-device case logic lives here.
+  XRT_CORE_COMMON_EXPORT
+  static hardware_family
+  get_family(hardware_type hw);
+
+  XRT_CORE_COMMON_EXPORT
+  hardware_family
+  get_family(const xq::pcie_id::data& dev) const
+  {
+    return get_family(get_hardware_type(dev));
+  }
+
+  // AIE architecture version string for examine JSON; nullopt when unknown.
+  XRT_CORE_COMMON_EXPORT
+  static std::optional<std::string>
+  get_aie_architecture_version(hardware_type hw);
+
+  // True for PHX and STX/KRK (AIE2/AIE2P); false for NPU3 (AIE4).
+  XRT_CORE_COMMON_EXPORT
+  static bool
+  is_aie2_platform(hardware_type hw);
+
+  // Validate-runner archive path relative to the platform archive root.
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  get_validate_archive_path(hardware_type hw);
 
 private:
   std::map<xq::pcie_id::data, hardware_type> hardware_map;

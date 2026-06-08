@@ -137,50 +137,32 @@ config_gen_npu3()
   };
 }
 
+static std::shared_ptr<config_gen_ryzen>
+create_config_generator(smi_hardware_config::hardware_family family)
+{
+  switch (family) {
+  case smi_hardware_config::hardware_family::phoenix:
+    return std::make_shared<config_gen_phoenix>();
+  case smi_hardware_config::hardware_family::strix:
+    return std::make_shared<config_gen_strix>();
+  case smi_hardware_config::hardware_family::npu3:
+    return std::make_shared<config_gen_npu3>();
+  default:
+    return std::make_shared<config_gen_strix>();
+  }
+}
+
 void
 populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* device)
 {
   smi_hardware_config smi_hrdw;
   const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
-  auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+  const auto family = smi_hrdw.get_family(pcie_id);
+  const auto generator = create_config_generator(family);
 
-  std::shared_ptr<config_gen_ryzen> generator;
-
-  switch (hardware_type) {
-  case smi_hardware_config::hardware_type::phx:
-  {
-    generator = std::make_shared<config_gen_phoenix>();
-    break;
-  }
-  case smi_hardware_config::hardware_type::stxA0:
-  case smi_hardware_config::hardware_type::stxB0:
-  case smi_hardware_config::hardware_type::stxH:
-  case smi_hardware_config::hardware_type::krk1:
-  {
-    generator = std::make_shared<config_gen_strix>();
-    break;
-  }
-  case smi_hardware_config::hardware_type::npu3_f0:
-  case smi_hardware_config::hardware_type::npu3_f1:
-  case smi_hardware_config::hardware_type::npu3_f2:
-  case smi_hardware_config::hardware_type::npu3_f3:
-  case smi_hardware_config::hardware_type::npu3_B01:
-  case smi_hardware_config::hardware_type::npu3_B02:
-  case smi_hardware_config::hardware_type::npu3_B03:
-  {
-    generator = std::make_shared<config_gen_npu3>();
-    break;
-  }
-  default:
-    generator = std::make_shared<config_gen_strix>();
-    break;
-  }
-
-  if (generator) {
-    smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
-    smi_instance->add_subcommand("examine",  generator->create_examine_subcommand());
-    smi_instance->add_subcommand("configure",  generator->create_configure_subcommand());
-  }
+  smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
+  smi_instance->add_subcommand("examine",  generator->create_examine_subcommand());
+  smi_instance->add_subcommand("configure",  generator->create_configure_subcommand());
 }
 
 std::string
