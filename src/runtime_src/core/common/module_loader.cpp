@@ -1,64 +1,56 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2020 Xilinx, Inc
-// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
-
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/module_loader.h"
 
-#include "core/common/dlfcn.h"
-#include "core/common/config_reader.h"
+#include "config_reader.h"
+#include "dlfcn.h"
+#include "utils.h"
+
 #include "detail/xilinx_xrt.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <string_view>
 
 #ifndef XRT_LIB_DIR
 # error "XRT_LIB_DIR is undefined"
-#endif
-
-#ifdef _WIN32
-# pragma warning (disable : 4996)
 #endif
 
 namespace sfs = std::filesystem;
 
 namespace {
 
-static const char*
-value_or_empty(const char* cstr)
-{
-  return cstr ? cstr : "" ;
-}
-
 static bool
 is_emulation()
 {
-  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  static bool val = !xrt_core::utils::getenv("XCL_EMULATION_MODE").empty();
   return val;
 }
 
 static bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem.compare("sw_emu") == 0;
   return swem;
 }
 
 static bool
 is_hw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool hwem = xem ? (std::strcmp(xem,"hw_emu")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool hwem = xem.compare("hw_emu") == 0;
   return hwem;
 }
 
 static bool
 is_noop_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool noop = xem.compare("noop") ==0 ;
   return noop;
 }
 
@@ -91,7 +83,7 @@ shim_name()
 static sfs::path
 get_xilinx_xrt()
 {
-  sfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
+  sfs::path xrt(xrt_core::utils::getenv("XILINX_XRT"));
   if (!xrt.empty())
     return xrt;
 
@@ -115,10 +107,25 @@ get_platform_repo_paths()
   
   // Get repo path from ini file if any
   auto repo = xrt_core::config::get_platform_repo();
-  auto token = std::strtok(repo.data(), ":;");
-  while (token) {
-    paths.push_back(token);
-    token = std::strtok(nullptr, ":;");
+  std::string_view sv{repo};
+
+  size_t pos = 0;
+  while (pos < sv.size()) {
+    pos = sv.find_first_not_of(":;", pos);
+    if (pos == std::string_view::npos)
+      break;
+
+    // Find next delimiter
+    auto end = sv.find_first_of(":;", pos);
+    if (end == std::string_view::npos) {
+      // No more delimiters: take the rest of the string
+      paths.emplace_back(sv.substr(pos));
+      break;
+    }
+
+    // Safe: end is in [pos, sv.size())
+    paths.emplace_back(sv.substr(pos, end - pos));
+    pos = end + 1;
   }
 
   // Append default path(s)
@@ -184,7 +191,7 @@ module_path(const std::string& module)
 static sfs::path
 sdk_path(const std::string& module)
 {
-  sfs::path sdk(value_or_empty(getenv("AMD_NPU_SDK_PATH")));
+  sfs::path sdk(xrt_core::utils::getenv("AMD_NPU_SDK_PATH"));
   if (sdk.empty())
     throw std::runtime_error("AMD_NPU_SDK_PATH environment variable not set");
 

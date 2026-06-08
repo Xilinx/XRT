@@ -13,6 +13,7 @@
 #include "common/message.h"
 #include "common/system.h"
 #include "common/sysinfo.h"
+#include "common/utils.h"
 #include "common/smi/smi.h"
 #include "common/module_loader.h"
 #include "xrt/detail/version-slim.h"
@@ -33,8 +34,6 @@
 
 
 #ifdef _WIN32
-
-# pragma warning( disable : 4189 4100 4996)
 # pragma comment(lib, "Ws2_32.lib")
 /* need to link the lib for the following to work */
 # define be32toh ntohl
@@ -1055,9 +1054,8 @@ std::string
 XBUtilities::
 get_archive_install_path(const std::string& xrt_version)
 {
-  // NOLINTNEXTLINE(concurrency-mt-unsafe) - called only during error reporting, not performance critical
-  const char* home = std::getenv("HOME");
-  if (!home || !*home)
+  auto home = xrt_core::utils::getenv("HOME");
+  if (home.empty())
     throw std::runtime_error("HOME environment variable is not set");
   
   return std::string(home) + "/.local/share/xrt/" + xrt_version + "/amdxdna/bins";

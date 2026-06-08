@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
-
-// ------ I N C L U D E   F I L E S -------------------------------------------
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "OO_UpdateBase.h"
 
-// XRT - Include Files
 #include "core/common/info_vmr.h"
 #include "core/common/message.h"
 #include "flash/flasher.h"
@@ -28,10 +25,6 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <map>
 #include <thread>
-
-#ifdef _WIN32
-#pragma warning(disable : 4996) // disable warning caused by std::asctime
-#endif
 
 /**
  * @brief Update shell on the board for manual flash
@@ -227,6 +220,7 @@ deployment_path_and_filename(std::string file)
 
   return std::make_pair(dsafile, path);
 }
+
 template <typename TP>
 std::time_t to_time_t(TP tp)
 {
@@ -235,19 +229,28 @@ std::time_t to_time_t(TP tp)
               + system_clock::now());
     return system_clock::to_time_t(sctp);
 }
+
 // Helper function for header info
 static std::string
-get_file_timestamp(const std::string & _file)
+get_file_timestamp(const std::string& file)
 {
-  std::filesystem::path p(_file);
-	if (!std::filesystem::exists(p)) {
-		throw xrt_core::error("Invalid platform path.");
-	}
-  std::filesystem::file_time_type file_time = std::filesystem::last_write_time(std::filesystem::path(_file));
+  std::filesystem::path p(file);
+  if (!std::filesystem::exists(p))
+    throw xrt_core::error("Invalid platform path.");
+
+  std::filesystem::file_time_type file_time = std::filesystem::last_write_time(p);
   std::time_t ftime = to_time_t(file_time);
-  std::string timeStr(std::asctime(std::localtime(&ftime)));
-  timeStr.pop_back();  // Remove the new-line character that gets inserted by asctime.
-  return timeStr;
+
+  std::tm tm{};
+#if defined(_WIN32) || defined(_MSC_VER)
+  localtime_s(&tm, &ftime);
+#else
+  localtime_r(&ftime, &tm);
+#endif
+
+  std::ostringstream oss;
+  oss << std::put_time(&tm, "%a %b %d %H:%M:%S %Y");
+  return oss.str();  
 }
 
 static void

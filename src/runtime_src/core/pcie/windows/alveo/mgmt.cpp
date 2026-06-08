@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "mgmt.h"
 #include "xclfeatures.h"
@@ -22,7 +22,6 @@
 #include <regex>
 #include <iostream>
 
-#pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
 
 namespace { // private implementation details

@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
-
-// ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "SubCmdProgram.h"
 
 #include "OO_ChangeBoot.h"
@@ -16,12 +13,7 @@
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 
-// 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
-
-#ifdef _WIN32
-#pragma warning(disable : 4996) //std::asctime
-#endif
 
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("program",

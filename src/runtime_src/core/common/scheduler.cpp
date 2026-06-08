@@ -22,7 +22,7 @@
 #endif
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4245 4267 4996)
+# pragma warning( disable : 4244 4267)
 #endif
 
 #if defined(__GNUC__) && (__GNUC__ >= 16)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -16,13 +16,9 @@ namespace XBU = XBUtilities;
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
+#include "core/common/utils.h"
 
-#ifdef _WIN32
-#pragma warning(disable : 4996) //std::getenv
-#pragma warning(disable : 4702) //TODO remove when test is implemented properly
-#endif
-
-static const int reps = (std::getenv("XCL_EMULATION_MODE") != nullptr) ? 2 : 10000;
+static const int reps = xrt_core::utils::is_env("XCL_EMULATION_MODE") ? 2 : 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestHostMemBandwidthKernel::TestHostMemBandwidthKernel()
@@ -134,7 +130,7 @@ TestHostMemBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev
   for (uint32_t a = 4 * 1024; a <= 1 * 1024 * 1024; a *= 2) {
     unsigned int data_size = a;
 
-    if ((std::getenv("XCL_EMULATION_MODE") != nullptr) && (data_size > 8 * 1024))
+    if (xrt_core::utils::is_env("XCL_EMULATION_MODE") && (data_size > 8 * 1024))
       break; // Running only up to 8K for emulation flow
 
     unsigned int vector_size_bytes = data_size;
