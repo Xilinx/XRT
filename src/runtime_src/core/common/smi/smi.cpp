@@ -10,6 +10,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -170,6 +171,7 @@ smi_hardware_config()
     {{0x17f3, 0x10}, hardware_type::npu3_f3},
     {{0x17f1, 0x12}, hardware_type::npu3_f4},
     {{0x17f1, 0x13}, hardware_type::npu3_f5},
+    {{0x17f1, 0x15}, hardware_type::npu3_f6},
     {{0x1B0A, 0x00}, hardware_type::npu3_B01},
     {{0x1B0B, 0x00}, hardware_type::npu3_B02},
     {{0x1B0C, 0x00}, hardware_type::npu3_B03},
@@ -186,6 +188,86 @@ get_hardware_type(const xq::pcie_id::data& dev) const
   return (it != hardware_map.end()) 
       ? it->second 
       : hardware_type::unknown;
+}
+
+smi_hardware_config::hardware_family
+smi_hardware_config::
+get_family(hardware_type hw)
+{
+  switch (hw) {
+  case hardware_type::phx:
+    return hardware_family::phoenix;
+  case hardware_type::stxA0:
+  case hardware_type::stxB0:
+  case hardware_type::stxH:
+  case hardware_type::krk1:
+    return hardware_family::strix;
+  case hardware_type::npu3_f0:
+  case hardware_type::npu3_f1:
+  case hardware_type::npu3_f2:
+  case hardware_type::npu3_f3:
+  case hardware_type::npu3_f4:
+  case hardware_type::npu3_f5:
+  case hardware_type::npu3_f6:
+  case hardware_type::npu3_B01:
+  case hardware_type::npu3_B02:
+  case hardware_type::npu3_B03:
+    return hardware_family::npu3;
+  case hardware_type::aie2ps:
+    return hardware_family::aie2ps;
+  case hardware_type::unknown:
+  default:
+    return hardware_family::unknown;
+  }
+}
+
+std::optional<std::string>
+smi_hardware_config::
+get_aie_architecture_version(hardware_type hw)
+{
+  switch (get_family(hw)) {
+  case hardware_family::phoenix:
+    return "aie2";
+  case hardware_family::strix:
+    return "aie2p";
+  case hardware_family::npu3:
+    return "aie4";
+  case hardware_family::aie2ps:
+    return "aie2ps";
+  default:
+    return std::nullopt;
+  }
+}
+
+bool
+smi_hardware_config::
+is_aie2_platform(hardware_type hw)
+{
+  switch (get_family(hw)) {
+  case hardware_family::phoenix:
+  case hardware_family::strix:
+    return true;
+  case hardware_family::npu3:
+    return false;
+  default:
+    throw std::runtime_error("Unsupported hardware type");
+  }
+}
+
+std::string
+smi_hardware_config::
+get_validate_archive_path(hardware_type hw)
+{
+  switch (get_family(hw)) {
+  case hardware_family::phoenix:
+    return "Runner/xrt_smi_phx.a";
+  case hardware_family::strix:
+    return "Runner/xrt_smi_strx.a";
+  case hardware_family::npu3:
+    return "Runner/xrt_smi_npu3.a";
+  default:
+    throw std::runtime_error("Unsupported hardware type");
+  }
 }
 
 tuple_vector
