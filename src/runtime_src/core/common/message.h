@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
-
 #ifndef xrtcore_message_h_
 #define xrtcore_message_h_
 #include "core/common/config.h"
@@ -13,7 +12,7 @@
 #include <cstdio>
 #include <vector>
 
-namespace xrt_core { namespace message {
+namespace xrt_core::message {
 
 using severity_level = xrt::message::level;
 
@@ -47,6 +46,18 @@ XRT_CORE_COMMON_EXPORT
 void
 send_uc_log(const std::string& sink, severity_level l, const char* tag, const char* msg);
 
+// Send a log message directly to syslog bypassing runtime_log and
+// verbosity filtering
+XRT_CORE_COMMON_EXPORT
+void
+send_syslog(severity_level l, const char* tag, const char* msg);
+
+inline void
+send_syslog(severity_level l, const std::string& tag, const std::string& msg)
+{
+  send_syslog(l, tag.c_str(), msg.c_str());
+}
+
 void
 sendv(severity_level l, const char* tag, const char* format, va_list args);
 
@@ -76,6 +87,6 @@ send(severity_level l, const char* tag, const char* format, Args ... args)
   }
 }
 
-}} // message,xrt_core
+} // xrt_core::message
 
 #endif
