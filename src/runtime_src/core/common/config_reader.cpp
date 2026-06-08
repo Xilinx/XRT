@@ -1,23 +1,12 @@
-/**
- * Copyright (C) 2016-2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2026 Advanced Micro Devices, Inc.
 
 #define XRT_CORE_COMMON_SOURCE
 #include "config_reader.h"
-#include "message.h"
 #include "error.h"
+#include "message.h"
+#include "utils.h"
 
 #include <filesystem>
 #include <cstdlib>
@@ -32,10 +21,6 @@
 #ifdef __linux__
 # include <linux/limits.h>
 # include <sys/stat.h>
-#endif
-
-#ifdef _WIN32
-# pragma warning( disable : 4996 )
 #endif
 
 namespace {
@@ -69,12 +54,6 @@ is_locked(const std::string& key)
 }
 
 } // key
-
-static const char*
-value_or_empty(const char* cstr)
-{
-  return cstr ? cstr : "";
-}
 
 static bool
 is_true(const std::string& str)
@@ -117,12 +96,12 @@ get_ini_path()
   std::string full_path;
   try {
     //The env variable should be the full path which includes xrt.ini
-    auto xrt_path = std::filesystem::path(value_or_empty(std::getenv("XRT_INI_PATH")));
+    auto xrt_path = std::filesystem::path(xrt_core::utils::getenv("XRT_INI_PATH"));
     if (std::filesystem::exists(xrt_path))
       return xrt_path.string();
 
     //The env variable should be the full path which includes sdaccel.ini
-    auto sda_path = std::filesystem::path(value_or_empty(std::getenv("SDACCEL_INI_PATH")));
+    auto sda_path = std::filesystem::path(xrt_core::utils::getenv("SDACCEL_INI_PATH"));
     if (std::filesystem::exists(sda_path))
       return sda_path.string();
 
@@ -192,16 +171,16 @@ namespace xrt_core { namespace config {
 
 namespace detail {
 
-const char*
+std::string
 get_env_value(const char* env)
 {
-  return std::getenv(env);
+  return xrt_core::utils::getenv(env);
 }
 
 bool
 get_bool_value(const char* key, bool default_value)
 {
-  if (auto env = get_env_value(key))
+  if (auto env = get_env_value(key); !env.empty())
     return is_true(env);
 
   key::lock(key);
@@ -211,7 +190,7 @@ get_bool_value(const char* key, bool default_value)
 std::string
 get_string_value(const char* key, const std::string& default_value)
 {
-  if (auto env = get_env_value(key))
+  if (auto env = get_env_value(key); !env.empty())
     return env;
       
   std::string val = default_value;
@@ -234,7 +213,7 @@ get_string_value(const char* key, const std::string& default_value)
 unsigned int
 get_uint_value(const char* key, unsigned int default_value)
 {
-  if (auto env = get_env_value(key)) {
+  if (auto env = get_env_value(key); !env.empty()) {
     try {
       return static_cast<unsigned int>(std::stoul(env));
     }
