@@ -22,8 +22,13 @@ namespace signal_handler {
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
   std::atomic<bool> watch_interrupted{false};
 
+#ifdef _WIN32
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
   void (*old_signal_handler)(int) = nullptr;
+#else
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
+  struct sigaction old_action{};
+#endif
 
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
   bool signal_handler_set = false;
@@ -42,13 +47,26 @@ namespace signal_handler {
    * - Uses thread-safe signal handling 
    * 
    * @note Must be paired with restore() call
-   * @note Uses standard signal() function for cross-platform compatibility
+   * @note On POSIX the handler is installed via sigaction() WITHOUT SA_RESTART
+   *       so a blocking syscall (e.g. the watch-mode firmware-log ioctl) returns
+   *       EINTR on Ctrl+C instead of being auto-restarted. signal() defaults to
+   *       SA_RESTART on glibc, which would silently restart the ioctl and make
+   *       Ctrl+C appear to hang. Windows has no SA_RESTART concept, so it keeps
+   *       the portable signal() path.
    */
   void setup() {
-    if (!signal_handler_set) {
-      old_signal_handler = signal(SIGINT, watch);
-      signal_handler_set = true;
-    }
+    if (signal_handler_set)
+      return;
+#ifdef _WIN32
+    old_signal_handler = signal(SIGINT, watch);
+#else
+    struct sigaction sa{};
+    sa.sa_handler = watch;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0; // no SA_RESTART: interrupted syscalls return EINTR
+    sigaction(SIGINT, &sa, &old_action);
+#endif
+    signal_handler_set = true;
   }
 
   /**
@@ -61,10 +79,14 @@ namespace signal_handler {
    * @note Should be called before exiting watch mode
    */
   void restore() {
-    if (signal_handler_set) {
-      static_cast<void>(signal(SIGINT, old_signal_handler));
-      signal_handler_set = false;
-    }
+    if (!signal_handler_set)
+      return;
+#ifdef _WIN32
+    static_cast<void>(signal(SIGINT, old_signal_handler));
+#else
+    static_cast<void>(sigaction(SIGINT, &old_action, nullptr));
+#endif
+    signal_handler_set = false;
   }
 
   /**
