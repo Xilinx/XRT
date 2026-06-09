@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2019 Samsung Semiconductor, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
@@ -40,7 +40,7 @@
 #include <string>
 #include <regex>
 
-#pragma warning(disable : 4100 4996)
+#pragma warning(disable : 4100)
 #pragma comment (lib, "Setupapi.lib")
 
 namespace { // private implementation details
@@ -720,8 +720,9 @@ public:
         auto krnl = reinterpret_cast<kernel_info *>(&axlf_obj->kernels[0] + off);
 
         if (kernel.name.size() > sizeof(krnl->name))
-            return 1;
-        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+          return 1;
+
+        std::memcpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name) - 1);
         krnl->name[sizeof(krnl->name)-1] = '\0';
         krnl->anums = kernel.args.size();
         krnl->range = kernel.range;
@@ -729,12 +730,11 @@ public:
         int ai = 0;
         for (auto& arg : kernel.args) {
             if (arg.name.size() > sizeof(krnl->args[ai].name)) {
-
                xrt_core::message::
                 send(xrt_core::message::severity_level::error, "XRT", "Argument name length invalid.");
                return 1;
             }
-            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+            std::memcpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name) - 1);
             krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
             krnl->args[ai].offset = arg.offset;
             krnl->args[ai].size   = arg.size;
