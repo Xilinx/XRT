@@ -27,7 +27,7 @@ TestHostMemBandwidthKernel::TestHostMemBandwidthKernel()
               "bandwidth.xclbin"){}
 
 boost::property_tree::ptree
-TestHostMemBandwidthKernel::run(const std::shared_ptr<xrt_core::device>& dev)
+TestHostMemBandwidthKernel::run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
@@ -35,6 +35,7 @@ TestHostMemBandwidthKernel::run(const std::shared_ptr<xrt_core::device>& dev)
   ptree.put("status", XBValidateUtils::test_token_skipped);
   return ptree;
 
+#if 0
   uint64_t shared_host_mem = 0;
   try {
     shared_host_mem = xrt_core::device_query<xrt_core::query::shared_host_mem>(dev);
@@ -51,6 +52,7 @@ TestHostMemBandwidthKernel::run(const std::shared_ptr<xrt_core::device>& dev)
   }
   runTest(dev, ptree);
   return ptree;
+#endif
 }
 
 void
