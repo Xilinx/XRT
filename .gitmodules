@@ -18,7 +18,7 @@
 	path = src/runtime_src/xdp
 	url = https://github.com/Xilinx/XDP.git
 	branch = master
-[submodule "src/runtime_src/aie-rt"]
-	path = src/runtime_src/aie-rt
+[submodule "src/runtime_src/aie-codegen"]
+	path = src/runtime_src/aie-codegen
 	url = https://github.com/Xilinx/aie-codegen.git
 	branch = main
