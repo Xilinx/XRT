@@ -299,9 +299,14 @@ process_chunks_no_lock()
     size_t logged_wrap = logged_count / m_data_size;
     size_t dumped_wrap = dumped_count / m_data_size;
 
-    // Overwrite detected; catch up and resume dumping from current position.
-    if (logged_count > dumped_count && logged_wrap > dumped_wrap)
-      dumped_count = logged_count;
+    // Overflow detected: reposition to dump the most recent full buffer's worth of data.
+    if (logged_count > dumped_count && logged_wrap > dumped_wrap) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
+                              "UC log overrun on chunk " + std::to_string(i) + ": " +
+                              std::to_string(logged_count - dumped_count - m_data_size) +
+                              " bytes lost, recovering from oldest surviving position.");
+      dumped_count = logged_count - m_data_size;
+    }
 
     if (dumped_count != logged_count) {
       size_t to_dump = logged_count - dumped_count;
