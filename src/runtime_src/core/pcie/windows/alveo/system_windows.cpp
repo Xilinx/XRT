@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file is delivered with core library (libxrt_core), see
 // core/pcie/windows/CMakeLists.txt.  To prevent compilation of this
@@ -24,10 +24,6 @@
 #include <thread>
 #include <setupapi.h>
 #include <windows.h>
-
-#ifdef _WIN32
-# pragma warning (disable : 4996)
-#endif
 
 #pragma comment (lib, "Setupapi.lib")
 

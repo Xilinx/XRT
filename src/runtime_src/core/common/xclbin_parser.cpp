@@ -3,8 +3,10 @@
 // Copyright (C) 2022-2026 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "xclbin_parser.h"
+
 #include "config_reader.h"
 #include "error.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <map>
@@ -17,11 +19,6 @@
 #include <boost/optional.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-
-// This is xclbin parser. Update this file if xclbin format has changed.
-#ifdef _WIN32
-#pragma warning ( disable : 4996 )
-#endif
 
 namespace {
 
@@ -150,8 +147,8 @@ get_sw_reset_from_ini(const std::string& kname)
 static bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem.compare("sw_emu") == 0;
   return swem;
 }
 

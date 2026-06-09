@@ -49,10 +49,6 @@ static std::map<int, std::string> cmcStatusMap = {
 # define XMC_UNUSED
 #endif
 
-#ifdef _WIN32
-# pragma warning( disable : 4189 4100 4996)
-#endif
-
 XMC_Flasher::XMC_Flasher(unsigned int device_index)
   : m_device(xrt_core::get_mgmtpf_device(device_index))
 {
@@ -425,18 +421,14 @@ int XMC_Flasher::recvPkt()
     return waitTillIdle();
 }
 
-int XMC_Flasher::sendPkt(bool print_dot)
+int XMC_Flasher::sendPkt(bool)
 {
     int lenInUint32 = (sizeof (mPkt.hdr) + mPkt.hdr.payloadSize +
         sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
 #ifdef  XMC_DEBUG
     describePkt(mPkt, true);
-#else
-    // if (print_dot)
-    //     std::cout << "." << std::flush;
 #endif
-
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
 
     for (int i = 0; i < lenInUint32; i++) {

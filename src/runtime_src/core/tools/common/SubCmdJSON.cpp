@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdJSON.h"
@@ -25,6 +12,7 @@ namespace XBU = XBUtilities;
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "core/common/utils.h"
 #include "xrt.h"
 
 
@@ -43,10 +31,6 @@ namespace pt = boost::property_tree;
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-
-#ifdef _WIN32
-# pragma warning( disable : 4996 )
-#endif
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -122,7 +106,7 @@ SubCmdJSON::execute(const SubCmdOptions& _options) const
 }
 
 // ----- H E L P E R   F U N C T I O N S -------------------------------------------
-static void collectJsonPaths(std::vector<std::string> &pathVec, std::string env)
+static void collectJsonPaths(std::vector<std::string> &pathVec, const std::string& env)
 {
     char del = ':';
     size_t start = 0;
@@ -189,8 +173,8 @@ static void populateSubCommandsFromJSONHelper(SubCmdsCollection &subCmds, const 
 
 void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& exeName)
 {
-    auto envJson = std::getenv("XRT_SUBCOMMANDS_JSON");
-    if(!envJson)
+    auto envJson = xrt_core::utils::getenv("XRT_SUBCOMMANDS_JSON");
+    if (envJson.empty())
         return;
 
     // multiple json file paths may be appended to env variable
