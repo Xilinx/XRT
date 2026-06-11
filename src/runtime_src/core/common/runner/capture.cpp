@@ -31,6 +31,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <variant>
@@ -73,6 +74,14 @@ static std::string
 to_string(const void* v)
 {
   return std::to_string(reinterpret_cast<uintptr_t>(v));
+}
+
+static std::string
+to_string(std::thread::id tid)
+{
+  std::ostringstream oss;
+  oss << tid;
+  return oss.str();
 }
 
 } // namespace
@@ -943,6 +952,7 @@ class frames
   //
   // {
   //   "name":  unique identifer for this frame
+  //   "tid":   thread identifier that started this frame
   //   "runs":  [array of frame run objects]
   //   "waits": [array of frame wait]
   // }
@@ -959,6 +969,7 @@ class frames
   {
     json j = json::object();
     j["name"] = frame.get_name();
+    j["tid"] = to_string(frame.get_thread_id());
     j["runs"] = replay_execution_frame_runs(frame);
     j["waits"] = replay_execution_frame_waits(frame);
     return j;
@@ -975,15 +986,35 @@ class frames
     return j;
   }
 
+  // replay_execution_threads() - array of unique thread identifiers
+  //
+  // Returns an array of thread ID strings representing all unique
+  // threads that started frames during capture.
+  json
+  replay_execution_threads() const
+  {
+    std::set<std::thread::id> unique_tids;
+    for (const auto& frame : m_frames)
+      unique_tids.insert(frame.get_thread_id());
+
+    json j = json::array();
+    for (const auto& tid : unique_tids)
+      j.push_back(to_string(tid));
+
+    return j;
+  }
+
   // replay_execution() - execution object
   //
   //  "execution:" {
+  //      "threads": [array of unique thread identifiers]
   //      "frames": [array of frame objects]
   //  }
   json
   replay_execution() const
   {
     json execution = json::object();
+    insert_json_object(execution["execution"]["threads"], replay_execution_threads());
     insert_json_object(execution["execution"]["frames"], replay_execution_frames());
     return execution;
   }
