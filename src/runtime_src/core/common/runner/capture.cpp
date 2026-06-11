@@ -32,6 +32,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <thread>
 #include <variant>
 #include <vector>
 
@@ -371,6 +372,7 @@ class frames
     std::vector<std::string> m_waits;
 
     uint64_t m_id;
+    std::thread::id m_tid;  // thread that started this frame
 
     static uint64_t
     get_uid()
@@ -456,6 +458,7 @@ class frames
     frame(FrameType ft, artifacts& repo)
       : m_frame(std::move(ft))
       , m_id(get_uid())
+      , m_tid(std::this_thread::get_id())
     {
       capture_frame_start_data(ft, repo);
     }
@@ -514,6 +517,12 @@ class frames
     {
       return m_waits;
     }
+
+    std::thread::id
+    get_thread_id() const
+    {
+      return m_tid;
+    }
   };
 
   // Track xrt::run and xrt::runlist objects created by application
@@ -533,6 +542,11 @@ class frames
   // application run.wait() or runlist.wait to frame that should
   // waited on.
   std::map<const void*, frame*> m_hdl2frame;
+
+  // Mapping from thread ID to the last frame started by that thread.
+  // Used to find the active frame for the current thread when
+  // capturing wait() calls.
+  std::map<std::thread::id, frame*> m_tid2last_frame;
 
   // ELFIO cannot be dumped post creation, so capture as created
   // along with the data used to create ELF
@@ -1031,11 +1045,12 @@ public:
     std::lock_guard lk(m_mutex);
     auto& frame = m_frames.emplace_back(&m_runs.at(hdl), m_artifacts);
     m_hdl2frame.emplace(hdl, &frame);
+    m_tid2last_frame[std::this_thread::get_id()] = &frame;
   }
 
   // wait() - capture xrt::run::wait() or xrt::runlist::wait()
-  // 
-  // Waits are attributed for the current active frame, and during
+  //
+  // Waits are attributed to the current thread's active frame, and during
   // replay, are executed after the active frame has been started
   template <typename HandleType>
   void
@@ -1045,6 +1060,14 @@ public:
     if (m_frames.empty())
       throw std::runtime_error("No active frame, cannot wait");
 
+    // Find the current thread's active frame
+    auto tid = std::this_thread::get_id();
+    auto tid_itr = m_tid2last_frame.find(tid);
+    if (tid_itr == m_tid2last_frame.end())
+      throw std::runtime_error("No active frame for current thread, cannot wait");
+
+    frame* active_frame = tid_itr->second;
+
     // Find last frame starting from m_frames.end() that is
     // created from hdl, this is the frame to wait on.
     auto itr = std::find_if(m_frames.rbegin(), m_frames.rend(),
@@ -1052,8 +1075,8 @@ public:
     if (itr == m_frames.rend())
       throw std::runtime_error("No frame to wait on");
 
-    // Add wait to current active frame 
-    m_frames.back().add_wait((*itr).get_name());
+    // Add wait to current thread's active frame
+    active_frame->add_wait((*itr).get_name());
   }
 
   // start() - capture xrt::runlist::start()
@@ -1063,6 +1086,7 @@ public:
     std::lock_guard lk(m_mutex);
     auto& frame = m_frames.emplace_back(&m_runlists.at(hdl), m_artifacts);
     m_hdl2frame.emplace(hdl, &frame);
+    m_tid2last_frame[std::this_thread::get_id()] = &frame;
   }
 
   // capture_elf() - capture xrt::elf constructor
