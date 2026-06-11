@@ -541,9 +541,9 @@ class frames
   std::map<const xrt::runlist_impl*, runlist> m_runlists;
 
   // A frame is either an execution of a single run object or a
-  // execution of a runlist with multiple run objects. A frame
-  // is a pointer to an object stored in a std::map, vector can
-  // resize by pointers remain valid.
+  // execution of a runlist with multiple run objects.
+  // Vector capacity is reserved in constructor to prevent reallocation
+  // which would invalidate frame pointers in m_hdl2frame and m_tid2last_frame.
   std::vector<frame> m_frames;
 
   // Mapping from run_impl or runlist_impl handle to the frame
@@ -566,7 +566,11 @@ class frames
 
   frames()
     : m_artifacts{xrt_core::config::get_capture_dir()}
-  {}
+  {
+    // Reserve capacity to prevent vector reallocation which would
+    // invalidate frame pointers stored in m_hdl2frame and m_tid2last_frame
+    m_frames.reserve(xrt_core::config::get_capture_frames());
+  }
 
   ~frames()
   {
