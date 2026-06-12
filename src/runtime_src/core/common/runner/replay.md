@@ -14,6 +14,7 @@ The captured data includes:
 - Kernel objects and control code
 - Run objects with their arguments
 - Frame execution sequence and synchronization points
+- Application thread context for each frame
 
 ## Capturing an Application
 
@@ -150,9 +151,18 @@ The capture system uses a smart invalidation mechanism:
 ### Wait Synchronization
 
 The capture system records all `xrt::run::wait()` and `xrt::runlist::wait()` calls:
-- Waits are associated with the current active frame
+- Waits are associated with the calling thread's active frame
 - Replay executes waits in the same order as captured
 - Handles asynchronous execution correctly
+- Cross-thread waits are preserved (Thread A can wait on a frame started by Thread B)
+
+### Multi-threaded Capture
+
+The capture system is thread-aware:
+- Each frame records the thread ID that executed `start()` or `execute()`
+- Waits are attributed to the calling thread's active frame
+- Multiple threads can execute frames concurrently
+- Frame execution order is preserved per-thread during replay
 
 ## Replay JSON Schema
 
@@ -206,9 +216,11 @@ The generated `replay.json` follows this structure:
     ]
   },
   "execution": {
+    "threads": ["<thread_id_1>", "<thread_id_2>"],
     "frames": [
       {
         "name": "<frame_id>",
+        "tid": "<thread_id>",
         "runs": [
           {
             "run": "<run_id>",
@@ -238,7 +250,9 @@ The generated `replay.json` follows this structure:
 
 #### Execution Section
 
+- **threads**: Array of unique thread identifiers from capture
 - **frames**: Ordered list of frame executions
+  - **tid**: Thread identifier that executed this frame
   - **runs**: Which run objects are executed in this frame
   - **arguments**: Which buffer data files to load for each run
   - **waits**: Which frames must complete before next frame can start
@@ -286,6 +300,20 @@ Capture complex multi-layered applications (VAIML, PyTorch, etc.) and analyze:
 % # Analyze captured kernels, buffers, execution patterns
 ```
 
+### Multi-threaded Application Testing
+
+Capture and replay multi-threaded applications with preserved threading patterns:
+
+```bash
+% # Capture multi-threaded application
+% xrt-capture --frames 100 -- ./multithreaded_app
+
+% # Replay with same thread count and execution pattern
+% xrt-replay --replay /tmp/xrt_capture/replay.json --dir /tmp/xrt_capture --iter 10
+```
+
+The replay will create the same number of threads as the captured application and execute frames in their original thread context.
+
 ## Limitations
 
 ### Current Limitations
@@ -331,6 +359,82 @@ Enable XRT debug messages:
 % export XRT_VERBOSITY=6
 % xrt-replay --replay replay.json --dir capture
 ```
+
+## Thread-Aware Replay
+
+### Overview
+
+Starting with the thread-aware capture/replay feature, XRT preserves and recreates the application's threading pattern during replay. This ensures:
+- Accurate performance measurement for multi-threaded applications
+- Correct reproduction of thread-dependent behavior
+- Realistic workload characterization
+
+### How It Works
+
+**During Capture:**
+1. Each `xrt::run::start()` or `xrt::runlist::execute()` records the calling thread's ID
+2. Each `xrt::run::wait()` or `xrt::runlist::wait()` is associated with the calling thread's active frame
+3. Thread IDs are exported to `replay.json` in the execution section
+
+**During Replay:**
+1. Worker threads are created based on unique thread IDs from capture
+2. Frames are grouped and assigned to their corresponding worker threads
+3. Each worker thread executes its frames in the original capture order
+4. Cross-thread waits are handled through XRT's synchronization primitives
+
+### Threading Model
+
+**Resources (shared across threads):**
+- Buffer objects (`xrt::bo`)
+- Hardware contexts (`xrt::hw_context`)
+- Kernel objects (`xrt::kernel`)
+- Run objects (`xrt::run`)
+- Runlist objects (`xrt::runlist`)
+
+**Execution (thread-specific):**
+- `xrt::run::start()` - Executed in the thread that called it during capture
+- `xrt::runlist::execute()` - Executed in the thread that called it during capture
+- `xrt::run::wait()` - Executed in the thread's context, can wait on any frame
+- `xrt::runlist::wait()` - Executed in the thread's context, can wait on any frame
+
+### Example
+
+Consider a two-threaded application:
+
+**Thread 1:**
+```cpp
+run1.start();     // Frame 0, Thread 1
+run1.wait();
+run3.start();     // Frame 2, Thread 1
+run3.wait();
+```
+
+**Thread 2:**
+```cpp
+run2.start();     // Frame 1, Thread 2
+run2.wait();
+```
+
+**Captured JSON:**
+```json
+{
+  "execution": {
+    "threads": ["140123456789", "140123456790"],
+    "frames": [
+      {"name": "frame_0", "tid": "140123456789", "waits": ["frame_0"]},
+      {"name": "frame_1", "tid": "140123456790", "waits": ["frame_1"]},
+      {"name": "frame_2", "tid": "140123456789", "waits": ["frame_2"]}
+    ]
+  }
+}
+```
+
+**During Replay:**
+- Two worker threads are created
+- Thread 1 executes frame_0, then frame_2
+- Thread 2 executes frame_1
+- Execution order within each thread is preserved
+- Threads run concurrently
 
 ## Advanced Topics
 
