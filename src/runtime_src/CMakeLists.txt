@@ -30,7 +30,6 @@ endif(XRT_ENABLE_WERROR)
 if (NOT XRT_EDGE)
   add_compile_options( ${XRT_WARN_OPTS} )
 endif()
-xrt_add_subdirectory(xdp)
 
 xrt_add_subdirectory(tools/xclbinutil)
 xrt_add_subdirectory(xocl)
@@ -53,12 +52,22 @@ if (NOT XRT_EDGE)
   xrt_add_subdirectory(tools/scripts)
   if (XRT_NPU)
     # Used by xdp for include search path
-    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/driver/src)
-    set(XAIENGINE_BUILD_SHARED OFF)
-    xrt_add_subdirectory_disable_install_target(aie-rt/driver/src)
+    set(AIE_CODEGEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
+    set(AIE_CODEGEN_BUILD_SHARED OFF)
+    xrt_add_subdirectory_disable_install_target(aie-codegen/src)
   endif()
-
 endif()
+
+if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+  set(AIE_CODEGEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
+  set(AIEBU_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/core/common/aiebu)
+  set(AIE_CODEGEN_BUILD_SHARED OFF)
+  xrt_add_subdirectory_disable_install_target(aie-codegen/src)
+  xrt_add_subdirectory_disable_install_target(aie-codegen/fal)
+  set(AIEFAL_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/fal/src/include)
+endif()
+
+xrt_add_subdirectory(xdp)
 
 # Attach to the user's linker flags
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
@@ -83,11 +92,17 @@ else()
     add_compile_options( ${XRT_WARN_OPTS} )
   endif()
 
-  if (XRT_NPU)
+  if (XRT_NPU OR (XDP_VE2_BUILD_CMAKE STREQUAL "yes"))
     # Used by xdp for include search path
-    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/driver/src)
-    set(XAIENGINE_BUILD_SHARED OFF)
-    xrt_add_subdirectory_disable_install_target(aie-rt/driver/src)
+    set(AIE_CODEGEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
+    set(AIE_CODEGEN_BUILD_SHARED OFF)
+    xrt_add_subdirectory_disable_install_target(aie-codegen/src)
+  endif()
+
+  if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+    set(AIEBU_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/core/common/aiebu)
+    xrt_add_subdirectory_disable_install_target(aie-codegen/fal)
+    set(AIEFAL_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/fal/src/include)
   endif()
 
   # Build Subdirectories
