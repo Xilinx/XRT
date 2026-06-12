@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+//#define XRT_VERBOSE
 #include "repo.h"
 #include "detail/module_cache.h"
 #include "detail/streambuf.h"
@@ -35,12 +36,15 @@
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 
+#include <condition_variable>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #ifdef _WIN32
@@ -497,9 +501,11 @@ struct replayer
       };
 
       const repo_type* m_repo;              // repository with bo file data
+      std::string m_name;
       std::unique_ptr<executor> m_executor; // executor for run objects
       initializer m_init;                   // run object initializer
       std::vector<std::string> m_waits;     // wait frames prior to next frame
+      std::string m_tid;                    // thread id from replay.json
 
       /// I think frame will have to record all run objects in a vector
       /// and then call set_arg for each of the bo in initializer.
@@ -554,6 +560,7 @@ struct replayer
     public:
       frame(const resources& resources, const json& frame_object, const repo_type& repo)
         : m_repo(&repo)
+        , m_name(frame_object.at("name").get<std::string>())
         , m_executor{create_executor(resources, frame_object.at("runs"))}
         , m_init{create_initializer(resources, frame_object.at("runs"))}
 #ifdef _WIN32
@@ -562,6 +569,7 @@ struct replayer
 #else
         , m_waits(frame_object.at("waits"))
 #endif
+        , m_tid(frame_object.at("tid").get<std::string>())
       {}
 
       const std::vector<std::string>&
@@ -570,9 +578,16 @@ struct replayer
         return m_waits;
       }
 
+      const std::string&
+      get_tid() const
+      {
+        return m_tid;
+      }
+
       void
       execute()
       {
+        XRT_DEBUGF("Execute frame %s\n", m_name.c_str());
         m_init.init(m_repo);
         m_executor->execute();
       }
@@ -580,12 +595,53 @@ struct replayer
       void
       wait()
       {
+        XRT_DEBUGF("Waiting on frame %s\n", m_name.c_str());
         m_executor->wait();
       }
       
     }; //class frame
 
-    std::map<std::string, frame> m_frames;
+    // Thread coordination
+    std::mutex m_mutex;
+    std::condition_variable m_ready;
+    size_t m_iterations = 0;
+
+    // These maps are ordered by frame name, which correspond to the
+    // execution order in capture.  It is safe to iterate these maps
+    // and assume that the iteration order is the execution order.
+    std::map<std::string, frame>                m_frames;
+    std::map<std::string, std::vector<frame*>>  m_frames_thread_groups;
+    std::vector<std::thread>                    m_threads;
+
+    void
+    executor(std::string tid)
+    {
+      {
+        std::unique_lock lk(m_mutex);
+        m_ready.wait(lk, [this] { return m_iterations; });
+      }
+
+      auto& frames = m_frames_thread_groups.at(tid);
+
+      auto execute_iteration = [this, &frames] () {
+        for (auto frame : frames) {
+          frame->execute();
+
+          for (auto& frame_name : frame->get_waits())
+            m_frames.at(frame_name).wait();
+        }
+      };
+
+      auto wait_iteration = [&frames] () {
+        for (auto frame : frames)
+          frame->wait();
+      };
+        
+      for (size_t i = 0; i < m_iterations; ++i) {
+        execute_iteration();
+        wait_iteration();
+      }
+    }
 
     static std::map<std::string, frame>
     create_frames(const resources& resources, const json& frames_array, const repo_type& repo)
@@ -597,28 +653,73 @@ struct replayer
       return frames;
     }
 
+    static std::map<std::string, std::vector<frame*>>
+    group_frames(std::map<std::string, frame>& frames)
+    {
+      std::map<std::string, std::vector<frame*>> groups;
+      for (auto& [nm, frame] : frames)
+        groups[frame.get_tid()].push_back(&frame);
+
+      return groups;
+    }
+
+    std::vector<std::thread>
+    create_threads(const json& threads_array)
+    {
+      std::vector<std::thread> threads;
+      threads.reserve(threads_array.size());
+      for (const auto& tid_object : threads_array) {
+        auto tid = tid_object.get<std::string>();
+        threads.push_back(std::thread(&execution::executor, this, tid));
+      }
+      return threads;
+    }
+
   public:
     execution(const resources& resources, const json& exec_object, const repo_type& repo)
       : m_frames{create_frames(resources, exec_object.at("frames"), repo)}
+      , m_frames_thread_groups{group_frames(m_frames)}
+      , m_threads{create_threads(exec_object.at("threads"))}
     {}
 
-    void
-    run()
+    ~execution()
     {
-      for (auto& [nm, frame] : m_frames) {
-        frame.execute();
+      // Ensure that all threads have been executed and joined.
+      // This seems overly protective given that xrt-replay does
+      // call run() exactly once.
+      if (m_iterations)
+        return; // run() has been called
+      
+      try {
+        run(1); // should never be executed
+      }
+      catch (const std::exception& ex) {
+        xrt_core::send_exception_message(ex.what());
+      }
+    }
 
-        // Consider translating wait names to frames in frame ctor
-        for (auto& frame_name : frame.get_waits())
-          m_frames.at(frame_name).wait();
+    // run() - Run execution section specified number of iterations
+    // This function must and can be called once only
+    void
+    run(size_t iterations)
+    {
+      if (m_iterations)
+        throw std::runtime_error("execution::run() can only be called once");
+
+      {
+        std::lock_guard lk(m_mutex);
+        m_iterations = iterations;
+        m_ready.notify_all();
       }
 
-      // Capture has no chance to capture waits after last frame at
-      // frame capture limit. Make sure wait is called on all frames.
-      // The capture frames cannot be destroy nor iterated unless they
-      // have been waited on.
-      for (auto& [nm, frame] : m_frames)
-        frame.wait();
+      // Ideally join should be in dtor, but we need to join here or
+      // find some other way of ensuring that all threads have
+      // completed their iterations before returning.  This is
+      // necessary because outer call is timing this call.  Timing may
+      // be off depending on how expensive it is to join.
+      for (auto& thread : m_threads)
+        if (thread.joinable())
+          thread.join();
     }
 
     size_t
@@ -627,6 +728,11 @@ struct replayer
       return m_frames.size();
     }
 
+    size_t
+    num_threads() const
+    {
+      return m_threads.size();
+    }
   }; // class execution
 
 
@@ -648,8 +754,7 @@ struct replayer
     unsigned long long time_ns = 0;
     {
       xrt_core::time_guard tg(time_ns);
-      for (size_t i = 0; i < iterations; ++i)
-        m_execution.run();
+      m_execution.run(iterations);
     }
 
     // NOLINTBEGIN
@@ -661,6 +766,7 @@ struct replayer
     m_report["cpu"]["elapsed_us"] = elapsed;
     m_report["iterations"] = iterations;
     m_report["frames"] = m_execution.num_frames();
+    m_report["threads"] = m_execution.num_threads();
   }
 
   json
