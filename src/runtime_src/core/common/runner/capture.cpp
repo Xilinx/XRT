@@ -31,7 +31,9 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <string>
+#include <thread>
 #include <variant>
 #include <vector>
 
@@ -72,6 +74,14 @@ static std::string
 to_string(const void* v)
 {
   return std::to_string(reinterpret_cast<uintptr_t>(v));
+}
+
+static std::string
+to_string(std::thread::id tid)
+{
+  std::ostringstream oss;
+  oss << tid;
+  return oss.str();
 }
 
 } // namespace
@@ -371,6 +381,7 @@ class frames
     std::vector<std::string> m_waits;
 
     uint64_t m_id;
+    std::thread::id m_tid;  // thread that started this frame
 
     static uint64_t
     get_uid()
@@ -456,6 +467,7 @@ class frames
     frame(FrameType ft, artifacts& repo)
       : m_frame(std::move(ft))
       , m_id(get_uid())
+      , m_tid(std::this_thread::get_id())
     {
       capture_frame_start_data(ft, repo);
     }
@@ -514,6 +526,12 @@ class frames
     {
       return m_waits;
     }
+
+    std::thread::id
+    get_thread_id() const
+    {
+      return m_tid;
+    }
   };
 
   // Track xrt::run and xrt::runlist objects created by application
@@ -523,9 +541,9 @@ class frames
   std::map<const xrt::runlist_impl*, runlist> m_runlists;
 
   // A frame is either an execution of a single run object or a
-  // execution of a runlist with multiple run objects. A frame
-  // is a pointer to an object stored in a std::map, vector can
-  // resize by pointers remain valid.
+  // execution of a runlist with multiple run objects.
+  // Vector capacity is reserved in constructor to prevent reallocation
+  // which would invalidate frame pointers in m_hdl2frame and m_tid2last_frame.
   std::vector<frame> m_frames;
 
   // Mapping from run_impl or runlist_impl handle to the frame
@@ -533,6 +551,11 @@ class frames
   // application run.wait() or runlist.wait to frame that should
   // waited on.
   std::map<const void*, frame*> m_hdl2frame;
+
+  // Mapping from thread ID to the last frame started by that thread.
+  // Used to find the active frame for the current thread when
+  // capturing wait() calls.
+  std::map<std::thread::id, frame*> m_tid2last_frame;
 
   // ELFIO cannot be dumped post creation, so capture as created
   // along with the data used to create ELF
@@ -543,7 +566,11 @@ class frames
 
   frames()
     : m_artifacts{xrt_core::config::get_capture_dir()}
-  {}
+  {
+    // Reserve capacity to prevent vector reallocation which would
+    // invalidate frame pointers stored in m_hdl2frame and m_tid2last_frame
+    m_frames.reserve(xrt_core::config::get_capture_frames());
+  }
 
   ~frames()
   {
@@ -929,6 +956,7 @@ class frames
   //
   // {
   //   "name":  unique identifer for this frame
+  //   "tid":   thread identifier that started this frame
   //   "runs":  [array of frame run objects]
   //   "waits": [array of frame wait]
   // }
@@ -945,6 +973,7 @@ class frames
   {
     json j = json::object();
     j["name"] = frame.get_name();
+    j["tid"] = to_string(frame.get_thread_id());
     j["runs"] = replay_execution_frame_runs(frame);
     j["waits"] = replay_execution_frame_waits(frame);
     return j;
@@ -961,15 +990,35 @@ class frames
     return j;
   }
 
+  // replay_execution_threads() - array of unique thread identifiers
+  //
+  // Returns an array of thread ID strings representing all unique
+  // threads that started frames during capture.
+  json
+  replay_execution_threads() const
+  {
+    std::set<std::thread::id> unique_tids;
+    for (const auto& frame : m_frames)
+      unique_tids.insert(frame.get_thread_id());
+
+    json j = json::array();
+    for (const auto& tid : unique_tids)
+      j.push_back(to_string(tid));
+
+    return j;
+  }
+
   // replay_execution() - execution object
   //
   //  "execution:" {
+  //      "threads": [array of unique thread identifiers]
   //      "frames": [array of frame objects]
   //  }
   json
   replay_execution() const
   {
     json execution = json::object();
+    insert_json_object(execution["execution"]["threads"], replay_execution_threads());
     insert_json_object(execution["execution"]["frames"], replay_execution_frames());
     return execution;
   }
@@ -1031,11 +1080,12 @@ public:
     std::lock_guard lk(m_mutex);
     auto& frame = m_frames.emplace_back(&m_runs.at(hdl), m_artifacts);
     m_hdl2frame.emplace(hdl, &frame);
+    m_tid2last_frame[std::this_thread::get_id()] = &frame;
   }
 
   // wait() - capture xrt::run::wait() or xrt::runlist::wait()
-  // 
-  // Waits are attributed for the current active frame, and during
+  //
+  // Waits are attributed to the current thread's active frame, and during
   // replay, are executed after the active frame has been started
   template <typename HandleType>
   void
@@ -1045,6 +1095,14 @@ public:
     if (m_frames.empty())
       throw std::runtime_error("No active frame, cannot wait");
 
+    // Find the current thread's active frame
+    auto tid = std::this_thread::get_id();
+    auto tid_itr = m_tid2last_frame.find(tid);
+    if (tid_itr == m_tid2last_frame.end())
+      throw std::runtime_error("No active frame for current thread, cannot wait");
+
+    frame* active_frame = tid_itr->second;
+
     // Find last frame starting from m_frames.end() that is
     // created from hdl, this is the frame to wait on.
     auto itr = std::find_if(m_frames.rbegin(), m_frames.rend(),
@@ -1052,8 +1110,8 @@ public:
     if (itr == m_frames.rend())
       throw std::runtime_error("No frame to wait on");
 
-    // Add wait to current active frame 
-    m_frames.back().add_wait((*itr).get_name());
+    // Add wait to current thread's active frame
+    active_frame->add_wait((*itr).get_name());
   }
 
   // start() - capture xrt::runlist::start()
@@ -1063,6 +1121,7 @@ public:
     std::lock_guard lk(m_mutex);
     auto& frame = m_frames.emplace_back(&m_runlists.at(hdl), m_artifacts);
     m_hdl2frame.emplace(hdl, &frame);
+    m_tid2last_frame[std::this_thread::get_id()] = &frame;
   }
 
   // capture_elf() - capture xrt::elf constructor
