@@ -670,7 +670,7 @@ struct replayer
       threads.reserve(threads_array.size());
       for (const auto& tid_object : threads_array) {
         auto tid = tid_object.get<std::string>();
-        threads.push_back(std::thread(&execution::executor, this, tid));
+        threads.emplace_back(std::thread(&execution::executor, this, tid));
       }
       return threads;
     }
