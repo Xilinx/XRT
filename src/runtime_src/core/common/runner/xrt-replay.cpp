@@ -32,6 +32,7 @@
 
 #include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
+#include "core/include/xrt/experimental/xrt_ini.h"
 #include "core/include/xrt/experimental/xrt_kernel.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
@@ -735,7 +736,16 @@ struct replayer
     }
   }; // class execution
 
+  static uint64_t
+  init_ini(const json& ini_object)
+  {
+    for (const auto& [key, value] : ini_object.items())
+      xrt::ini::set(key, value.get<std::string>());
 
+    return 0;
+  }
+
+  uint64_t m_ini;
   resources m_resources;
   execution m_execution;
   mutable json m_report;
@@ -744,6 +754,7 @@ struct replayer
     : m_device{0}
     , m_replay(std::move(j)) // purposely no {}
     , m_repo{std::move(repo)}
+    , m_ini{init_ini(m_replay.value("ini", json::object()))}
     , m_resources{m_device, m_replay.at("resources"), m_repo}
     , m_execution{m_resources, m_replay.at("execution"), m_repo}
   {}

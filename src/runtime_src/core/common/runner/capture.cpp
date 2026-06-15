@@ -1023,6 +1023,29 @@ class frames
     return execution;
   }
 
+  // replay_ini() - replay ini file object
+  //
+  // "ini": {
+  //   "key": "value",
+  //   ...
+  // ]
+  json
+  replay_ini() const
+  {
+    json ini = json::object();
+    auto ini_data = xrt_core::config::detail::get_ini_values();
+    for (const auto& [key, value] : ini_data) {
+      // Skip capture related ini switches, not relevant for replay
+      if (key.find("Runtime.capture") != std::string::npos)
+        continue;
+      
+      ini["ini"][key] = value;
+    }
+
+    return ini;
+  }
+  
+
 public:
   // instance() - singleton capture instance
   // Singleton instance
@@ -1156,6 +1179,7 @@ public:
     recipe["version"] = "1.0";
     insert_json_object(recipe, replay_resources());
     insert_json_object(recipe, replay_execution());
+    insert_json_object(recipe, replay_ini());
 
 #ifdef XRT_VERBOSE
     std::cout << recipe.dump(2) << "\n";

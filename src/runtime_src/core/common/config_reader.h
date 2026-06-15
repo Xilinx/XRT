@@ -6,9 +6,10 @@
 #define xrtcore_config_reader_h_
 
 #include "core/common/config.h"
-#include <string>
-#include <iosfwd>
 #include <climits>
+#include <iosfwd>
+#include <map>
+#include <string>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -47,6 +48,11 @@ namespace xrt_core { namespace config {
 
 namespace detail {
 
+// Get all values as a map of key / value pairs
+XRT_CORE_COMMON_EXPORT
+std::map<std::string, std::string>
+get_ini_values();
+  
 /**
  * Raw uncached accessors, should not be used
  * See xrt/test/util/tconfig.cpp for unit test
