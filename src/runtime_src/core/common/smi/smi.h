@@ -230,6 +230,7 @@ public:
     npu3_f5, // XXXXX
     npu3_f6, // XXXXX 
     npu3_f7, // XXXXX
+    npu3_f10, // XXXXX
     npu3_B01, // XXXXX
     npu3_B02, // XXXXX
     npu3_B03, // XXXXX
