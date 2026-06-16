@@ -90,15 +90,26 @@ using artifacts = detail::artifacts;
 // A frame is an execution of a xrt::run object or xrt::runlist
 // object, a configurable number of frames can be captured.
 //
+// The frames class wraps all xrt:: objects necessary for
+// replay.  The wrapped class objects are created while the
+// application is running and extracts all necessary data from
+// xrt:: objects without sharing the lifetime of the xrt:: objects.
+//
 // The frames class is a singleton for the duration of the process,
 // but the singleton is instantiated only if capturing is enabled.
+// The singleton captures xrt data without affecting the lifetime
+// any xrt objects.
+//
+// It is crucially important that no xrt lifetime object is stored
+// as part of capturing, otherwise the static nature of the singleton
+// capture object screws up static destruction.
 class frames
 {
   class run;
   
   // class bo - captured xrt::bo objects used by xrt::run objects
   //
-  // This class is an attempt to avoid recreating run arguments unless
+  // This class attempts to avoid recreating run arguments unless
   // data has changed.  A data change for an argument is reflected
   // through sync->device, so we capture all xrt::bo::sync()
   // operations and store bo data here.
@@ -114,8 +125,8 @@ class frames
     // Set of runs that are valid with this bo.  Cleared when
     // bo is synced.
     mutable std::set<const run*> m_runs;
-    const char* m_data;
-    size_t m_size;
+    const char* m_data;  // mapped xrt::bo host ptr
+    size_t m_size;       // bo size
     uint64_t m_id;
     
     static uint64_t
@@ -193,21 +204,26 @@ class frames
       return (m_runs.find(run) != m_runs.end());
     }
 
+    // dump() - Dump bo data to disk
+    //
+    // Called strategically when data has changed
     std::string
     dump(artifacts& repo) const
     {
       return repo.dump({m_data, m_size});
     }
-  };
+  }; // class bo
 
   // class hwctx - user created hwctx
+  //
+  // Wraps all data needed to replay a xrt::hw_context
   class hwctx
   {
     using elf_map = std::map<const xrt::elf_impl*, std::vector<char>>;
 
-    xrt::hw_context::cfg_type m_cfg;
-    std::string m_xclbin;                // repo file name
-    std::vector<std::string> m_programs; // repo file names
+    xrt::hw_context::cfg_type m_cfg;     // hwctx config options (qos)
+    std::string m_xclbin;                // xclbin repo file name
+    std::vector<std::string> m_programs; // elf repo file names
     uint64_t m_id;
 
     static uint64_t
@@ -217,6 +233,7 @@ class frames
       return id++;
     }
 
+    // dump_xclbin() - In non elf flow, dump xclbin data
     static std::string
     dump_xclbin(const xrt::hw_context& hwctx, artifacts& repo)
     {
@@ -227,6 +244,7 @@ class frames
       return repo.dump(xclbin_data);
     }
     
+    // dump_programs() - In elf flow, dump program elfs
     static std::vector<std::string>
     dump_programs(const xrt::hw_context& hwctx, const elf_map& elfs, artifacts& repo)
     {
@@ -261,6 +279,7 @@ class frames
       return m_cfg;
     }
 
+    // is_elf_flow() - Determines if m_programs or m_xclbin is used
     bool
     is_elf_flow() const
     {
@@ -280,13 +299,16 @@ class frames
     }
   }; // class hwctx
 
+  // class kernel - user created kernel
+  //
+  // Wraps all data needed to replay a xrt::kernel
   class kernel
   {
     using elf_map = std::map<const xrt::elf_impl*, std::vector<char>>;
 
-    const hwctx* m_hwctx;
-    std::string m_instance;
-    std::string m_ctrlcode;         // repo file name
+    const hwctx* m_hwctx;      // hwctx in which kernel is created
+    std::string m_instance;    // kernel instance name
+    std::string m_ctrlcode;    // elf repo file name in non elf mode
     uint64_t m_id;
     
     static uint64_t
@@ -338,6 +360,8 @@ class frames
   }; // class kernel
 
   // struct run - user created xrt::run objects and args
+  //
+  // Wraps all data needed to replay an xrt::run
   // 
   // A run is created when arguments to the run are captured as part
   // of application calling xrt::run::set_arg().
@@ -414,6 +438,7 @@ class frames
     get_bo_args() const
     {
       std::vector<const bo*> bos;
+      bos.reserve(m_args.size());  // avoid resize
       for (auto& arg : m_args) {
         std::visit([&bos](const auto& v) {
           using T = std::decay_t<decltype(v)>;
@@ -1432,4 +1457,3 @@ elf_ctor(const xrt::elf_impl* hdl, const std::string& fnm)
 } // namespace detail
 
 } // namespace xrt_core::capture
-
