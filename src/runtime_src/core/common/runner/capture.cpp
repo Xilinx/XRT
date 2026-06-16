@@ -71,12 +71,6 @@ to_uint64(span<const uint8_t> data)
 }
 
 static std::string
-to_string(const void* v)
-{
-  return std::to_string(reinterpret_cast<uintptr_t>(v));
-}
-
-static std::string
 to_string(std::thread::id tid)
 {
   std::ostringstream oss;
@@ -120,7 +114,6 @@ class frames
     // Set of runs that are valid with this bo.  Cleared when
     // bo is synced.
     mutable std::set<const run*> m_runs;
-    const xrt::bo_impl* m_hdl;
     const char* m_data;
     size_t m_size;
     uint64_t m_id;
@@ -135,8 +128,7 @@ class frames
   public:
     explicit
     bo(const xrt::bo& bo)
-      : m_hdl{bo.get_handle().get()}
-      , m_data{bo.map<const char*>()}
+      : m_data{bo.map<const char*>()}
       , m_size{bo.size()}
       , m_id{get_uid()}
     {}
@@ -213,7 +205,6 @@ class frames
   {
     using elf_map = std::map<const xrt::elf_impl*, std::vector<char>>;
 
-    const xrt::hw_context_impl* m_hdl;
     xrt::hw_context::cfg_type m_cfg;
     std::string m_xclbin;                // repo file name
     std::vector<std::string> m_programs; // repo file names
@@ -252,8 +243,7 @@ class frames
 
   public:
     hwctx(const xrt::hw_context& hwctx, const elf_map& elfs, artifacts& repo)
-      : m_hdl{hwctx.get_handle().get()}
-      , m_cfg{xrt_core::hw_context_int::get_cfg_map(hwctx)}
+      : m_cfg{xrt_core::hw_context_int::get_cfg_map(hwctx)}
       , m_xclbin{dump_xclbin(hwctx, repo)}
       , m_programs{dump_programs(hwctx, elfs, repo)}
       , m_id{get_uid()}
@@ -288,7 +278,64 @@ class frames
     {
       return m_programs;
     }
-  };
+  }; // class hwctx
+
+  class kernel
+  {
+    using elf_map = std::map<const xrt::elf_impl*, std::vector<char>>;
+
+    const hwctx* m_hwctx;
+    std::string m_instance;
+    std::string m_ctrlcode;         // repo file name
+    uint64_t m_id;
+    
+    static uint64_t
+    get_uid()
+    {
+      static std::atomic<uint64_t> id{0};
+      return id++;
+    }
+
+    static std::string
+    dump_ctrlcode(const xrt::kernel& kernel, const elf_map& elfs, artifacts& repo)
+    {
+      auto elf = xrt_core::kernel_int::get_ctrlcode(kernel);
+      auto& elf_data = elfs.at(elf.get_handle().get());
+      return repo.dump({elf_data.data(), elf_data.size()});
+    }
+
+  public:
+    kernel(const xrt::kernel& kernel, const hwctx* hwctx, const elf_map& elfs, artifacts& repo)
+      : m_hwctx{hwctx}
+      , m_instance{xrt_core::kernel_int::get_instance_name(kernel)}
+      , m_ctrlcode{!m_hwctx->is_elf_flow() ? dump_ctrlcode(kernel, elfs, repo) : ""}
+      , m_id{get_uid()}
+    {}
+    
+    std::string
+    get_name() const
+    {
+      return "kernel_" + std::to_string(m_id);
+    }
+
+    const std::string&
+    get_ctrlcode() const
+    {
+      return m_ctrlcode;
+    }
+
+    const std::string&
+    get_instance() const
+    {
+      return m_instance;
+    }
+
+    const hwctx*
+    get_hwctx() const
+    {
+      return m_hwctx;
+    }
+  }; // class kernel
 
   // struct run - user created xrt::run objects and args
   // 
@@ -301,8 +348,8 @@ class frames
   private:
     const xrt::run_impl* m_hdl;
     const hwctx* m_hwctx;
+    const kernel* m_kernel;
     std::vector<arg_type> m_args;
-    xrt::run m_run;
     uint64_t m_id;
 
     static uint64_t
@@ -314,10 +361,10 @@ class frames
 
   public:
     explicit
-    run(const xrt::run_impl* hdl, const hwctx* hwctx)
+    run(const xrt::run_impl* hdl, const hwctx* hwctx, const kernel* kernel)
       : m_hdl{hdl}
       , m_hwctx{hwctx}
-      , m_run{xrt_core::kernel_int::get_run_from_impl(m_hdl)}
+      , m_kernel{kernel}
       , m_id{get_uid()}
     {}
 
@@ -357,10 +404,10 @@ class frames
       return m_hwctx;
     }
 
-    xrt::kernel
-    get_xrt_kernel() const
+    const kernel*
+    get_kernel() const
     {
-      return xrt_core::kernel_int::get_kernel(m_run);
+      return m_kernel;
     }
 
     std::vector<const bo*>
@@ -388,7 +435,7 @@ class frames
     std::string
     get_kernel_name() const
     {
-      return to_string(get_xrt_kernel().get_handle().get());
+      return m_kernel->get_name();
     }
 
     const std::vector<arg_type>&
@@ -621,6 +668,7 @@ class frames
   mutable std::mutex m_mutex;
   std::map<const xrt::bo_impl*, bo> m_bos;
   std::map<const xrt::hw_context_impl*, hwctx> m_hwctxs;
+  std::map<const xrt::kernel_impl*, kernel> m_kernels;
   std::map<const xrt::run_impl*, run> m_runs;
   std::map<const xrt::runlist_impl*, runlist> m_runlists;
 
@@ -688,7 +736,14 @@ class frames
     if (auto itr = m_hwctxs.find(hwctx_hdl); itr == m_hwctxs.end())
       m_hwctxs.try_emplace(hwctx_hdl, hwctx, m_elfs, m_artifacts);
 
-    auto [itr, inserted] = m_runs.try_emplace(hdl, hdl, &m_hwctxs.at(hwctx_hdl));
+    // Add kernel if new
+    auto kernel = xrt_core::kernel_int::get_kernel(xrun);
+    auto kernel_hdl = kernel.get_handle().get();
+    if (auto itr = m_kernels.find(kernel_hdl); itr == m_kernels.end())
+      m_kernels.try_emplace(kernel_hdl, kernel, &m_hwctxs.at(hwctx_hdl), m_elfs, m_artifacts);
+
+    auto [itr, inserted] =
+      m_runs.try_emplace(hdl, hdl, &m_hwctxs.at(hwctx_hdl), &m_kernels.at(kernel_hdl));
     return (*itr).second;
   }
 
@@ -700,7 +755,7 @@ class frames
     if (auto itr = m_runlists.find(hdl); itr != m_runlists.end())
       return (*itr).second;
 
-    // Not necessary to add hwctx because individual runs
+    // Not necessary to add hwctx or kernel because individual runs
     // would have been created, so just emplace the new runlist
     auto [itr, inserted] = m_runlists.emplace(hdl, hdl);
     return (*itr).second;
@@ -742,12 +797,12 @@ class frames
     return bos;
   }
 
-  std::set<xrt::kernel>
+  std::set<const kernel*>
   get_kernels() const
   {
-    std::set<xrt::kernel> kernels;
+    std::set<const kernel*> kernels;
     for (const auto& [rhdl, run] : m_runs)
-      kernels.insert(run.get_xrt_kernel());
+      kernels.insert(run.get_kernel());
 
     return kernels;
   }
@@ -827,20 +882,17 @@ class frames
   //   "hwctx":    hwctx name
   //   "ctrlcode": file name for ctrlcode if any
   // }
-  
   json
-  replay_resource_kernel(const xrt::kernel& kernel) const
+  replay_resource_kernel(const kernel* kernel) const
   {
     json j = json::object();
-    j["name"] = to_string(kernel.get_handle().get());
-    j["instance"] = kernel_int::get_instance_name(kernel);
-    auto hwctx = kernel_int::get_hwctx(kernel);
-    j["hwctx"] = to_string(hwctx.get_handle().get());
-    if (!hw_context_int::get_elf_flow(hwctx)) {
-      auto elf = kernel_int::get_ctrlcode(kernel);
-      auto& elf_data = m_elfs.at(elf.get_handle().get());
-      j["ctrlcode"] = m_artifacts.dump({elf_data.data(), elf_data.size()});
-    }
+    j["name"] = kernel->get_name();
+    j["instance"] = kernel->get_instance();
+    auto hwctx = kernel->get_hwctx();
+    j["hwctx"] = hwctx->get_name();
+    if (!hwctx->is_elf_flow())
+      j["ctrlcode"] = kernel->get_ctrlcode();
+
     return j;
   }
 
