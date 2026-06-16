@@ -1207,7 +1207,7 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
     // pre created ctrlpkt bo is used only in aie2p platform
     return xrt::module{std::make_shared<xrt::module_run_aie_gen2>(elf, hwctx, ctrl_code_id, ctrlpkt_bo)};
   case xrt::elf::platform::aie2ps:
-  case xrt::elf::platform::aie2ps_group:
+  case xrt::elf::platform::aie2ps_legacy:
   case xrt::elf::platform::aie4:
   case xrt::elf::platform::aie4a:
   case xrt::elf::platform::aie4z:
@@ -1317,7 +1317,7 @@ get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type ty
         throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group ||
+  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_legacy ||
           platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
           platform == xrt::elf::platform::aie4z) {
     auto module_config =
@@ -1368,7 +1368,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
         throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group ||
+  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_legacy ||
            platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
            platform == xrt::elf::platform::aie4z) {
     auto module_config =
