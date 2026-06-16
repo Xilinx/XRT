@@ -211,7 +211,83 @@ class frames
   // class hwctx - user created hwctx
   class hwctx
   {
+    using elf_map = std::map<const xrt::elf_impl*, std::vector<char>>;
+
+    const xrt::hw_context_impl* m_hdl;
+    xrt::hw_context::cfg_type m_cfg;
+    std::string m_xclbin;                // repo file name
+    std::vector<std::string> m_programs; // repo file names
+    uint64_t m_id;
+
+    static uint64_t
+    get_uid()
+    {
+      static std::atomic<uint64_t> id{0};
+      return id++;
+    }
+
+    static std::string
+    dump_xclbin(const xrt::hw_context& hwctx, artifacts& repo)
+    {
+      if (hw_context_int::get_elf_flow(hwctx))
+        return "";
+
+      auto xclbin_data = xclbin_int::get_xclbin_data(hwctx.get_xclbin());
+      return repo.dump(xclbin_data);
+    }
     
+    static std::vector<std::string>
+    dump_programs(const xrt::hw_context& hwctx, const elf_map& elfs, artifacts& repo)
+    {
+      if (!hw_context_int::get_elf_flow(hwctx))
+        return {};
+
+      std::vector<std::string> programs;
+      for (const auto& elf : hw_context_int::get_config_elfs(hwctx)) {
+        auto& elf_data = elfs.at(elf.get_handle().get());
+        programs.push_back(repo.dump({elf_data.data(), elf_data.size()}));
+      }
+      return programs;
+    }
+
+  public:
+    hwctx(const xrt::hw_context& hwctx, const elf_map& elfs, artifacts& repo)
+      : m_hdl{hwctx.get_handle().get()}
+      , m_cfg{xrt_core::hw_context_int::get_cfg_map(hwctx)}
+      , m_xclbin{dump_xclbin(hwctx, repo)}
+      , m_programs{dump_programs(hwctx, elfs, repo)}
+      , m_id{get_uid()}
+    {}
+
+    std::string
+    get_name() const
+    {
+      return "hwctx_" + std::to_string(m_id);
+    }
+
+    const xrt::hw_context::cfg_type&
+    get_cfg_map() const
+    {
+      return m_cfg;
+    }
+
+    bool
+    is_elf_flow() const
+    {
+      return m_xclbin.empty();
+    }
+
+    const std::string&
+    get_xclbin() const
+    {
+      return m_xclbin;
+    }
+
+    const std::vector<std::string>&
+    get_programs() const
+    {
+      return m_programs;
+    }
   };
 
   // struct run - user created xrt::run objects and args
@@ -223,8 +299,9 @@ class frames
   public:
     using arg_type = std::variant<uint64_t, const bo*>;
   private:
-    std::vector<arg_type> m_args;
     const xrt::run_impl* m_hdl;
+    const hwctx* m_hwctx;
+    std::vector<arg_type> m_args;
     xrt::run m_run;
     uint64_t m_id;
 
@@ -237,8 +314,9 @@ class frames
 
   public:
     explicit
-    run(const xrt::run_impl* hdl)
+    run(const xrt::run_impl* hdl, const hwctx* hwctx)
       : m_hdl{hdl}
+      , m_hwctx{hwctx}
       , m_run{xrt_core::kernel_int::get_run_from_impl(m_hdl)}
       , m_id{get_uid()}
     {}
@@ -273,16 +351,10 @@ class frames
       m_args[argidx] = &bo;
     }
 
-    xrt::run
-    get_xrt_run() const
+    const hwctx*
+    get_hwctx() const
     {
-      return m_run;
-    }
-
-    xrt::hw_context
-    get_xrt_hwctx() const
-    {
-      return xrt_core::kernel_int::get_hwctx(m_run);
+      return m_hwctx;
     }
 
     xrt::kernel
@@ -548,6 +620,7 @@ class frames
   // Track xrt::run and xrt::runlist objects created by application
   mutable std::mutex m_mutex;
   std::map<const xrt::bo_impl*, bo> m_bos;
+  std::map<const xrt::hw_context_impl*, hwctx> m_hwctxs;
   std::map<const xrt::run_impl*, run> m_runs;
   std::map<const xrt::runlist_impl*, runlist> m_runlists;
 
@@ -608,7 +681,14 @@ class frames
     if (auto itr = m_runs.find(hdl); itr != m_runs.end())
       return (*itr).second;
 
-    auto [itr, inserted] = m_runs.emplace(hdl, hdl);
+    // Add hwctx if new
+    auto xrun = xrt_core::kernel_int::get_run_from_impl(hdl);
+    auto hwctx = xrt_core::kernel_int::get_hwctx(xrun);
+    auto hwctx_hdl = hwctx.get_handle().get();
+    if (auto itr = m_hwctxs.find(hwctx_hdl); itr == m_hwctxs.end())
+      m_hwctxs.try_emplace(hwctx_hdl, hwctx, m_elfs, m_artifacts);
+
+    auto [itr, inserted] = m_runs.try_emplace(hdl, hdl, &m_hwctxs.at(hwctx_hdl));
     return (*itr).second;
   }
 
@@ -619,7 +699,9 @@ class frames
   {
     if (auto itr = m_runlists.find(hdl); itr != m_runlists.end())
       return (*itr).second;
-    
+
+    // Not necessary to add hwctx because individual runs
+    // would have been created, so just emplace the new runlist
     auto [itr, inserted] = m_runlists.emplace(hdl, hdl);
     return (*itr).second;
   }
@@ -639,12 +721,12 @@ class frames
   ////////////////////////////////////////////////////////////////
   // Inspectors for replay builder
   ////////////////////////////////////////////////////////////////
-  std::set<xrt::hw_context>
+  std::set<const hwctx*>
   get_hwctxs() const
   {
-    std::set<xrt::hw_context> hwctxs;
+    std::set<const hwctx*> hwctxs;
     for (const auto& [rhdl, run] : m_runs)
-      hwctxs.insert(run.get_xrt_hwctx());
+      hwctxs.insert(run.get_hwctx());
 
     return hwctxs;
   }
@@ -682,22 +764,15 @@ class frames
   //   "programs": [array of program elf file names]
   // }
   json
-  replay_resource_hwctx(const xrt::hw_context& hwctx) const
+  replay_resource_hwctx(const hwctx* hwctx) const
   {
     json j = json::object();
-    j["name"] = to_string(hwctx.get_handle().get());
-    j["cfg"] = hw_context_int::get_cfg_map(hwctx);
-    if (!hw_context_int::get_elf_flow(hwctx)) {
-      auto xclbin_data = xclbin_int::get_xclbin_data(hwctx.get_xclbin());
-      j["xclbin"] = m_artifacts.dump(xclbin_data);
-    }      
-    else {
-      j["programs"] = json::array();
-      for (const auto& elf : hw_context_int::get_config_elfs(hwctx)) {
-        auto& elf_data = m_elfs.at(elf.get_handle().get());
-        j["programs"].push_back(m_artifacts.dump({elf_data.data(), elf_data.size()}));
-      }
-    }
+    j["name"] = hwctx->get_name();
+    j["cfg"] = hwctx->get_cfg_map();
+    if (!hwctx->is_elf_flow())
+      j["xclbin"] = hwctx->get_xclbin();
+    else
+      j["programs"] = hwctx->get_programs();
     
     return j;
   }
