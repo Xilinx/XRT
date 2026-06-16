@@ -87,4 +87,4 @@ Option                   Short  Description
 
 -------------------------------------------------------------------------------
 
-See the FleXible RunTime ``README.rst`` at the XRT repository root for a broader project overview.
+See the FleXible RunTime ``README.rst`` under the top-level ``xrt/`` directory in this repository for a broader project overview.
