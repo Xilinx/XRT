@@ -120,7 +120,9 @@ class frames
     // Set of runs that are valid with this bo.  Cleared when
     // bo is synced.
     mutable std::set<const run*> m_runs;
-    xrt::bo m_bo;
+    const xrt::bo_impl* m_hdl;
+    const char* m_data;
+    size_t m_size;
     uint64_t m_id;
     
     static uint64_t
@@ -132,8 +134,10 @@ class frames
 
   public:
     explicit
-    bo(xrt::bo bo)
-      : m_bo{std::move(bo)}
+    bo(const xrt::bo& bo)
+      : m_hdl{bo.get_handle().get()}
+      , m_data{bo.map<const char*>()}
+      , m_size{bo.size()}
       , m_id{get_uid()}
     {}
 
@@ -143,10 +147,10 @@ class frames
       return "bo_" + std::to_string(m_id);
     }
 
-    xrt::bo
-    get_xrt_bo() const
+    size_t
+    get_size() const
     {
-      return m_bo;
+      return m_size;
     }
 
     // erase() - invalidate a run with respeect to this bo
@@ -200,8 +204,14 @@ class frames
     std::string
     dump(artifacts& repo) const
     {
-      return repo.dump({m_bo.template map<const char*>(), m_bo.size()});
+      return repo.dump({m_data, m_size});
     }
+  };
+
+  // class hwctx - user created hwctx
+  class hwctx
+  {
+    
   };
 
   // struct run - user created xrt::run objects and args
@@ -281,19 +291,20 @@ class frames
       return xrt_core::kernel_int::get_kernel(m_run);
     }
 
-    std::vector<xrt::bo>
-    get_xrt_bo_args() const
+    std::vector<const bo*>
+    get_bo_args() const
     {
-      std::vector<xrt::bo> bos;
+      std::vector<const bo*> bos;
       for (auto& arg : m_args) {
         std::visit([&bos](const auto& v) {
           using T = std::decay_t<decltype(v)>;
           if constexpr (std::is_same_v<T, const bo*>) {
-            bos.push_back(v->get_xrt_bo());
+            bos.push_back(v);
           }
         }, arg);
       }
       return bos;
+      
     }
 
     const bo*
@@ -638,12 +649,12 @@ class frames
     return hwctxs;
   }
 
-  std::set<xrt::bo>
+  std::set<const bo*>
   get_buffers() const
   {
-    std::set<xrt::bo> bos;
+    std::set<const bo*> bos;
     for (const auto& [rhdl, run] : m_runs) {
-      auto run_bos = run.get_xrt_bo_args();
+      auto run_bos = run.get_bo_args();
       bos.insert(run_bos.begin(), run_bos.end());
     }
     return bos;
@@ -710,14 +721,14 @@ class frames
   //   "type": string type of this buffer
   // }
   json
-  replay_resource_buffer(const xrt::bo& bo) const
+  replay_resource_buffer(const bo* bo) const
   {
     json j = json::object();
     // The name here implies that when buffer data is dumped to disk,
     // it is must use the name assigned to the bo.  There is no data
     // sharing even if two bos refer to same data.
-    j["name"] = get_name(bo.get_handle().get());
-    j["size"] = bo.size();
+    j["name"] = bo->get_name();
+    j["size"] = bo->get_size();
     j["type"] = "inout";  // no idea what the actual type is
     return j;
   }
@@ -727,7 +738,7 @@ class frames
   replay_resource_buffers() const
   {
     json j = json::array();
-    for (auto& bo : get_buffers())
+    for (auto bo : get_buffers())
       j.push_back(replay_resource_buffer(bo));
 
     return j;
