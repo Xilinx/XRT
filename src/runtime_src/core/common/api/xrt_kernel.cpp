@@ -696,6 +696,13 @@ class ip_context
     int32_t
     get_arg_memidx(size_t argidx) const
     {
+      // Calling group_id() on a scalar argument crashes with std::out_of_range
+      // because default_connection is only populated for arguments with memory
+      // connections. When a scalar argument appears after all pointer arguments,
+      // its index falls outside the vector bounds. The bounds check below
+      // intercepts this and returns no_memidx for such arguments.
+      if (argidx >= default_connection.size())
+        return no_memidx;
       return default_connection.at(argidx);
     }
 
