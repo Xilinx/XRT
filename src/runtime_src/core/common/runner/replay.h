@@ -89,7 +89,7 @@ public:
    * ctor - Create replay from script path and artifacts repository
    *
    * @param device - XRT device to use for replay
-   * @param script - Path to replay.json file
+   * @param script - Replay json (file or in-memory string)
    * @param repo - Artifacts repository with preloaded artifacts
    *
    * Loads replay.json and creates resources needed for execution.

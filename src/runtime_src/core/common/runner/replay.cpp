@@ -61,10 +61,25 @@ namespace module_cache = xrt_core::detail::module_cache;
 static json
 load_json(const std::string& input)
 {
-  if (std::ifstream f{input})
-    return json::parse(f);
+  using json_error = xrt_core::replay::json_error;
+  try {
+    // Try parse as in-memory json
+    return json::parse(input);
+  }
+  catch (const json::parse_error&)
+  {
+    // Not a valid JSON - treat input as a file path
+  }
 
-  throw std::runtime_error("Failed to load json, could not open: " + input);
+  try {
+    if (std::ifstream f{input})
+      return json::parse(f);
+  }
+  catch (const std::exception& ex) {
+    throw json_error(ex.what());
+  }
+
+  throw std::runtime_error("Failed to load json, unknown error");
 }
 
 } // namespace
@@ -607,6 +622,15 @@ class replay_impl
       }
     }
 
+    static size_t
+    get_iterations(const json& j)
+    {
+      if (auto value = j.value("iterations", 1))
+        return value;
+
+      throw std::runtime_error("bad iterations value in replay json, must be greater than 0");
+    }
+
     static std::map<std::string, frame>
     create_frames(const resources& resources, const json& frames_array, const repo_type& repo)
     {
@@ -641,7 +665,8 @@ class replay_impl
 
   public:
     execution(const resources& resources, const json& exec_object, const repo_type& repo)
-      : m_frames{create_frames(resources, exec_object.at("frames"), repo)}
+      : m_iterations{get_iterations(exec_object)}
+      , m_frames{create_frames(resources, exec_object.at("frames"), repo)}
       , m_frames_thread_groups{group_frames(m_frames)}
       , m_threads{create_threads(exec_object.at("threads"))}
     {}
@@ -651,11 +676,12 @@ class replay_impl
       // Ensure that all threads have been executed and joined.
       // This seems overly protective given that replay::execute()
       // calls run() exactly once.
-      if (m_iterations)
+      if (m_threads.empty())
         return;
 
       try {
-        run(1);
+        m_iterations = 1;
+        run();
       }
       catch (const std::exception& ex) {
         xrt_core::send_exception_message(ex.what());
@@ -665,16 +691,13 @@ class replay_impl
     // run() - Run execution section specified number of iterations
     // This function must and can be called once only
     void
-    run(size_t iterations)
+    run()
     {
-      if (m_iterations)
+      if (!m_threads.size())
         throw std::runtime_error("execution::run() can only be called once");
 
-      {
-        std::lock_guard lk(m_mutex);
-        m_iterations = iterations;
-        m_ready.notify_all();
-      }
+      // Kick off threads
+      m_ready.notify_all();
 
       // Ideally join should be in dtor, but we need to join here or
       // find some other way of ensuring that all threads have
@@ -684,6 +707,8 @@ class replay_impl
       for (auto& thread : m_threads)
         if (thread.joinable())
           thread.join();
+
+      m_threads.clear();
     }
 
     size_t
@@ -696,6 +721,12 @@ class replay_impl
     num_threads() const
     {
       return m_threads.size();
+    }
+
+    size_t
+    num_iterations() const
+    {
+      return m_iterations;
     }
   }; // class execution
 
@@ -717,7 +748,7 @@ public:
   replay_impl(const xrt::device& device, const std::string& script,
               const repo_type& repo)
     : m_device{device}
-    , m_replay{load_json(script)}
+    , m_replay(load_json(script)) // purposely no {}
     , m_repo{repo}
     , m_ini{init_ini(m_replay.value("ini", json::object()))}
     , m_resources{m_device, m_replay.at("resources"), m_repo}
@@ -727,18 +758,21 @@ public:
   void
   execute()
   {
+    // Threads are cleared after execution, cache the number here
+    auto threads = m_execution.num_threads();
+
     unsigned long long time_ns = 0;
     {
       xrt_core::time_guard tg(time_ns);
-      m_execution.run(1);  // Single iteration for now
+      m_execution.run();
     }
 
     auto elapsed = time_ns / 1000;
 
     m_report["cpu"]["elapsed_us"] = elapsed;
-    m_report["iterations"] = 1;
+    m_report["iterations"] = m_execution.num_iterations();
     m_report["frames"] = m_execution.num_frames();
-    m_report["threads"] = m_execution.num_threads();
+    m_report["threads"] = threads;
   }
 
   std::string

@@ -42,6 +42,7 @@
 #include "core/common/error.h"
 #include "core/common/time.h"
 #include "core/common/runner/runner.h"
+#include "core/common/runner/replay.h"
 
 #if defined(__GNUC__) && (__GNUC__ >= 16)
 // GCC 16 tightened the -Warray-bounds family and made it catch more
@@ -215,6 +216,15 @@ touchup_profile(const std::string& profile, const std::string& mode, uint32_t it
   if (g_nopoll)
     touchup_kv(json, "poll", false);
 
+  return json.dump();
+}
+
+static std::string
+touchup_replay(const std::string& replay, uint32_t iterations)
+{
+  std::ifstream istr(replay);
+  auto json = json::parse(istr);
+  touchup_iterations(json, iterations);
   return json.dump();
 }
 
@@ -562,6 +572,7 @@ usage()
   std::cout << "usage: xrt-runner.exe [options]\n";
   std::cout << " [--recipe <recipe.json>] recipe file to run\n";
   std::cout << " [--profile <profile.json>] execution profile\n";
+  std::cout << " [--replay <script>] replay captured script (replay.json)\n";
   std::cout << " [--iterations <number>] override all profile iterations\n";
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
@@ -575,6 +586,7 @@ usage()
   std::cout << "\n";
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
   std::cout << "% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]\n";
+  std::cout << "% xrt-runner.exe --replay replay.json [--dir <path>] [--report [<file>]]\n";
   std::cout << "Note, [--threads <number>] overrides the default number, where default is the number of\n";
   std::cout << "jobs in the runner script.\n\n";
   std::cout << "Note, [--queue-limit <num>] sets the maximum number of pending jobs when running in\n";
@@ -584,7 +596,8 @@ usage()
   std::cout << "sticky for that recipe/profile pair.\n\n";
   std::cout << "Note, [--mode <latency|throughput|validate>] filters execution sections in profile.json such\n";
   std::cout << "only specified modes are executed. If the runner script specifies a mode for a recipe/profile\n";
-  std::cout << "pair, then this value is sticky for that recipe/profile pair.\n";
+  std::cout << "pair, then this value is sticky for that recipe/profile pair.\n\n";
+  std::cout << "Note, [--replay <script>] is mutually exclusive with --recipe, --profile, --script\n";
 }
 
 // Entry for parsing the runner script file
@@ -643,6 +656,30 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
   }
 }
 
+static void
+run_replay(const std::string& replay, const std::string& dir,
+           const std::string& report)
+{
+  xrt_core::systime st;
+  xrt::device device{0}; 
+  auto replay_json_string = touchup_replay(replay, g_iterations);
+  xrt_core::replay rply{device, replay_json_string, dir};
+  rply.execute();
+
+  if (!report.empty()) {
+    auto [real, user, system] = st.get_rusage();
+    auto jrpt = json::parse(rply.get_report());
+    jrpt["system"] = { {"real", real.to_sec()}, {"user", user.to_sec()}, {"kernel", system.to_sec()} };
+    jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
+
+    if (report == "-")
+      std::cout << jrpt.dump(2) << '\n';
+    else {
+      std::ofstream ostr(report);
+      ostr << jrpt.dump(2) << '\n';
+    }
+  }
+}
 
 static void
 run(int argc, char* argv[])
@@ -653,6 +690,7 @@ run(int argc, char* argv[])
   std::string profile;
   std::string dir = ".";
   std::string script;
+  std::string replay_script;
   uint32_t threads = 0;
   uint32_t max_pending_jobs = 0;
   uint32_t verbosity = 0;
@@ -709,6 +747,8 @@ run(int argc, char* argv[])
       g_mode = arg;
     else if (cur == "-f" || cur == "--script")
       script = arg;
+    else if (cur == "--replay")
+      replay_script = arg;
     else if (cur == "-t" || cur == "--threads")
       threads = std::stoi(arg);
     else if (cur == "-l" || cur == "--queue-limit")
@@ -729,6 +769,19 @@ run(int argc, char* argv[])
   if (!cur.empty() && cur != "--report")
     std::cerr << "[runner] INFO: ignoring unknown argument value " << cur << '\n';
 
+  // Check for replay mode first
+  if (!replay_script.empty()) {
+    if (!script.empty() || !recipe.empty() || !profile.empty())
+      throw std::runtime_error("replay is mutually exclusive with script, recipe, and profile");
+
+    // set verbosity level off or to specified value
+    xrt::ini::set("Runtime.verbosity", verbosity);
+
+    run_replay(replay_script, dir, report);
+    return;
+  }
+
+  // Normal runner mode validation
   if (!script.empty() && (!recipe.empty() || !profile.empty()))
     throw std::runtime_error("script is mutually exclusive with recipe and profile");
 
@@ -738,7 +791,7 @@ run(int argc, char* argv[])
   if (threads && script.empty())
     throw std::runtime_error("threads can only be used with script");
 
-  // set verbosity level off or to specified value 
+  // set verbosity level off or to specified value
   xrt::ini::set("Runtime.verbosity", verbosity);
 
   if (!script.empty())
