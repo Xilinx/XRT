@@ -28,4 +28,5 @@ target_include_directories(core_common_api_library_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
   ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
+  ${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp/include
   )
