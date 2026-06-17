@@ -258,6 +258,21 @@ set(const std::string& key, const std::string& value)
   s_tree->m_tree.put(key, value);
 }
 
+std::map<std::string, std::string>
+get_ini_values()
+{
+  std::map<std::string, std::string> ini_values;
+  auto s_tree  = tree::instance();
+  for(const auto& section : s_tree->m_tree) {
+    std::string section_name = section.first;
+    for (const auto& [key, value] : section.second) {
+      std::string full_key = section_name + "." + key;
+      ini_values[full_key] = value.data();
+    }
+  }
+  return ini_values;
+}
+
 std::ostream&
 debug(std::ostream& ostr, const std::string& ini)
 {
