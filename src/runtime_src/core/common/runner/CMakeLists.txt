@@ -4,6 +4,7 @@ add_library(core_common_runner_objects OBJECT
   capture.cpp
   repo.cpp
   runner.cpp
+  replay.cpp
   cpu.cpp
   )
 
