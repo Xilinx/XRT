@@ -1484,7 +1484,7 @@ create_elf_impl(ELFIO::elfio&& elfio, const std::string& path = {})
   case xrt::elf::platform::aie2p:
     return std::make_shared<xrt::elf_aie_gen2>(std::move(elfio), platform, path);
   case xrt::elf::platform::aie2ps:
-  case xrt::elf::platform::aie2ps_group:
+  case xrt::elf::platform::aie2ps_legacy:
   case xrt::elf::platform::aie4:
   case xrt::elf::platform::aie4a:
   case xrt::elf::platform::aie4z:

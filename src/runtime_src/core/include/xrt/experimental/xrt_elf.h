@@ -230,13 +230,13 @@ public:
    * These values correspond to the ELF header e_ident[EI_OSABI] field
    * and identify which AIE architecture the ELF was compiled for.
    */
-   enum class platform : uint8_t {
-    aie2ps       = 64,   // AIE2PS architecture
-    aie2p        = 69,   // AIE2P architecture
-    aie2ps_group = 70,   // AIE2PS group variant
-    aie4         = 75,   // AIE4 architecture
-    aie4a        = 86,   // AIE4 variant
-    aie4z        = 105   // AIE4 variant
+  enum class platform : uint8_t {
+    aie2p           = 69,   // AIE2P architecture
+    aie2ps_legacy   = 70,   // AIE2PS architecture with older ELF version (0x02, 0x03)
+    aie2ps          = 64,   // AIE2PS architecture with newer ELF version ( >= 0x20)
+    aie4            = 75,   // AIE4 architecture
+    aie4a           = 86,   // AIE4 variant
+    aie4z           = 105   // AIE4 variant
   };
 
   /**
