@@ -53,7 +53,7 @@
 #include "core/common/runner/capture.h"
 #include "core/common/xdp/profile.h"
 
-#include "aiebu/aiebu_debug.h"
+#include "core/common/aiebu/src/cpp/include/aiebu/aiebu_debug.h"
 
 #include <boost/format.hpp>
 
