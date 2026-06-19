@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in same dll as coreutil
+
 #include "replay.h"
 #include "detail/module_cache.h"
 #include "detail/streambuf.h"
@@ -47,6 +51,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -95,8 +100,8 @@ class replay::error_impl
 
 public:
   explicit
-  error_impl(const std::string& msg)
-    : m_msg(msg)
+  error_impl(std::string msg)
+    : m_msg(std::move(msg))
   {}
 
   const char*
@@ -658,7 +663,7 @@ class replay_impl
       threads.reserve(threads_array.size());
       for (const auto& tid_object : threads_array) {
         auto tid = tid_object.get<std::string>();
-        threads.push_back(std::thread(&execution::executor, this, tid));
+        threads.emplace_back(&execution::executor, this, tid);
       }
       return threads;
     }
@@ -745,11 +750,11 @@ class replay_impl
   mutable json m_report;
 
 public:
-  replay_impl(const xrt::device& device, const std::string& script,
-              const repo_type& repo)
-    : m_device{device}
+  replay_impl(xrt::device device, const std::string& script,
+              repo_type repo)
+    : m_device{std::move(device)}
     , m_replay(load_json(script)) // purposely no {}
-    , m_repo{repo}
+    , m_repo{std::move(repo)}
     , m_ini{init_ini(m_replay.value("ini", json::object()))}
     , m_resources{m_device, m_replay.at("resources"), m_repo}
     , m_execution{m_resources, m_replay.at("execution"), m_repo}
