@@ -2727,6 +2727,19 @@ public:
     return m_module;
   }
 
+  std::shared_ptr<xrt::elf_impl>
+  get_elf_handle() const
+  {
+    if (!m_module)
+      return {};
+    try {
+      return xrt_core::module_int::get_elf_handle(m_module);
+    }
+    catch (const std::exception&) {
+      return {};
+    }
+  }
+
   kernel_command*
   get_cmd() const
   {
@@ -5163,12 +5176,11 @@ get_elf_identity_from_run(const xrt::run& run)
   if (!impl)
     return {};
 
-  const auto& mod = impl->get_module();
-  if (!mod)
+  auto elf_handle = impl->get_elf_handle();
+  if (!elf_handle)
     return {};
 
   try {
-    auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
     return {xrt_core::elf_int::get_filename(elf_handle.get()),
             impl->get_kernel()->get_full_name(),
             elf_handle->get_cfg_uuid().to_string()};
@@ -5190,15 +5202,8 @@ amend_aie_error_message(const xrt::run& run, const std::string& msg)
     auto [elf_filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
     // Retrieve parsed ELF for efficient binary decode (no re-parsing overhead)
     std::shared_ptr<xrt::elf_impl> elf_handle;
-    try {
-      auto impl = run.get_handle();
-      if (impl) {
-        const auto& mod = impl->get_module();
-        if (mod)
-          elf_handle = xrt_core::module_int::get_elf_handle(mod);
-      }
-    }
-    catch (const std::exception&) {}
+    if (auto impl = run.get_handle())
+      elf_handle = impl->get_elf_handle();
     return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid,
                                 elf_handle.get());
   }
