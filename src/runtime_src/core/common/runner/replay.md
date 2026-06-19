@@ -94,22 +94,22 @@ All files are written to the configured output directory.
 
 ### Basic Replay
 
-Use `xrt-replay` executable to replay captured execution:
+Use `xrt-runner` to replay captured execution:
 
 ```bash
-% xrt-replay --replay /tmp/xrt_capture/replay.json --dir /tmp/xrt_capture
+% xrt-runner --replay /tmp/xrt_capture/replay.json --dir /tmp/xrt_capture
 ```
 
 ### Replay Options
 
 ```
-xrt-replay [options]
+xrt-runner --replay <replay.json> [options]
 
 Options:
   --replay <replay.json> Replay script to execute (required)
   [--dir <path>]         Directory containing artifacts (default: current directory)
-  [--iter <num>]         Number of iterations to execute (default: 1)
-  [--report [<file>]]    Output metrics to <file> or use stdout for no <file>
+  [--iterations <num>]   Number of iterations to execute (default: from replay.json)
+  [--report <file>]      Output metrics to file (use "-" for stdout)
 
   [--help, -h]           Show help message
 ```
@@ -118,17 +118,22 @@ Options:
 
 **Replay once:**
 ```bash
-% xrt-replay --replay replay.json --dir /tmp/xrt_capture
+% xrt-runner --replay replay.json --dir /tmp/xrt_capture
 ```
 
 **Replay multiple iterations for performance testing:**
 ```bash
-% xrt-replay --replay replay.json --dir /tmp/xrt_capture --iter 100
+% xrt-runner --replay replay.json --dir /tmp/xrt_capture --iterations 100
 ```
 
 **Replay with artifacts in different directory:**
 ```bash
-% xrt-replay --replay /path/to/replay.json --dir /different/path/to/artifacts
+% xrt-runner --replay /path/to/replay.json --dir /different/path/to/artifacts
+```
+
+**Generate performance report:**
+```bash
+% xrt-runner --replay replay.json --dir /tmp/xrt_capture --iterations 1000 --report results.json
 ```
 
 ## Capture Internals
@@ -266,7 +271,7 @@ Capture a failing application run and replay it multiple times to debug:
 ```bash
 # Capture failure
 % ./app_with_bug
-% xrt-replay --replay capture/replay.json --dir capture
+% xrt-runner --replay capture/replay.json --dir capture
 ```
 
 ### Performance Analysis
@@ -274,7 +279,7 @@ Capture a failing application run and replay it multiple times to debug:
 Capture once, replay multiple times to eliminate application overhead:
 
 ```bash
-% xrt-replay --replay perf/replay.json --dir perf --iter 1000
+% xrt-runner --replay perf/replay.json --dir perf --iterations 1000 --report perf_results.json
 ```
 
 ### Regression Testing
@@ -287,7 +292,7 @@ Capture golden run, replay and validate output:
 % mv /tmp/capture /tmp/golden
 
 % # Test new version
-% xrt-replay --replay /tmp/golden/replay.json --dir /tmp/golden
+% xrt-runner --replay /tmp/golden/replay.json --dir /tmp/golden
 ```
 
 ### Workload Characterization
@@ -296,7 +301,7 @@ Capture complex multi-layered applications (VAIML, PyTorch, etc.) and analyze:
 
 ```bash
 % python ml_inference.py  # Complex software stack
-% xrt-replay --replay capture/replay.json --dir capture
+% xrt-runner --replay capture/replay.json --dir capture
 % # Analyze captured kernels, buffers, execution patterns
 ```
 
@@ -309,7 +314,7 @@ Capture and replay multi-threaded applications with preserved threading patterns
 % xrt-capture --frames 100 -- ./multithreaded_app
 
 % # Replay with same thread count and execution pattern
-% xrt-replay --replay /tmp/xrt_capture/replay.json --dir /tmp/xrt_capture --iter 10
+% xrt-runner --replay /tmp/xrt_capture/replay.json --dir /tmp/xrt_capture --iterations 10
 ```
 
 The replay will create the same number of threads as the captured application and execute frames in their original thread context.
@@ -357,7 +362,7 @@ Enable XRT debug messages:
 
 ```bash
 % export XRT_VERBOSITY=6
-% xrt-replay --replay replay.json --dir capture
+% xrt-runner --replay replay.json --dir capture
 ```
 
 ## Thread-Aware Replay
