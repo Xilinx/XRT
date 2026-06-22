@@ -51,6 +51,10 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
 # Merge the files into one collection
 set(XBMGMT_V2_SRCS ${XBMGMT_V2_BASE_FILES} ${XBMGMT_V2_SUBCMD_FILES})
 
+list(APPEND XBMGMT_V2_SRCS
+  "${CMAKE_CURRENT_SOURCE_DIR}/../common/third_party/miniz/miniz.c"
+  )
+
 # Determine the name of the executable
 set(XBMGMT2_NAME "xbmgmt")
 if(WIN32)
@@ -65,7 +69,7 @@ add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 if (NOT XRT_EDGE)
   target_compile_definitions(${XBMGMT2_NAME} PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 else()
-  target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_DEFAULT_ONE_DEVICE_OPTION)
+  target_compile_definitions(${XBMGMT2_NAME} PRIVATE ENABLE_DEFAULT_ONE_DEVICE_OPTION)
 endif()
 
 # Static build is a Linux / Ubuntu option only
@@ -86,7 +90,7 @@ if (XRT_STATIC_BUILD)
   )
   set_target_properties(${XBMGMT2_NAME}_static PROPERTIES INSTALL_RPATH "")
   install(TARGETS ${XBMGMT2_NAME}_static
-    RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPOMENT ${XRT_BASE_COMPONENT})
+    RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
 target_link_libraries(${XBMGMT2_NAME}

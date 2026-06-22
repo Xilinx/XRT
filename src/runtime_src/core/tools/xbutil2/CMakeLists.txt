@@ -61,6 +61,11 @@ add_subdirectory(ContextHealth)
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 
+# xrt-smi: miniz for optional zlib inflate in extract_artifacts_from_archive (see XBUtilities.cpp)
+list(APPEND XBUTIL_V2_SRCS
+  "${CMAKE_CURRENT_SOURCE_DIR}/../common/third_party/miniz/miniz.c"
+  )
+
 set(XBUTIL2_NAME "xrt-smi") 
 # Determine any helper scripts
 if(WIN32)

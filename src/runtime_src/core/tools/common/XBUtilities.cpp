@@ -32,6 +32,8 @@
 #include <regex>
 #include <stdexcept>
 
+#include "tools/common/third_party/miniz/miniz.h"
+
 
 #ifdef _WIN32
 # pragma comment(lib, "Ws2_32.lib")
@@ -932,18 +934,29 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
   }
 }
 
-xrt_core::runner::artifacts_repository 
+xrt_core::runner::artifacts_repository
 XBUtilities::
-extract_artifacts_from_archive(const xrt_core::archive* archive, 
-                               const std::vector<std::string>& artifact_names)
+extract_artifacts_from_archive(const xrt_core::archive* archive,
+                               const std::vector<std::string>& artifact_names,
+                               bool is_compressed)
 {
   xrt_core::runner::artifacts_repository artifacts_repo;
-  
+
   for (const auto& artifact_name : artifact_names) {
     try {
-      artifacts_repo.add_data(artifact_name, archive->data(artifact_name));
-    } catch (const std::exception& /*e*/) {
-      //Ignore files that are not found
+      std::string raw = archive->data(artifact_name);
+      if (is_compressed) {
+        const auto* p = reinterpret_cast<const unsigned char*>(raw.data());
+        size_t out_len = 0;
+        if (void* out = tinfl_decompress_mem_to_heap(p, raw.size(), &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER)) {
+          raw.assign(static_cast<const char*>(out), out_len);
+          mz_free(out);
+        }
+      }
+      artifacts_repo.add_data(artifact_name, std::move(raw));
+    }
+    catch (const std::exception& /*e*/) {
+      // Ignore files that are not found
     }
   }
   return artifacts_repo;

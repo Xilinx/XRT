@@ -165,10 +165,13 @@ namespace XBUtilities {
 
   /**
    * Extract artifacts from archive
+   * @param is_compressed
+   *   If true, attempt zlib inflate (miniz) per member; on failure keep raw bytes.
    */
   xrt_core::runner::artifacts_repository 
   extract_artifacts_from_archive(const xrt_core::archive* archive, 
-                                 const std::vector<std::string>& artifact_names);
+                                 const std::vector<std::string>& artifact_names,
+                                 bool is_compressed = false);
 
   bool
   is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type);

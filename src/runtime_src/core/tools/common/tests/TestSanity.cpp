@@ -38,7 +38,7 @@ TestSanity::run_strix(const std::shared_ptr<xrt_core::device>& dev,
     "wts32_hw_sanity_strix.bin",
     "ifm_hw_sanity_strix.bin",
     "ofm_hw_sanity_strix.bin",
-  });
+  }, true);
   run_sanity(dev, recipe_data, profile_data, artifacts_repo, ptree);
 }
 
@@ -55,7 +55,7 @@ TestSanity::run_npu3(const std::shared_ptr<xrt_core::device>& dev,
     "wts_sanity_npu3.bin",
     "ctrl_pkt0_sanity_npu3.bin",
     "ofm_sanity_npu3.bin",
-  });
+  }, true);
   run_sanity(dev, recipe_data, profile_data, artifacts_repo, ptree);
 }
 
