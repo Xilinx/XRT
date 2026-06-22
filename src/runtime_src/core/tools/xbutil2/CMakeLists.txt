@@ -62,9 +62,10 @@ add_subdirectory(ContextHealth)
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 
 # xrt-smi: miniz for optional zlib inflate in extract_artifacts_from_archive (see XBUtilities.cpp)
-list(APPEND XBUTIL_V2_SRCS
-  "${CMAKE_CURRENT_SOURCE_DIR}/../common/third_party/miniz/miniz.c"
-  )
+set(XRT_MINIZ_C "${CMAKE_CURRENT_SOURCE_DIR}/../common/third_party/miniz/miniz.c")
+list(APPEND XBUTIL_V2_SRCS ${XRT_MINIZ_C})
+set_source_files_properties(${XRT_MINIZ_C} PROPERTIES
+  COMPILE_DEFINITIONS "MINIZ_NO_ARCHIVE_APIS;MINIZ_NO_DEFLATE_APIS;MINIZ_NO_STDIO")
 
 set(XBUTIL2_NAME "xrt-smi") 
 # Determine any helper scripts

@@ -51,9 +51,10 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
 # Merge the files into one collection
 set(XBMGMT_V2_SRCS ${XBMGMT_V2_BASE_FILES} ${XBMGMT_V2_SUBCMD_FILES})
 
-list(APPEND XBMGMT_V2_SRCS
-  "${CMAKE_CURRENT_SOURCE_DIR}/../common/third_party/miniz/miniz.c"
-  )
+set(XRT_MINIZ_C "${CMAKE_CURRENT_SOURCE_DIR}/../common/third_party/miniz/miniz.c")
+list(APPEND XBMGMT_V2_SRCS ${XRT_MINIZ_C})
+set_source_files_properties(${XRT_MINIZ_C} PROPERTIES
+  COMPILE_DEFINITIONS "MINIZ_NO_ARCHIVE_APIS;MINIZ_NO_DEFLATE_APIS;MINIZ_NO_STDIO")
 
 # Determine the name of the executable
 set(XBMGMT2_NAME "xbmgmt")
