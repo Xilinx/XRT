@@ -2,6 +2,7 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidrv.h"
+#include <array>
 #include <filesystem>
 
 namespace xrt_core { namespace pci {
@@ -12,45 +13,76 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
              std::vector<std::shared_ptr<dev>>& nonready_list) const
 {
   namespace sfs = std::filesystem;
-  const std::string drv_root = "/sys/bus/pci/drivers/";
-  const std::string drvpath = drv_root + name();
 
-  if (!sfs::exists(drvpath))
-    return;
+  // Each driver-bus root the device may be bound to, paired with whether
+  // that bus is PCI. The bus type is authoritative here, so it is passed
+  // down rather than re-derived from the device name later.
+  struct bus_root {
+    const char* path;
+    bool is_pci;
+  };
+  static constexpr std::array<bus_root, 3> bus_roots = {{
+    { "/sys/bus/pci/drivers/",      true  },
+    { "/sys/bus/rpmsg/drivers/",    false },
+    { "/sys/bus/platform/drivers/", false },
+  }};
 
-  // Gather all sysfs directory and sort
-  // Use try/catch to handle permission errors (e.g. in a confined snap
-  // without the hardware-observe interface connected).
-  std::vector<sfs::path> vec;
-  try {
-    vec.assign(sfs::directory_iterator(drvpath), sfs::directory_iterator());
-  }
-  catch (const sfs::filesystem_error&) {
-    return;
-  }
-  std::sort(vec.begin(), vec.end());
+  const std::string drv_name = name();
 
-  for (auto& path : vec) {
+  for (const auto& [bus_path, is_pci] : bus_roots) {
+    const std::string drvpath = bus_path + drv_name;
+
+    if (!sfs::exists(drvpath))
+      continue;
+
+    std::vector<sfs::path> vec;
     try {
-      auto pf = create_pcidev(path.filename().string());
-
-      if (!pf)
-	      continue;
-
-      // In docker, all host sysfs nodes are available. So, we need to check
-      // devnode to make sure the device is really assigned to docker.
-      if (!sfs::exists(pf->get_subdev_path("", -1)))
-        continue;
-
-      // Insert detected device into proper list.
-      if (pf->m_is_ready)
-        ready_list.push_back(std::move(pf));
-      else
-        nonready_list.push_back(std::move(pf));
+      vec.assign(sfs::directory_iterator(drvpath), sfs::directory_iterator());
     }
-    catch (const std::invalid_argument& ex) {
+    catch (const sfs::filesystem_error&) {
       continue;
     }
+    std::sort(vec.begin(), vec.end());
+
+    for (auto& path : vec) {
+      try {
+        if (!sfs::is_symlink(path))
+          continue;
+
+        // Device entries are symlinks into /sys/devices/; skip
+        // standard driver attributes (module, bind, unbind, etc.)
+        auto real = sfs::canonical(path);
+        if (real.string().rfind("/sys/devices/", 0) != 0)
+          continue;
+
+        // PCI: pass BDF filename (e.g. "0000:01:00.0")
+        // rpmsg/platform: pass canonical device sysfs path
+        std::string dev_sysfs = is_pci ? path.filename().string() : real.string();
+
+        auto pf = create_pcidev(dev_sysfs);
+
+        if (!pf)
+          continue;
+
+        // In docker, all host sysfs nodes are available. So, we need to check
+        // devnode to make sure the device is really assigned to docker.
+        if (!sfs::exists(pf->get_subdev_path("", -1)))
+          continue;
+
+        if (pf->m_is_ready)
+          ready_list.push_back(std::move(pf));
+        else
+          nonready_list.push_back(std::move(pf));
+      }
+      catch (const std::exception& ex) {
+        continue;
+      }
+    }
+
+    // A driver binds on a single bus type (PCI, rpmsg or platform), so
+    // once a root yields devices there is no need to scan the others.
+    if (!ready_list.empty() || !nonready_list.empty())
+      return;
   }
 }
 
