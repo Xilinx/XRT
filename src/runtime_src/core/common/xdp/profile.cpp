@@ -185,7 +185,17 @@ load_xdna()
 void
 load()
 {
-  load_xdna();
+#if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
+  static xrt_core::sdk_loader
+  xdp_aie_dtrace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+                        register_callbacks,
+                        warning_callbacks_empty);
+#else
+  static xrt_core::module_loader
+  xdp_aie_dtrace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+                        register_callbacks,
+                        warning_callbacks_empty);
+#endif
 }
 
 void
@@ -686,6 +696,14 @@ update_device(void* handle, bool hw_context_flow)
 		       "Failed to load AIE Debug library. Caught exception ",
 		       "Failed to setup for AIE Debug. Caught exception ",
 		       handle);
+
+  load_once_and_update(xrt_core::config::get_aie_dtrace,
+		       xrt_core::xdp::aie::dtrace::load,
+		       xrt_core::xdp::aie::dtrace::update_device,
+		       "Failed to load AIE dtrace library. Caught exception ",
+		       "Failed to setup for AIE dtrace. Caught exception ",
+		       handle,
+		       hw_context_flow);
 
 #elif defined(XDP_VE2_BUILD)
 
