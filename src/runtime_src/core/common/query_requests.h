@@ -4116,9 +4116,13 @@ struct archive_path : request
 
 struct auto_coredump : request
 {
+  using result_type = uint32_t;
   using value_type = uint32_t;
 
   static const key_type key = key_type::auto_coredump;
+
+  std::any
+  get(const device*) const override = 0;
 
   void
   put(const device*, const std::any&) const override = 0;
