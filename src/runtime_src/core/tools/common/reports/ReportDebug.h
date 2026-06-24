@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __ReportDebug_h_
-#define __ReportDebug_h_
+#ifndef ReportDebug_h
+#define ReportDebug_h
 
 #include "tools/common/Report.h"
 
