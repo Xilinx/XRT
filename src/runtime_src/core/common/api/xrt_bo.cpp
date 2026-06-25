@@ -47,15 +47,6 @@ namespace {
 
 [[maybe_unused]]
 static bool
-is_noop_emulation()
-{
-  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
-  static bool noop = xem.empty() ? false : xem.compare("noop")==0;
-  return noop;
-}
-
-[[maybe_unused]]
-static bool
 is_sw_emulation()
 {
   static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
