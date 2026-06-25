@@ -38,13 +38,29 @@ how many times along with what should be done in each iteration.
 This section is optional.
 
 Simple key/value pairs designating configuration parameters for
-hardware context creation. 
+hardware context creation and execution control.
 ```
   "qos": {
     "gops": 10,
     "fps": 30
   },
 ```
+
+- **Driver QoS parameters** (passed to hardware context):
+  - `gops`: Giga operations per workload
+  - `fps`: Frames per second (workload rate)
+  - `latency`: Frame response latency (milliseconds)
+  - `priority`: Execution priority (e.g., 0x100=REALTIME, 0x180=HIGH, 0x200=NORMAL, 0x280=LOW)
+  - `dma_bandwidth`: DMA bandwidth requirement
+  - `frame_execution_time`: Frame execution time
+
+- **Runner execution control parameters** (runner-level only, not passed to driver):
+  - `sleep_to_limit_fps`: (boolean, default: false) When true, 
+    automatically throttle execution to not exceed the specified fps.
+    Requires `fps` to be specified. The runner will sleep between
+    iterations to maintain the target fps rate. If hardware execution
+    is slower than the target fps, no sleep occurs.
+
 The json schema doesn't enforce key names or value ranges, XRT will
 warn but ignore unrecognized keys. Improper values are implementation 
 defined.
