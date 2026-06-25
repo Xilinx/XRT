@@ -1,3 +1,6 @@
+REM SPDX-License-Identifier: Apache-2.0
+REM Copyright (C) 2018-2022 Xilinx, Inc. All rights reserved.
+REM Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 @echo off
 setlocal
 

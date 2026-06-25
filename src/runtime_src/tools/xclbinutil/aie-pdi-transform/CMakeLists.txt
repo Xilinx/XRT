@@ -1,5 +1,6 @@
-# Top-level CMakeLists.txt
-
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights Reserved.
+# Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights Reserved.
 cmake_minimum_required(VERSION 3.10)
 project(aie-pdi-transform)
 

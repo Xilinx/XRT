@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
+
 # GNUPlot for [Debug] xocl_debug = true
 
 usage()

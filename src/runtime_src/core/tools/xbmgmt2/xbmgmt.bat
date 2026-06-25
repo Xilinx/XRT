@@ -1,3 +1,5 @@
+REM SPDX-License-Identifier: Apache-2.0
+REM Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 @echo off
 setlocal
 

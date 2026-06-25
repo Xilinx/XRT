@@ -1,5 +1,7 @@
-/* Xilinx XRT test case utility header file */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
+// Xilinx XRT test case utility header file
 #ifndef XIL_UTIL_HPP
 #define XIL_UTIL_HPP
 
