@@ -21,7 +21,8 @@ config_gen_ryzen()
     {"platform", "Platforms flashed on the device", "common"},
     {"telemetry", "Telemetry data for the device", "hidden"},
     {"preemption", "Preemption telemetry data for the device", "hidden"},
-    {"clocks", "Clock frequency information", "hidden"}
+    {"clocks", "Clock frequency information", "hidden"},
+    {"debug", "Debug configuration settings for the device", "hidden"}
   };
 
   validate_test_desc = {
@@ -118,7 +119,8 @@ config_gen_npu3()
     {"platform", "Platforms flashed on the device", "common"},
     {"telemetry", "Telemetry data for the device", "common"},
     {"preemption", "Preemption telemetry data for the device", "common"},
-    {"clocks", "Clock frequency information", "hidden"}
+    {"clocks", "Clock frequency information", "hidden"},
+    {"debug", "Debug configuration settings for the device", "hidden"}
   };
 
   validate_test_desc = {
