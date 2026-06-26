@@ -88,10 +88,6 @@ include (CMake/boostUtil.cmake)
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
-# Curses
-INCLUDE (FindCurses)
-find_package(Curses REQUIRED)
-
 # XRT Variables
 include (CMake/xrtVariables.cmake)
 
