@@ -219,7 +219,7 @@ if(NOT WIN32 AND NOT XRT_SYSTEM_INSTALL)
 endif()
 
 
-if (WIN32)
+if (WIN32 AND NOT DEFINED GTEST_ROOT)
   set(GTEST_ROOT "C:/Xilinx/XRT/ext")
 endif()
 
