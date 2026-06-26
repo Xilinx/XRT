@@ -91,15 +91,6 @@ is_hw_emulation()
   return hwem;
 }
 
-[[maybe_unused]]
-static bool
-is_noop_emulation()
-{
-  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
-  static bool noop = xem.empty() ? false : xem.compare("noop")==0;
-  return noop;
-}
-
 // Open the HAL implementation dll and construct a hal::device for
 // each board detected by the implementation
 static void
@@ -173,13 +164,6 @@ loadDevices()
 
     if (isDLL(sw_em_driver_path))
       createHalDevices(devices,sw_em_driver_path);
-  }
-
-  if (!xrt.empty() && is_noop_emulation()) {
-    directoryOrError(xrt);
-    auto p = dllpath(xrt,"xrt_noop");
-    if (isDLL(p))
-      createHalDevices(devices,p.string());
   }
 
   if (xrt.empty())
