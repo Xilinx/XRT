@@ -84,7 +84,6 @@ rh_package_list()
      libyaml-devel \
      lm_sensors \
      make \
-     ncurses-devel \
      ocl-icd \
      ocl-icd-devel \
      opencl-headers \
@@ -197,7 +196,6 @@ ub_package_list()
      libgtest-dev \
      libjpeg-dev \
      libjson-glib-dev \
-     libncurses5-dev \
      libopencv-core-dev \
      libpng-dev \
      libprotoc-dev \
@@ -285,7 +283,6 @@ fd_package_list()
      libyaml-devel \
      lm_sensors \
      make \
-     ncurses-devel \
      ocl-icd \
      ocl-icd-devel \
      opencl-headers \
@@ -351,7 +348,6 @@ suse_package_list()
      libyaml-devel \
      lsb-release \
      make \
-     ncurses-devel \
      opencl-cpp-headers \
      pciutils \
      perl \
@@ -402,7 +398,6 @@ mariner_package_list()
      lm_sensors \
      lsb-release \
      make \
-     ncurses-devel \
      ocl-icd \
      ocl-icd-devel \
      opencl-headers \
@@ -450,7 +445,6 @@ arch_package_list()
      libyaml \
      lm_sensors \
      lsb-release \
-     ncurses \
      ocl-icd \
      opencl-headers \
      openssl \
