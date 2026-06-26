@@ -53,6 +53,8 @@
 #include "core/common/runner/capture.h"
 #include "core/common/xdp/profile.h"
 
+#include "core/common/aiebu/src/cpp/include/aiebu/aiebu_debug.h"
+
 #include <boost/format.hpp>
 
 #include <algorithm>
@@ -2732,6 +2734,19 @@ public:
     return m_module;
   }
 
+  std::shared_ptr<xrt::elf_impl>
+  get_elf_handle() const
+  {
+    if (!m_module)
+      return {};
+    try {
+      return xrt_core::module_int::get_elf_handle(m_module);
+    }
+    catch (const std::exception&) {
+      return {};
+    }
+  }
+
   kernel_command*
   get_cmd() const
   {
@@ -5054,7 +5069,7 @@ what() const noexcept
 static std::string
 aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
                      const std::string& elf_filename, const std::string& kernel_instance,
-                     const std::string& elf_uuid)
+                     const std::string& elf_uuid, const xrt::elf_impl* elf_impl_ptr = nullptr)
 {
   constexpr auto indent8 = 8;
   auto ctx_health = get_ert_ctx_health_data_v1(epkt);
@@ -5125,6 +5140,29 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
           << "\nuc_esr=0x" << std::setw(indent8)
           << ctx_health->aie4.uc_info[i].uc_esr
           << "\n";
+
+      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary
+      if (elf_impl_ptr) {
+        aiebu::AIEDebug dbg(elf_impl_ptr->get_elfio());
+        auto info = dbg.get_opcode_information(
+          kernel_instance,
+          ctx_health->aie4.uc_info[i].uc_idx,
+          ctx_health->aie4.uc_info[i].page_idx,
+          ctx_health->aie4.uc_info[i].offset);
+        if (info.found) {
+          oss << "\nOpcode:         " << info.opcode_name;
+          if (!info.args_str.empty())
+            oss << "  " << info.args_str;
+          oss << "\nOpcode Size:    0x" << std::hex << info.opcode_size;
+          if (info.line > 0)
+            oss << "\nLine:           " << std::dec << info.line;
+          if (!info.source_file.empty())
+            oss << "\nFile:           " << info.source_file;
+          oss << "\n";
+        }
+        if (!info.diag_info.empty())
+          oss << "Opcode diag_info: " << info.diag_info << "\n";
+      }
     }
   }
   return oss.str();
@@ -5145,12 +5183,11 @@ get_elf_identity_from_run(const xrt::run& run)
   if (!impl)
     return {};
 
-  const auto& mod = impl->get_module();
-  if (!mod)
+  auto elf_handle = impl->get_elf_handle();
+  if (!elf_handle)
     return {};
 
   try {
-    auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
     return {xrt_core::elf_int::get_filename(elf_handle.get()),
             impl->get_kernel()->get_full_name(),
             elf_handle->get_cfg_uuid().to_string()};
@@ -5170,7 +5207,12 @@ amend_aie_error_message(const xrt::run& run, const std::string& msg)
 
   if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1) {
     auto [elf_filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
-    return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid);
+    // Retrieve parsed ELF for efficient binary decode (no re-parsing overhead)
+    std::shared_ptr<xrt::elf_impl> elf_handle;
+    if (auto impl = run.get_handle())
+      elf_handle = impl->get_elf_handle();
+    return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid,
+                                elf_handle.get());
   }
   else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
     return msg;
