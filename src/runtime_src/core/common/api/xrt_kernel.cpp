@@ -2732,6 +2732,7 @@ public:
   {
     if (!m_module)
       return {};
+      
     return xrt_core::module_int::get_elf_handle(m_module).get();
   }
 
