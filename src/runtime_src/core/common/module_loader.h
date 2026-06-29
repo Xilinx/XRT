@@ -127,6 +127,25 @@ std::filesystem::path
 platform_path(const std::string& file_name);
 
 /**
+ * xrt_path() - Get XRT path to specified file
+ *
+ * @param file
+ *   Relative path to a file
+ * Return:
+ *   Path of file rooted at xilinx_xrt() or error
+ *
+ * This function can be used to limit on demand loading to
+ * files that are rooted at xilinx_xrt().
+ *
+ * Throws if file is an absolute path or if resulting path
+ * escapes xilinx_xrt().   Here escape simply implies that
+ * the resulting path contains any ".." element.
+ */
+XRT_CORE_COMMON_EXPORT
+std::filesystem::path
+xrt_path_or_error(const std::string& file);
+
+/**
  * platform_repo_paths() - Get paths to the platform repositories
  *
  * Return: All full paths to available platform repositories

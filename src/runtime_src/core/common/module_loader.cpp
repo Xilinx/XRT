@@ -322,6 +322,26 @@ xilinx_xrt()
 }
 
 sfs::path
+xrt_path_or_error(const std::string& file)
+{
+  if (file.empty())
+    throw std::runtime_error("Invalid empty file name");
+
+  std::filesystem::path path {file};
+
+  // No absolute path
+  if (path.is_absolute())
+    throw std::runtime_error("Invalid path '" + path.string() + "' cannot be absolute");
+
+  // May not contain any ".." to escape xilinx_xrt
+  auto normalize = path.lexically_normal();
+  if (normalize.string().find("..") != std::string::npos)
+    throw std::runtime_error("Invalid path '" + normalize.string() + "' escapes xrt");
+
+  return xilinx_xrt() / normalize;
+}
+
+sfs::path
 platform_path(const std::string& file_name)
 {
   return ::platform_path(file_name);
