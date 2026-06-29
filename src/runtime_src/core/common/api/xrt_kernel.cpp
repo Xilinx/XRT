@@ -2727,17 +2727,12 @@ public:
     return m_module;
   }
 
-  std::shared_ptr<xrt::elf_impl>
+  const xrt::elf_impl*
   get_elf_handle() const
   {
     if (!m_module)
       return {};
-    try {
-      return xrt_core::module_int::get_elf_handle(m_module);
-    }
-    catch (const std::exception&) {
-      return {};
-    }
+    return xrt_core::module_int::get_elf_handle(m_module).get();
   }
 
   kernel_command*
@@ -5176,12 +5171,12 @@ get_elf_identity_from_run(const xrt::run& run)
   if (!impl)
     return {};
 
-  auto elf_handle = impl->get_elf_handle();
+  const auto* elf_handle = impl->get_elf_handle();
   if (!elf_handle)
     return {};
 
   try {
-    return {xrt_core::elf_int::get_filename(elf_handle.get()),
+    return {xrt_core::elf_int::get_filename(elf_handle),
             impl->get_kernel()->get_full_name(),
             elf_handle->get_cfg_uuid().to_string()};
   }
@@ -5201,11 +5196,9 @@ amend_aie_error_message(const xrt::run& run, const std::string& msg)
   if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1) {
     auto [elf_filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
     // Retrieve parsed ELF for efficient binary decode (no re-parsing overhead)
-    std::shared_ptr<xrt::elf_impl> elf_handle;
-    if (auto impl = run.get_handle())
-      elf_handle = impl->get_elf_handle();
+    auto impl = run.get_handle();
     return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid,
-                                elf_handle.get());
+                                impl->get_elf_handle());
   }
   else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
     return msg;
