@@ -508,8 +508,8 @@ class recipe
       create_cpu(const json& j)
       {
         auto name = j.at("name").get<std::string>(); // required
-        auto library_path = xrt_core::environment::xilinx_xrt()
-          / j.at("library_name").get<std::string>(); // required
+        auto libname = j.at("library_name").get<std::string>(); // required
+        auto library_path = xrt_core::environment::xrt_path_or_error(libname);
         return cpu{std::move(name), library_path.string()};
       }
 
