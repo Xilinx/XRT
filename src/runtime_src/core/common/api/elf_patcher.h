@@ -82,7 +82,8 @@ enum class symbol_type {
   control_packet_57 = 7,                   // patching scheme needed by firmware to patch control packet for aie2ps
   address_64 = 8,                          // patching scheme needed to patch pdi address
   control_packet_57_aie4 = 9,              // patching scheme needed by firmware to patch control packet for aie4
-  unknown_symbol_kind = 10
+  pl_ddr_64 = 10,                          // patching scheme for PL kernel wts_params block (words 8+9 hold 64-bit DDR address)
+  unknown_symbol_kind = 11
 };
 
 // Maximum BD data words - AIE2P uses 8, AIE4/AIE2PS uses 9
@@ -177,6 +178,9 @@ private:
 
   static void
   patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch);
+
+  static void
+  patch_pl_ddr64(uint32_t* bd_data_ptr, uint64_t patch);
 };
 
 } // namespace xrt_core::elf_patcher
