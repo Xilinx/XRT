@@ -109,12 +109,12 @@ DTC::marshalFromDTCImage(const char* _pBuffer,
   }
 
   // -- Get and validate the strings offset --
-  if (ntohl(pHdr->off_dt_strings) > _size) {
+  if (ntohl(pHdr->off_dt_strings) >= _size) {
     auto errMsg = boost::format("ERROR: The string block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_strings) % _size;
     throw std::runtime_error(errMsg.str());
   }
 
-  if ((ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) > _size) {
+  if ((static_cast<uint64_t>(ntohl(pHdr->off_dt_strings)) + ntohl(pHdr->size_dt_strings)) > _size) {
     auto errMsg = boost::format("ERROR: The string block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) % _size;
     throw std::runtime_error(errMsg.str());
   }
@@ -125,12 +125,12 @@ DTC::marshalFromDTCImage(const char* _pBuffer,
   m_DTCStringsBlock.parseDTCStringsBlock(pStringBuffer, stringBufferSize);
 
   // -- Get the validate the structure nodes offset --
-  if (ntohl(pHdr->off_dt_struct) > _size) {
+  if (ntohl(pHdr->off_dt_struct) >= _size) {
     auto errMsg = boost::format("ERROR: The structure block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_struct) % _size;
     throw std::runtime_error(errMsg.str());
   }
 
-  if ((ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) > _size) {
+  if ((static_cast<uint64_t>(ntohl(pHdr->off_dt_struct)) + ntohl(pHdr->size_dt_struct)) > _size) {
     auto errMsg = boost::format("ERROR: The structure block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) % _size;
     throw std::runtime_error(errMsg.str());
   }
@@ -180,8 +180,12 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
     throw std::runtime_error("ERROR: There are no structure nodes in this design.");
   }
 
-  // Note roll over is checked at the end of this method
   uint64_t runningOffset = 0;
+
+  auto check_overflow = [](uint64_t offset, const char* ctx) {
+    if (offset >= UINT32_MAX)
+      throw std::runtime_error(std::string("ERROR: DTC block exceeds 4 GBytes at ") + ctx);
+  };
 
   // -- Create header --
   fdt_header header = { 0 };
@@ -198,7 +202,8 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
     memoryBlock.write(&emptyByte, sizeof(char));
   }
   std::string sMemoryBlock = memoryBlock.str();
-  header.off_mem_rsvmap = htonl((uint32_t)runningOffset);
+  check_overflow(runningOffset, "memory reservation block offset");
+  header.off_mem_rsvmap = htonl(static_cast<uint32_t>(runningOffset));
   runningOffset += sMemoryBlock.size();
 
   // -- Create structure node image --
@@ -207,29 +212,29 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
   m_pTopFDTNode->marshalToDTC(stringsBlock, structureNodesBuf);
   XUtil::write_htonl(structureNodesBuf, FDT_END);
   std::string sStructureNodes = structureNodesBuf.str();
-  header.off_dt_struct = htonl((uint32_t)runningOffset);
-  header.size_dt_struct = htonl((uint32_t)sStructureNodes.size());
+  check_overflow(runningOffset, "structure block offset");
+  check_overflow(sStructureNodes.size(), "structure block size");
+  header.off_dt_struct = htonl(static_cast<uint32_t>(runningOffset));
+  header.size_dt_struct = htonl(static_cast<uint32_t>(sStructureNodes.size()));
   runningOffset += sStructureNodes.size();
 
   // -- Create strings block --
   std::ostringstream stringBlock;
   stringsBlock.marshalToDTC(stringBlock);
   std::string sStringBlock = stringBlock.str();
-  header.off_dt_strings = htonl((uint32_t)runningOffset);
-  header.size_dt_strings = htonl((uint32_t)sStringBlock.size());
+  check_overflow(runningOffset, "strings block offset");
+  check_overflow(sStringBlock.size(), "strings block size");
+  header.off_dt_strings = htonl(static_cast<uint32_t>(runningOffset));
+  header.size_dt_strings = htonl(static_cast<uint32_t>(sStringBlock.size()));
   runningOffset += sStringBlock.size();
 
   // Complete the header
-  header.totalsize = htonl((uint32_t)runningOffset);
+  check_overflow(runningOffset, "total size");
+  header.totalsize = htonl(static_cast<uint32_t>(runningOffset));
 
   // -- Put it all together --
   _buf.write((char*)&header, sizeof(fdt_header));
   _buf.write(sMemoryBlock.c_str(), sMemoryBlock.size());
   _buf.write(sStructureNodes.c_str(), sStructureNodes.size());
   _buf.write(sStringBlock.c_str(), sStringBlock.size());
-
-  // -- Integrity check --
-  if (runningOffset >= UINT32_MAX) {
-    throw std::runtime_error("ERROR: DTC block exceeds 4 GBytes (uint32_t max size)");
-  }
 }
