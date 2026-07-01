@@ -4580,14 +4580,20 @@ get_run_from_impl(const xrt::run_impl* run_impl)
 }
 
 void
-get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data)
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data,
+                    bool include_state)
 {
   auto kernel = run_impl->get_kernel();
   data->uid = run_impl->get_uid();
   data->name = kernel->get_name();
   data->hwctx = kernel->get_hw_context();
   data->mod = kernel->get_module();
-  data->ert_state = static_cast<int>(run_impl->state());
+  // run_impl->state() polls the command's ERT packet. That is only valid once
+  // the command has been submitted; calling it earlier (e.g. from the
+  // run_constructor / run_start hooks, which fire before submission) throws
+  // "Cannot poll a command that has not been submitted". Only the run_wait
+  // hook actually consumes ert_state, so query it only when explicitly asked.
+  data->ert_state = include_state ? static_cast<int>(run_impl->state()) : 0;
 }
 
 void

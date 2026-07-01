@@ -185,7 +185,17 @@ load_xdna()
 void
 load()
 {
-  load_xdna();
+#if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
+  static xrt_core::sdk_loader
+  xdp_aie_dtrace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+                        register_callbacks,
+                        warning_callbacks_empty);
+#else
+  static xrt_core::module_loader
+  xdp_aie_dtrace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+                        register_callbacks,
+                        warning_callbacks_empty);
+#endif
 }
 
 void
@@ -205,7 +215,14 @@ end_poll(void* handle)
 void
 run_constructor(xrt::run_impl* run_impl)
 {
-  if (run_constructor_cb) {
+  if (!run_constructor_cb)
+    return;
+
+  // The dtrace run hooks are best-effort profiling instrumentation. They must
+  // never affect the run lifecycle: an exception escaping here would propagate
+  // out of the run_impl constructor and corrupt the caller's run object (e.g.
+  // leaving FlexMLRT polling a command that was never submitted).
+  try {
     xrt_kernel_data data{};
     xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
     auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
@@ -215,30 +232,62 @@ run_constructor(xrt::run_impl* run_impl)
                        data.name.c_str(),
                        elf_hdl.get());
   }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      std::string{"AIE dtrace run_constructor hook failed (ignored): "} + e.what());
+  }
+  catch (...) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "AIE dtrace run_constructor hook failed (ignored): unknown exception");
+  }
 }
 
 void
 run_start(const xrt::run_impl* run_impl)
 {
-  if (run_start_cb) {
+  if (!run_start_cb)
+    return;
+
+  try {
     xrt_kernel_data data{};
     xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
     run_start_cb(nullptr, data.hwctx.get_handle().get(),
                  data.uid,
                  data.name.c_str());
   }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      std::string{"AIE dtrace run_start hook failed (ignored): "} + e.what());
+  }
+  catch (...) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "AIE dtrace run_start hook failed (ignored): unknown exception");
+  }
 }
 
 void
 run_wait(const xrt::run_impl* run_impl)
 {
-  if (run_wait_cb) {
+  if (!run_wait_cb)
+    return;
+
+  try {
     xrt_kernel_data data{};
-    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    // run_wait fires after the command has completed, so polling state() here
+    // is valid and ert_state is the value this hook needs.
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data, true);
     run_wait_cb(nullptr, data.hwctx.get_handle().get(),
                 data.uid,
                 data.name.c_str(),
                 data.ert_state);
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      std::string{"AIE dtrace run_wait hook failed (ignored): "} + e.what());
+  }
+  catch (...) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "AIE dtrace run_wait hook failed (ignored): unknown exception");
   }
 }
 
@@ -686,6 +735,14 @@ update_device(void* handle, bool hw_context_flow)
 		       "Failed to load AIE Debug library. Caught exception ",
 		       "Failed to setup for AIE Debug. Caught exception ",
 		       handle);
+
+  load_once_and_update(xrt_core::config::get_aie_dtrace,
+		       xrt_core::xdp::aie::dtrace::load,
+		       xrt_core::xdp::aie::dtrace::update_device,
+		       "Failed to load AIE dtrace library. Caught exception ",
+		       "Failed to setup for AIE dtrace. Caught exception ",
+		       handle,
+		       hw_context_flow);
 
 #elif defined(XDP_VE2_BUILD)
 
