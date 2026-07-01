@@ -12,6 +12,7 @@ endif()
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
+option(XRT_ENABLE_USDT "Enable SystemTap USDT tracepoints" ON)
 
 if (XOCL_VERBOSE)
   add_compile_options("-DXOCL_VERBOSE")
@@ -19,6 +20,18 @@ endif()
 
 if(XRT_VERBOSE)
   add_compile_options("-DXRT_VERBOSE")
+endif()
+
+if (XRT_ENABLE_USDT)
+  include(CheckIncludeFileCXX)
+  check_include_file_cxx("sys/sdt.h" XRT_HAVE_SYS_SDT_H)
+  if (NOT XRT_HAVE_SYS_SDT_H)
+    message(FATAL_ERROR
+      "sys/sdt.h not found. Install systemtap-sdt-dev "
+      "(or systemtap-sdt-devel), or configure with "
+      "-DXRT_ENABLE_USDT=OFF.")
+  endif()
+  add_compile_definitions(XRT_ENABLE_USDT)
 endif()
 
 add_compile_options("-fPIC")
