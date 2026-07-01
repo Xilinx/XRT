@@ -157,6 +157,17 @@ patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
 
 void
 symbol_patcher::
+patch_pl_ddr64(uint32_t* bd_data_ptr, uint64_t patch)
+{
+  // PL kernel wts_params block: words [8] and [9] hold a plain 64-bit DDR address
+  uint64_t base_address = (static_cast<uint64_t>(bd_data_ptr[9]) << 32) | bd_data_ptr[8]; // NOLINT
+  base_address += patch;
+  bd_data_ptr[8] = static_cast<uint32_t>(base_address & 0xFFFFFFFF);                      // NOLINT
+  bd_data_ptr[9] = static_cast<uint32_t>((base_address >> 32) & 0xFFFFFFFF);              // NOLINT
+}
+
+void
+symbol_patcher::
 patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
 {
   if (!m_config)
@@ -267,6 +278,14 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
         sync(3 * sizeof(uint32_t));    // NOLINT
       }
       break;
+    case symbol_type::pl_ddr_64:
+      // value is a bo address; patch words [8]+[9] of wts_params block
+      patch_pl_ddr64(bd_data_ptr, value + config.offset_to_base_bo_addr);
+      if (!first) {
+        // sync words [8] and [9] (2 words starting at offset + 8*sizeof(uint32_t))
+        bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, 2 * sizeof(uint32_t), offset + 8 * sizeof(uint32_t)); // NOLINT
+      }
+      break;
     default:
       throw std::runtime_error("Unsupported symbol type");
     }
@@ -306,6 +325,9 @@ patch_symbol_raw(uint8_t* base, uint64_t value, const patcher_config& config)
       break;
     case symbol_type::control_packet_57_aie4:
       patch_ctrl57_aie4(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
+      break;
+    case symbol_type::pl_ddr_64:
+      patch_pl_ddr64(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
       break;
     default:
       throw std::runtime_error("Unsupported symbol type");
