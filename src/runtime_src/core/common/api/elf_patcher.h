@@ -150,8 +150,9 @@ struct symbol_patcher
   // static method for patching raw buffers passed by shim tests
   // where the caller handles sync themselves
   // It patches directly using config without maintaining state.
+  // buf_size is the total size of the buffer pointed to by base.
   static void
-  patch_symbol_raw(uint8_t* base, uint64_t value, const patcher_config& config);
+  patch_symbol_raw(uint8_t* base, size_t buf_size, uint64_t value, const patcher_config& config);
 
 private:
   // Different patching functions for different symbol types.

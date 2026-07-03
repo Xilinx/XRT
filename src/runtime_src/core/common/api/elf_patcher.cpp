@@ -4,12 +4,49 @@
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as xrt_api
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "elf_patcher.h"
+#include "core/common/error.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
 
 namespace xrt_core::elf_patcher {
+
+// Return the minimum number of bytes required past bd_data_ptr for a given symbol type.
+// Used to bounds-check the patch offset before any pointer arithmetic.
+static size_t
+required_patch_bytes(symbol_type type)
+{
+  switch (type) {
+  case symbol_type::address_64:
+    // words [0],[1]
+    return 2 * sizeof(uint32_t);   // NOLINT(readability-magic-numbers)
+  case symbol_type::scalar_32bit_kind:
+    // word [0]
+    return 1 * sizeof(uint32_t);   // NOLINT(readability-magic-numbers)
+  case symbol_type::shim_dma_base_addr_symbol_kind:
+    // words [1],[2],[8] — buffer must cover indices [0..8]
+    return 9 * sizeof(uint32_t);   // NOLINT(readability-magic-numbers)
+  case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
+    // words [0],[1]
+    return 2 * sizeof(uint32_t);   // NOLINT(readability-magic-numbers)
+  case symbol_type::control_packet_57:
+  case symbol_type::control_packet_48:
+    // words [2],[3] — buffer must cover indices [0..3]
+    return 4 * sizeof(uint32_t);   // NOLINT(readability-magic-numbers)
+  case symbol_type::shim_dma_48:
+    // words [1],[2] — buffer must cover indices [0..2]
+    return 3 * sizeof(uint32_t);   // NOLINT(readability-magic-numbers)
+  case symbol_type::control_packet_57_aie4:
+    // words [1],[2] — buffer must cover indices [0..2]
+    return 3 * sizeof(uint32_t);   // NOLINT(readability-magic-numbers)
+  case symbol_type::pl_ddr_64:
+    // words [8],[9] — buffer must cover indices [0..9]
+    return 10 * sizeof(uint32_t);  // NOLINT(readability-magic-numbers)
+  default:
+    return 0;
+  }
+}
 
 // Get AIE DDR address offset
 inline static uint64_t
@@ -174,6 +211,7 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
     throw std::runtime_error("symbol_patcher: config not set");
 
   auto base = reinterpret_cast<uint8_t*>(bo.map());
+  auto bo_size = bo.size();
   const auto& configs = m_config->m_patch_configs;
 
   // Ensure runtime state is properly sized
@@ -185,6 +223,10 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
     auto& state = m_states[i];
 
     auto offset = config.offset_to_patch_buffer;
+    auto patch_bytes = required_patch_bytes(m_config->m_symbol_type);
+    if (offset > bo_size || patch_bytes > bo_size - offset)
+      throw xrt_core::error(-EINVAL, "ELF patch offset exceeds instruction buffer");
+    
     auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
 
     // If the symbol patched is an argument to kernel we have to cache
@@ -203,88 +245,62 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
       }
     }
 
-    // lambda for calling sync bo
-    // We only sync the words that are patched not the entire bo
-    auto sync = [&](size_t size) {
-      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
+    // Sync the patched words back to device.  patch_bytes bytes from offset covers
+    // exactly the words touched by each patch function — same value used for
+    // the bounds check above, so no size argument is needed here.
+    auto sync = [&]() {
+      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, patch_bytes, offset);
     };
 
     switch (m_config->m_symbol_type) {
     case symbol_type::address_64:
-      // value is a 64bit address
       patch64(bd_data_ptr, value);
-      if (!first) {
-        // sync 64 bits patched
-        sync(sizeof(uint64_t));
-      }
+      if (!first)
+        sync();
       break;
     case symbol_type::scalar_32bit_kind:
-      // value is a register value
       if (config.mask) {
         patch32(bd_data_ptr, value, config.mask);
-        if (!first) {
-          // sync 32 bits patched
-          sync(sizeof(uint32_t));
-        }
+        if (!first)
+          sync();
       }
       break;
     case symbol_type::shim_dma_base_addr_symbol_kind:
-      // value is a bo address
       patch57(bd_data_ptr, value + config.offset_to_base_bo_addr);
-      if (!first) {
-        // sync all the words (max_bd_words)
-        sync(sizeof(uint32_t) * max_bd_words);
-      }
+      if (!first)
+        sync();
       break;
     case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
-      // value is a bo address
       patch57_aie4(bd_data_ptr, value + config.offset_to_base_bo_addr);
-      if (!first) {
-        // sync 64 bits or 2 words
-        sync(sizeof(uint64_t));
-      }
+      if (!first)
+        sync();
       break;
     case symbol_type::control_packet_57:
-      // value is a bo address
       patch_ctrl57(bd_data_ptr, value + config.offset_to_base_bo_addr);
-      if (!first) {
-        // Data in this case is written till 3rd offset of bd_data_ptr
-        // so syncing 4 words
-        sync(4 * sizeof(uint32_t));    // NOLINT
-      }
+      if (!first)
+        sync();
       break;
     case symbol_type::control_packet_48:
-      // value is a bo address
       patch_ctrl48(bd_data_ptr, value + config.offset_to_base_bo_addr);
-      if (!first) {
-        // Data in this case is written till 3rd offset of bd_data_ptr
-        // so syncing 4 words
-        sync(4 * sizeof(uint32_t));    // NOLINT
-      }
+      if (!first)
+        sync();
       break;
     case symbol_type::shim_dma_48:
-      // value is a bo address
       patch_shim48(bd_data_ptr, value + config.offset_to_base_bo_addr);
-      if (!first) {
-        // syncing 3 words
-        sync(3 * sizeof(uint32_t));    // NOLINT
-      }
+      if (!first)
+        sync();
       break;
     case symbol_type::control_packet_57_aie4:
-      // value is a bo address
       patch_ctrl57_aie4(bd_data_ptr, value + config.offset_to_base_bo_addr);
-      if (!first) {
-        // syncing 3 words
-        sync(3 * sizeof(uint32_t));    // NOLINT
-      }
+      if (!first)
+        sync();
       break;
     case symbol_type::pl_ddr_64:
-      // value is a bo address; patch words [8]+[9] of wts_params block
+      // words [8]+[9]: sync only those 2 words at their position within the block;
+      // the bounds check above (patch_bytes= 10 words) already covers this sub-range.
       patch_pl_ddr64(bd_data_ptr, value + config.offset_to_base_bo_addr);
-      if (!first) {
-        // sync words [8] and [9] (2 words starting at offset + 8*sizeof(uint32_t))
+      if (!first)
         bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, 2 * sizeof(uint32_t), offset + 8 * sizeof(uint32_t)); // NOLINT
-      }
       break;
     default:
       throw std::runtime_error("Unsupported symbol type");
@@ -294,10 +310,13 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
 
 void
 symbol_patcher::
-patch_symbol_raw(uint8_t* base, uint64_t value, const patcher_config& config)
+patch_symbol_raw(uint8_t* base, size_t buf_size, uint64_t value, const patcher_config& config)
 {
   for (const auto& cfg : config.m_patch_configs) {
     auto offset = cfg.offset_to_patch_buffer;
+    auto patch_bytes = required_patch_bytes(config.m_symbol_type);
+    if (offset > buf_size || patch_bytes > buf_size - offset)
+      throw xrt_core::error(-EINVAL, "ELF patch offset exceeds instruction buffer");
     auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset); // NOLINT
 
     switch (config.m_symbol_type) {
