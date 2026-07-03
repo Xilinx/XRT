@@ -10,16 +10,11 @@
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
 #include "core/common/message.h"
+#include "core/common/utils.h"
 #include "core/include/xrt/xrt_kernel.h"
 
-#include <cstring>
 #include <functional>
 #include <sstream>
-#include <cstdlib>
-
-#ifdef _WIN32
-#pragma warning( disable : 4996 ) /* Disable warning for getenv */
-#endif
 
 // An anonymous namespace to hold a common set of blank functions
 // for all modules that don't require specialization and the common
@@ -64,8 +59,7 @@ namespace {
 #if !defined(XDP_CLIENT_BUILD) && !defined(XDP_VE2_BUILD)
   static bool is_hw_emulation()
   {
-    static auto xem = std::getenv("XCL_EMULATION_MODE");
-    static bool hwem = xem ? (std::strcmp(xem, "hw_emu") == 0) : false;
+    static bool hwem = (xrt_core::utils::getenv("XCL_EMULATION_MODE") == "hw_emu");
     return hwem;
   }
 #endif
@@ -79,7 +73,7 @@ namespace xrt_core::xdp::core {
   void
   load_core()
   {
-    if (std::getenv("AMD_XDP_NPU3")) {
+    if (xrt_core::utils::is_env("AMD_XDP_NPU3")) {
       static xrt_core::sdk_loader
       xdp_core_loader("xdp_core_npu3",
                       register_callbacks_empty,
@@ -114,12 +108,12 @@ load()
 {
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   static xrt_core::sdk_loader
-  xdp_aie_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
+  xdp_aie_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
                  register_callbacks,
                  warning_callbacks_empty);
 #else
   static xrt_core::module_loader
-  xdp_aie_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
+  xdp_aie_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
                  register_callbacks,
                  warning_callbacks_empty);
 #endif
@@ -187,12 +181,12 @@ load()
 {
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   static xrt_core::sdk_loader
-  xdp_aie_dtrace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+  xdp_aie_dtrace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
                         register_callbacks,
                         warning_callbacks_empty);
 #else
   static xrt_core::module_loader
-  xdp_aie_dtrace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+  xdp_aie_dtrace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
                         register_callbacks,
                         warning_callbacks_empty);
 #endif
@@ -316,7 +310,7 @@ void
 load()
 {
   static xrt_core::module_loader
-  xdp_aie_debug_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_debug_plugin_npu3" : "xdp_aie_debug_plugin",
+  xdp_aie_debug_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_debug_plugin_npu3" : "xdp_aie_debug_plugin",
                        register_callbacks,
                        warning_callbacks_empty);
 }
@@ -404,7 +398,7 @@ void
 load()
 {
   static xrt_core::module_loader
-  xdp_ml_timeline_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_ml_timeline_plugin_npu3" : "xdp_ml_timeline_plugin",
+  xdp_ml_timeline_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_ml_timeline_plugin_npu3" : "xdp_ml_timeline_plugin",
                          register_callbacks,
                          warning_callbacks_empty);
 }
@@ -492,12 +486,12 @@ load()
 {
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   static xrt_core::sdk_loader
-  xdp_aie_trace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
+  xdp_aie_trace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
                        register_callbacks,
                        warning_callbacks_empty);
 #else
   static xrt_core::module_loader
-  xdp_aie_trace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
+  xdp_aie_trace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
                        register_callbacks,
                        warning_callbacks_empty);
 #endif
@@ -551,12 +545,12 @@ load()
 {
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   static xrt_core::sdk_loader
-  xdp_aie_halt_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
+  xdp_aie_halt_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
                       register_callbacks,
                       warning_callbacks_empty);
 #else
   static xrt_core::module_loader
-  xdp_aie_halt_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
+  xdp_aie_halt_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
                       register_callbacks,
                       warning_callbacks_empty);
 #endif
@@ -830,7 +824,7 @@ update_device(void* handle, bool hw_context_flow)
   load_once_and_update(  
            []() {
             return xrt_core::config::get_pl_deadlock_detection() &&
-              nullptr == std::getenv("XCL_EMULATION_MODE");  
+              !xrt_core::utils::is_env("XCL_EMULATION_MODE");  
            },  
            xrt_core::xdp::pl_deadlock::load,  
            xrt_core::xdp::pl_deadlock::update_device,  
@@ -932,7 +926,7 @@ finish_flush_device(void* handle)
 #else
 
   if (xrt_core::config::get_pl_deadlock_detection()
-      && nullptr == std::getenv("XCL_EMULATION_MODE")) {
+      && !xrt_core::utils::is_env("XCL_EMULATION_MODE")) {
     xrt_core::xdp::pl_deadlock::finish_flush_device(handle);
   }
   if (xrt_core::config::get_aie_trace())
