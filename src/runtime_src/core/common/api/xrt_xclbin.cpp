@@ -96,6 +96,12 @@ read_xclbin(const std::string& fnm)
 static std::vector<char>
 copy_axlf(const axlf* top)
 {
+  if (!top)
+    throw std::runtime_error("xclbin: null axlf pointer");
+  
+  if (top->m_header.m_length < sizeof(axlf))
+    throw std::runtime_error("xclbin: m_length smaller than axlf header");
+  
   auto size = top->m_header.m_length;
   std::vector<char> header(size);
   auto data = reinterpret_cast<const char*>(top);
@@ -822,6 +828,10 @@ class xclbin_full : public xclbin_impl
   void
   emplace_section(const axlf_section_header* hdr, axlf_section_kind kind)
   {
+    auto total = m_axlf.size();
+    if (hdr->m_sectionOffset > total || hdr->m_sectionSize > total - hdr->m_sectionOffset)
+      throw std::runtime_error("xclbin: section header out of range");
+    
     auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
     m_axlf_sections.emplace(kind , std::move(data));
@@ -839,9 +849,26 @@ class xclbin_full : public xclbin_impl
   void
   init_axlf()
   {
+    if (m_axlf.size() < sizeof(axlf))
+      throw std::runtime_error("xclbin: buffer too small to contain header");
+
     const axlf* tmp = reinterpret_cast<const axlf*>(m_axlf.data());
     if (strncmp(tmp->m_magic, "xclbin2", strlen("xclbin2")) != 0) // Future: Do not hardcode "xclbin2"
       throw std::runtime_error("Invalid xclbin");
+
+    // m_length must match the actual buffer size we loaded
+    if (tmp->m_header.m_length != m_axlf.size())
+      throw std::runtime_error("xclbin: m_length does not match buffer size");
+
+    // Ensure the section header array fits within the buffer before iterating
+    static const uint64_t max_sections_allowed = 10000;
+    if (tmp->m_header.m_numSections > max_sections_allowed)
+      throw std::runtime_error("xclbin: unreasonable m_numSections value");
+
+    auto hdr_array_size = static_cast<uint64_t>(tmp->m_header.m_numSections) * sizeof(axlf_section_header);
+    if (hdr_array_size > m_axlf.size() - sizeof(axlf))
+      throw std::runtime_error("xclbin: section header array exceeds buffer");
+
     m_top = tmp;
 
     m_uuid = uuid(m_top->m_header.uuid);
@@ -910,7 +937,8 @@ public:
   std::string
   get_xsa_name() const override
   {
-    return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
+    const auto* p = reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
+    return std::string(p, strnlen(p, sizeof(m_top->m_header.m_platformVBNV)));
   }
 
   xclbin::target_type
@@ -1720,6 +1748,9 @@ xrtXclbinAllocRawData(const char* data, int size)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [data, size]{
+      if (size <= 0)
+        throw std::runtime_error("xrtXclbinAllocRawData: invalid size");
+
       std::vector<char> raw_data(data, data + size);
       auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
       auto handle = xclbin.get();
@@ -1771,7 +1802,11 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
       
       // populate name if memory is allocated
       if (name) {
-        auto cp_len = std::min<size_t>(size - 1, xsaname.size());
+        if (size <= 0)
+          throw std::runtime_error("xrtXclbinGetXSAName: invalid size");
+
+        // Prevent underflow, cast size before decrement
+        auto cp_len = std::min(static_cast<size_t>(size) - 1, xsaname.size());
         std::memcpy(name, xsaname.c_str(), cp_len);
         name[cp_len] = 0;
       }
@@ -1865,10 +1900,14 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
       // populate ret_size if memory is allocated
       if (ret_size)
         *ret_size = result_size;
+      
       // populate data if memory is allocated
       if (data) {
-        auto size_tmp = std::min(size,result_size);
-        std::memcpy(data, result.data(), size_tmp);
+        if (size <= 0)
+          throw std::runtime_error("xrtXclbinGetData: invalid size");
+        
+        auto size_tmp = std::min(size, result_size);
+        std::memcpy(data, result.data(), static_cast<size_t>(size_tmp));
       }
       return 0;
     });
