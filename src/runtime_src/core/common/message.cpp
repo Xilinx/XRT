@@ -193,7 +193,11 @@ send(severity_level l, const char* tag, const char* msg)
   int lev = static_cast<int>(l);
 
   if(ver >= lev) {
-    static auto dispatcher = message_dispatch::make_dispatcher(logger);
+    // Intentionally leaked for process lifetime so late exit paths (~shim,
+    // XDP trace flush) can still log after static teardown begins. Do not
+    // store as unique_ptr; that reintroduces use-after-free at process exit.
+    static message_dispatch* const dispatcher =
+      message_dispatch::make_dispatcher(logger).release();
     dispatcher->send(l, tag, msg);
   }
 }
