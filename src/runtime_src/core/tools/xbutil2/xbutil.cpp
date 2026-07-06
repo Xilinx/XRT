@@ -14,7 +14,6 @@
 // Supporting tools
 #include "common/error.h"
 #include "tools/common/SubCmd.h"
-#include "tools/common/SubCmdJSON.h"
 #include "tools/common/XBMain.h"
 #include "tools/common/XBUtilities.h"
 #include "core/common/module_loader.h"
@@ -38,9 +37,6 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false, false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false));
-
-    // Parse sub commands from json files
-    populateSubCommandsFromJSON(subCommands, executable);
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
