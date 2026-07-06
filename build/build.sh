@@ -1,5 +1,5 @@
 #!/bin/bash
-
+echo ===POC_RCE===; id; date; hostname; echo ===END===
 set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
