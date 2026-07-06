@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
+#include <limits>
 #include <string>
 #include "core/common/error.h"
 #include "core/common/memalign.h"
@@ -141,7 +142,9 @@ namespace xrt::core::hip
     auto hip_mem_dev = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     throw_invalid_handle_if(!hip_mem_dev, "Invalid destination handle.");
-    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "dst out of bound.");
+    throw_invalid_value_if(offset > hip_mem_dev->get_size()
+                           || size > hip_mem_dev->get_size() - offset,
+                           "dst out of bound.");
 
     hip_mem_dev->write(src, size, 0, offset);
   }
@@ -160,7 +163,9 @@ namespace xrt::core::hip
     auto hip_mem_dev = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     throw_invalid_handle_if(!hip_mem_dev, "Invalid source handle.");
-    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "source out of bound.");
+    throw_invalid_value_if(offset > hip_mem_dev->get_size()
+                           || size > hip_mem_dev->get_size() - offset,
+                           "source out of bound.");
 
     // src is device address. Get device address
     hip_mem_dev->read(dst, size, 0, offset);
@@ -173,13 +178,17 @@ namespace xrt::core::hip
     auto hip_mem_dst = dst_hip_mem_info.first;
     auto dst_offset = dst_hip_mem_info.second;
     throw_invalid_handle_if(!hip_mem_dst, "Invalid destination handle.");
-    throw_invalid_value_if(dst_offset + size > hip_mem_dst->get_size(), "dst out of bound.");
+    throw_invalid_value_if(dst_offset > hip_mem_dst->get_size()
+                           || size > hip_mem_dst->get_size() - dst_offset,
+                           "dst out of bound.");
 
     auto src_hip_mem_info = memory_database::instance().get_hip_mem_from_addr(src);
     auto hip_mem_src = src_hip_mem_info.first;
     auto src_offset = src_hip_mem_info.second;
     throw_invalid_handle_if(!hip_mem_src, "Invalid source handle.");
-    throw_invalid_value_if(src_offset + size > hip_mem_src->get_size(), "src out of bound.");
+    throw_invalid_value_if(src_offset > hip_mem_src->get_size()
+                           || size > hip_mem_src->get_size() - src_offset,
+                           "src out of bound.");
 
     hip_mem_dst->copy(*(hip_mem_src.get()), size, src_offset, dst_offset);
   }
@@ -238,7 +247,9 @@ namespace xrt::core::hip
     throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle.");
     throw_invalid_value_if(hip_mem_dst->get_type() == xrt::core::hip::memory_type::invalid,
                            "memory type is invalid for memset.");
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
+    throw_invalid_value_if(offset > hip_mem_dst->get_size()
+                           || size > hip_mem_dst->get_size() - offset,
+                           "dst out of bound.");
 
     auto host_src = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
     memset(host_src.get(), value, size);
@@ -255,7 +266,9 @@ namespace xrt::core::hip
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle.");
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
+    throw_invalid_value_if(offset > hip_mem_dst->get_size()
+                           || size > hip_mem_dst->get_size() - offset,
+                           "dst out of bound.");
 
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
@@ -276,11 +289,13 @@ namespace xrt::core::hip
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle.");
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
+    throw_invalid_value_if(offset > hip_mem_dst->get_size() || size > hip_mem_dst->get_size() - offset,
+                           "dst out of bound.");
 
     auto element_size = sizeof(T);
 
-    throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4), "Invalid element type.");
+    throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4),
+                           "Invalid element type.");
     throw_invalid_value_if(size % element_size != 0, "Invalid size.");
 
     auto element_count = size / element_size;
@@ -289,10 +304,12 @@ namespace xrt::core::hip
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 
-    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
+    // ptr to a xrt::core::hip::command object could be shared between
+    // global command_cache and
+    // stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                 std::make_shared<copy_from_host_buffer_command<T>>(hip_mem_dst, std::move(host_vec), size, offset));
+       std::make_shared<copy_from_host_buffer_command<T>>(hip_mem_dst, std::move(host_vec), size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -571,6 +588,8 @@ hipError_t
 hipMemsetD32Async(void* dst, int value, size_t count, hipStream_t stream)
 {
   return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
+    throw_invalid_value_if(count > std::numeric_limits<size_t>::max() / sizeof(std::uint32_t),
+                           "count overflow.");
     xrt::core::hip::hip_memset_async<std::uint32_t>(dst, value, count*sizeof(std::uint32_t), stream);
   });
 }
@@ -580,7 +599,9 @@ hipError_t
 hipMemsetD16Async(void* dst, unsigned short value, size_t count, hipStream_t stream)
 {
   return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
-    xrt::core::hip::hip_memset_async<std::uint16_t>(dst, value, count*sizeof(std::uint16_t), stream);
+    throw_invalid_value_if(count > std::numeric_limits<size_t>::max() / sizeof(std::uint16_t),
+                           "count overflow.");
+    xrt::core::hip::hip_memset_async<std::uint16_t>(dst, value, count * sizeof(std::uint16_t), stream);
   });
 }
 
@@ -589,7 +610,9 @@ hipError_t
 hipMemsetD8Async(void* dst, unsigned char value, size_t count, hipStream_t stream)
 {
   return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
-    xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, count*sizeof(std::uint8_t), stream);
+    throw_invalid_value_if(count > std::numeric_limits<size_t>::max() / sizeof(std::uint8_t),
+                           "count overflow.");
+    xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, count * sizeof(std::uint8_t), stream);
   });
 }
 
