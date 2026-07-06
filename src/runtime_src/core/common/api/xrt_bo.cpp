@@ -357,8 +357,9 @@ public:
   virtual void
   write(const void* src, size_t sz, size_t seek)
   {
-    if (sz + seek > size)
+    if (seek > size || sz > size - seek)
       throw xrt_core::error(-EINVAL,"attempting to write past buffer size");
+    
     auto hbuf = static_cast<char*>(get_hbuf_or_error()) + seek;
     std::memcpy(hbuf, src, sz);
   }
@@ -366,8 +367,9 @@ public:
   virtual void
   read(void* dst, size_t sz, size_t skip)
   {
-    if (sz + skip > size)
+    if (skip > size || sz > size - skip)
       throw xrt_core::error(-EINVAL,"attempting to read past buffer size");
+    
     auto hbuf = static_cast<char*>(get_hbuf_or_error()) + skip;
     std::memcpy(dst, hbuf, sz);
   }
@@ -378,9 +380,11 @@ public:
     // Check size and offset of dst and src
     if (!sz)
       throw xrt_core::system_error(EINVAL, "size must be a positive number");
-    if (sz + dst_offset > size)
+
+    if (dst_offset > size || sz > size - dst_offset)
       throw xrt_core::system_error(EINVAL, "copying past destination buffer size");
-    if (src->get_size() < sz + src_offset)
+
+    if (src_offset > src->get_size() || sz > src->get_size() - src_offset)
       throw xrt_core::system_error(EINVAL, "copying past source buffer size");
 
     if (get_device() != src->get_device()) {
@@ -836,16 +840,18 @@ public:
   void
   read(void* dst, size_t sz, size_t skip) override
   {
-    if (sz + skip > size)
+    if (skip > size || sz > size - skip)
       throw xrt_core::error(-EINVAL,"attempting to read past buffer size");
+    
     device->unmgd_pread(dst, sz, get_address() + skip);
   }
 
   void
   write(const void* src, size_t sz, size_t seek) override
   {
-    if (sz + seek > size)
+    if (seek > size || sz > size - seek)
       throw xrt_core::error(-EINVAL,"attempting to write past buffer size");
+    
     device->unmgd_pwrite(src, sz, get_address() + seek);
   }
 };
@@ -860,7 +866,8 @@ class buffer_nodma : public bo_impl
   {
     if (!sz)
       throw xrt_core::system_error(EINVAL, "size must be a positive number");
-    if (sz + offset > size)
+    
+    if (offset > size || sz > size - offset)
       throw xrt_core::system_error(EINVAL, "offset exceeds buffer size");
   }
 
@@ -923,7 +930,7 @@ public:
     , m_offset(off)
     , m_hbuf(static_cast<char*>(m_parent->get_hbuf()) + m_offset)
   {
-    if (size + m_offset > m_parent->get_size())
+    if (m_offset > m_parent->get_size() || size > m_parent->get_size() - m_offset)
       throw xrt_core::error(-EINVAL, "sub buffer size and offset");
   }
 
@@ -954,8 +961,11 @@ public:
   void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset) override
   {
+    if (offset > m_parent->get_size() || m_offset > m_parent->get_size() - offset)
+      throw xrt_core::error(-EINVAL, "Invalid offset and size when syncing sub buffer");
+    
     size_t off = offset + m_offset;
-    if (off + sz > m_parent->get_size())
+    if (sz > m_parent->get_size() - off)
       throw xrt_core::error(-EINVAL, "Invalid offset and size when syncing sub buffer");
 
     // sync through parent buffer, which handles nodma case also
