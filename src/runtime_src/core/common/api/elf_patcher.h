@@ -82,8 +82,8 @@ enum class symbol_type {
   control_packet_57 = 7,                   // patching scheme needed by firmware to patch control packet for aie2ps
   address_64 = 8,                          // patching scheme needed to patch pdi address
   control_packet_57_aie4 = 9,              // patching scheme needed by firmware to patch control packet for aie4
-  pl_ddr_64 = 10,                          // patching scheme for PL kernel wts_params block (words 8+9 hold 64-bit DDR address)
-  unknown_symbol_kind = 11
+  unknown_symbol_kind = 10,
+  pl_ddr_64 = 11                           // patching scheme for PL kernel wts_params block (words 8+9 hold 64-bit DDR address)
 };
 
 // Maximum BD data words - AIE2P uses 8, AIE4/AIE2PS uses 9
