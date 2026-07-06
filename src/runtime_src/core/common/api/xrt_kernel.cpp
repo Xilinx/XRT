@@ -869,7 +869,7 @@ public:
   using execbuf_type = xrt_core::bo_cache::cmd_bo<ert_start_kernel_cmd>;
   using callback_function_type = std::function<void(ert_cmd_state)>;
   using callback_list = std::vector<callback_function_type>;
-
+  static constexpr size_t allocation_size = xrt_core::bo_cache::bo_size;
 private:
   // Return state of underlying exec buffer packet This is an
   // asynchronous call, the command object may not be in the same
@@ -2281,10 +2281,11 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   struct arg_setter : argument::setter
   {
     uint8_t* data;
+    size_t m_payload_size; // bytes available in payload starting at data
 
-    explicit
-    arg_setter(uint32_t* d)
+    arg_setter(uint32_t* d, size_t payload_size)
       : data(reinterpret_cast<uint8_t*>(d))
+      , m_payload_size(payload_size)
     {}
 
     virtual
@@ -2315,9 +2316,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // AP_CTRL_HS, AP_CTRL_CHAIN
   struct hs_arg_setter : arg_setter
   {
-    explicit
-    hs_arg_setter(uint32_t* data)
-      : arg_setter(data)
+    hs_arg_setter(uint32_t* data, size_t payload_size)
+      : arg_setter(data, payload_size)
     {}
 
     void
@@ -2325,6 +2325,9 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     {
       // max 4 bytes supported for direct register write
       auto count = std::min<size_t>(4, value.size());
+      if (offset > m_payload_size || count > m_payload_size - offset)
+        throw xrt_core::error(-EINVAL, "kernel arg offset/size exceeds execbuf payload");
+      
       std::copy_n(value.begin(), count, data + offset);
     }
 
@@ -2332,12 +2335,18 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
     {
       auto count = std::min(arg.size(), value.size());
+      if (arg.offset() > m_payload_size || count > m_payload_size - arg.offset())
+        throw xrt_core::error(-EINVAL, "kernel arg offset/size exceeds execbuf payload");
+      
       std::copy_n(value.begin(), count, data + arg.offset());
     }
 
     arg_range<uint8_t>
     get_arg_value(const argument& arg) override
     {
+      if (arg.offset() > m_payload_size || arg.size() > m_payload_size - arg.offset())
+        throw xrt_core::error(-EINVAL, "kernel arg offset/size exceeds execbuf payload");
+      
       return { data + arg.offset(), arg.size() };
     }
   };
@@ -2345,9 +2354,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // FAST_ADAPTER
   struct fa_arg_setter : arg_setter
   {
-    explicit
-    fa_arg_setter(uint32_t* data)
-      : arg_setter(data)
+    fa_arg_setter(uint32_t* data, size_t payload_size)
+      : arg_setter(data, payload_size)
     {}
 
     void
@@ -2359,7 +2367,12 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
     {
+      auto fa_offset = arg.fa_desc_offset() / sizeof(uint32_t) * sizeof(uint32_t);
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+      if (fa_offset > m_payload_size - offsetof(ert_fa_descriptor, data)
+          || sizeof(ert_fa_desc_entry) > m_payload_size - offsetof(ert_fa_descriptor, data) - fa_offset)
+        throw xrt_core::error(-EINVAL, "kernel fa_desc_offset exceeds execbuf payload");
+      
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
       desc_entry->arg_offset = arg.offset();
       desc_entry->arg_size = arg.size();
@@ -2370,7 +2383,12 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     arg_range<uint8_t>
     get_arg_value(const argument& arg) override
     {
+      auto fa_offset = arg.fa_desc_offset() / sizeof(uint32_t) * sizeof(uint32_t);
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+      if (fa_offset > m_payload_size - offsetof(ert_fa_descriptor, data)
+          || sizeof(ert_fa_desc_entry) > m_payload_size - offsetof(ert_fa_descriptor, data) - fa_offset)
+        throw xrt_core::error(-EINVAL, "kernel fa_desc_offset exceeds execbuf payload");
+      
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
       return { reinterpret_cast<uint8_t*>(desc_entry->arg_value), arg.size() };
     }
@@ -2379,9 +2397,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // PS_KERNEL
   struct ps_arg_setter : hs_arg_setter
   {
-    explicit
-    ps_arg_setter(uint32_t* data)
-      : hs_arg_setter(data)
+    ps_arg_setter(uint32_t* data, size_t payload_size)
+      : hs_arg_setter(data, payload_size)
     {}
 
     void
@@ -2418,18 +2435,48 @@ class run_impl : public std::enable_shared_from_this<run_impl>
         hwctx, ctrl_code_id, ctrlpkt_bo);
   }
 
+  // payload_size() - Number of bytes in command payload that can be
+  // used for kernel arguments.
+  size_t
+  payload_size() const
+  {
+    // run_impl::data is offset from cmd->get_ert_cmd() computed
+    // during command initialization.  The command buffer size is
+    // kernel_command::allocation_size (4K).
+    // Total number of bytes available for payload is size of command
+    // buffer minus number of bytes assigned during command
+    // initialization.
+    auto reserved = (data - cmd->get_ert_cmd<uint32_t*>()) * sizeof(uint32_t);
+    auto payload_size = kernel_command::allocation_size - reserved;
+
+    // If regmap_size is initialized, it holds the number of words
+    // used by command arguments, which must not be greater than
+    // the remaining payload size
+    if (auto regmap_size = kernel->get_regmap_size()) {
+      auto regmap_bytes = regmap_size * sizeof(uint32_t);
+      if (regmap_bytes > payload_size)
+        throw xrt_core::error(-EINVAL, "kernel register map exceeed command payload size");
+
+      return regmap_bytes;
+    }
+
+    // Without regmap_size, unlimitted number of arguments is
+    // supported, but must not exceeed remaining payload size
+    return payload_size;
+  }
+
   virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
     switch (kernel->get_kernel_type()) {
     case kernel_type::pl :
       if (kernel->get_ip_control_protocol() == control_type::fa)
-        return std::make_unique<fa_arg_setter>(data);
-      return std::make_unique<hs_arg_setter>(data);
+        return std::make_unique<fa_arg_setter>(data, payload_size());
+      return std::make_unique<hs_arg_setter>(data, payload_size());
     case kernel_type::ps :
-      return std::make_unique<ps_arg_setter>(data);
+      return std::make_unique<ps_arg_setter>(data, payload_size());
     case kernel_type::dpu :
-      return std::make_unique<hs_arg_setter>(data);
+      return std::make_unique<hs_arg_setter>(data, payload_size());
     case kernel_type::none :
       throw std::runtime_error("Internal error: unknown kernel type");
     }
@@ -3279,8 +3326,8 @@ class mailbox_impl : public run_impl
     mailbox_impl* mbox;
     static constexpr size_t wsize = sizeof(uint32_t);  // register word size
 
-    hs_arg_setter(uint32_t* data, mailbox_impl* mimpl)
-      : run_impl::hs_arg_setter(data), data32(data), mbox(mimpl)
+    hs_arg_setter(uint32_t* data, size_t payload_size, mailbox_impl* mimpl)
+      : run_impl::hs_arg_setter(data, payload_size), data32(data), mbox(mimpl)
     {}
 
     void
@@ -3479,7 +3526,7 @@ public:
       if (kernel->get_ip_control_protocol() == control_type::fa)
         throw xrt_core::error("Mailbox not supported with FAST_ADAPTER");
 
-      return std::make_unique<hs_arg_setter>(data, this); // data is run_impl::data
+      return std::make_unique<hs_arg_setter>(data, payload_size(), this); // data is run_impl::data
     }
 
     throw xrt_core::error("Mailbox not supported for non pl kernel types");
