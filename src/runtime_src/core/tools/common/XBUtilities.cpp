@@ -651,7 +651,7 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   // Reread axlf from dsabin file, including all sections headers.
   // Sanity check for number of sections coming from user input file.
   // Reject zero explicitly: (m_numSections - 1) would wrap uint32_t to ~4B (SWSPLAT-30722).
-  if (a.m_header.m_numSections == 0 || a.m_header.m_numSections > 10000)
+  if (a.m_header.m_numSections == 0 || a.m_header.m_numSections > 10000) // NOLINT
     throw std::runtime_error("Incorrect file passed in");
 
   sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
@@ -691,7 +691,7 @@ XBUtilities::get_uuids(const void *dtbuf, size_t buf_size)
   const auto* buf_begin = static_cast<const char*>(dtbuf);
   const char* buf_end   = buf_begin + buf_size;
 
-  const struct fdt_header *bph = static_cast<const struct fdt_header*>(dtbuf);
+  const auto* bph  = static_cast<const struct fdt_header*>(dtbuf);
   uint32_t version = be32toh(bph->version);
   uint32_t off_dt  = be32toh(bph->off_dt_struct);
   uint32_t off_str = be32toh(bph->off_dt_strings);
@@ -723,7 +723,7 @@ XBUtilities::get_uuids(const void *dtbuf, size_t buf_size)
       
       const char* s = p;
       // strnlen to avoid running off the buffer
-      size_t max_len = static_cast<size_t>(buf_end - p);
+      auto max_len = static_cast<size_t>(buf_end - p);
       size_t slen = strnlen(s, max_len);
       if (slen == max_len)
         break; // no null terminator within buffer
@@ -758,7 +758,7 @@ XBUtilities::get_uuids(const void *dtbuf, size_t buf_size)
       if (strcmp(s, "logic_uuid") == 0)
         uuids.insert(uuids.begin(), std::string(p, strnlen(p, static_cast<size_t>(buf_end - p))));
       else if (strcmp(s, "interface_uuid") == 0)
-        uuids.push_back(std::string(p, strnlen(p, static_cast<size_t>(buf_end - p))));
+        uuids.emplace_back(p, strnlen(p, static_cast<size_t>(buf_end - p)));
     }
 
     p = PALIGN(p + sz, 4);
