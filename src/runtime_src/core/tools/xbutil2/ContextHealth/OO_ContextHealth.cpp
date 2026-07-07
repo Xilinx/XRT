@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
-// ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
 #include "OO_ContextHealth.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
@@ -12,15 +10,16 @@
 #include "core/common/query_requests.h"
 #include "core/common/smi/smi.h"
 
-// 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+
 #include <algorithm>
-#include <sstream>
-#include <vector>
+#include <cstddef>
 #include <map>
 #include <memory>
+#include <sstream>
+#include <vector>
 
 namespace po = boost::program_options;
 using context_health_info = xrt_core::query::context_health_info;
@@ -59,9 +58,16 @@ parse_values(const std::string& input)
   std::string token;
   
   while (std::getline(ss, token, ',')) {
-    // Trim whitespace
-    token.erase(0, token.find_first_not_of(" \t"));
-    token.erase(token.find_last_not_of(" \t") + 1);
+    // Trim leading whitespace
+    auto first = token.find_first_not_of(" \t");
+    if (first == std::string::npos)
+      continue;
+
+    token.erase(0, first);
+    // Trim trailing whitespace
+    auto last = token.find_last_not_of(" \t");
+    if (last != std::string::npos)
+      token.erase(last + 1);
     
     if (!token.empty()) {
       try {
@@ -148,6 +154,9 @@ generate_strx_report(const xrt_core::device* dev,
 
       // Add data rows for this PID
       for (const auto& context : contexts) {
+        if (context.health_data_raw.size() < sizeof(ert_ctx_health_data_v1))
+          throw std::runtime_error("health_data_raw too small for ert_ctx_health_data_v1");
+        
         const auto* health = reinterpret_cast<const ert_ctx_health_data_v1*>(context.health_data_raw.data());
         const std::vector<std::string> entry_data = {
           (boost::format("%d")   % context.ctx_id).str(),
@@ -224,16 +233,30 @@ generate_npu3_report(const xrt_core::device* dev,
       // Add data rows for this PID - NPU3 specific fields using AIE4 structure
       for (const auto& context : contexts) {
         // NPU3 uses AIE4 structure which has per-microcontroller data
-        const auto* health = reinterpret_cast<const ert_ctx_health_data_v1*>(context.health_data_raw.data());
-        const auto& aie4_data = health->aie4;
+        const auto& raw = context.health_data_raw;
+        if (raw.size() < sizeof(ert_ctx_health_data_v1))
+          throw std::runtime_error("health_data_raw too small for ert_ctx_health_data_v1");
         
-        if (aie4_data.num_uc == 0) {
+        const auto* health = reinterpret_cast<const ert_ctx_health_data_v1*>(raw.data());
+        const auto& aie4_data = health->aie4;
+
+        // Clamp num_uc to the entries that actually fit in the buffer to guard
+        // against a compromised/buggy firmware returning an inflated count (SWSPLAT-30723).
+        const auto* uc_start = reinterpret_cast<const uint8_t*>(aie4_data.uc_info);
+        const size_t uc_base_offset = static_cast<size_t>(uc_start - raw.data());
+        const size_t avail_uc = (uc_base_offset < raw.size())
+          ? (raw.size() - uc_base_offset) / sizeof(ert_uc_health_info)
+          : 0;
+        const uint32_t num_uc = static_cast<uint32_t>(
+          std::min<size_t>(aie4_data.num_uc, avail_uc));
+
+        if (num_uc == 0) {
           // No microcontroller data available
           const std::vector<std::string> entry_data = {
             (boost::format("%d") % context.ctx_id).str(),
             "No uC data",
             "N/A",
-            "N/A", 
+            "N/A",
             "N/A",
             "N/A",
             (boost::format("0x%x") % aie4_data.ctx_state).str()
@@ -241,7 +264,7 @@ generate_npu3_report(const xrt_core::device* dev,
           context_table.addEntry(entry_data);
         } else {
           // Display data for each microcontroller
-          for (uint32_t i = 0; i < aie4_data.num_uc; ++i) {
+          for (uint32_t i = 0; i < num_uc; ++i) {
             const auto& uc = aie4_data.uc_info[i];
             const std::vector<std::string> entry_data = {
               (boost::format("%d.%d") % context.ctx_id % uc.uc_idx).str(),  // Context.uC format
