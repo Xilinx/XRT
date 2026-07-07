@@ -243,7 +243,7 @@ generate_npu3_report(const xrt_core::device* dev,
         // Clamp num_uc to the entries that actually fit in the buffer to guard
         // against a compromised/buggy firmware returning an inflated count (SWSPLAT-30723).
         const auto* uc_start = reinterpret_cast<const uint8_t*>(aie4_data.uc_info);
-        const size_t uc_base_offset = static_cast<size_t>(uc_start - raw.data());
+        const auto  uc_base_offset = static_cast<size_t>(uc_start - reinterpret_cast<const uint8_t*>(raw.data()));
         const size_t avail_uc = (uc_base_offset < raw.size())
           ? (raw.size() - uc_base_offset) / sizeof(ert_uc_health_info)
           : 0;
