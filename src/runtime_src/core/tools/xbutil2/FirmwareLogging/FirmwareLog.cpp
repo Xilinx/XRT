@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <fstream>
 #include <cstring>
+#include <limits>
 #include "FirmwareLog.h"
 #include "tools/common/XBUtilities.h"
 
@@ -146,18 +147,20 @@ calculate_structure_size(const std::unordered_map<std::string, structure_info>& 
   }
   size_t size = 0;
   for (const auto& field : it->second.fields) {
+    size_t field_bits = 0;
     // Check if field has explicit width (bit-fields) or use type size
     if (field.width > 0) {
-      size += field.width;
+      field_bits = field.width;
     } else {
       // For fields without width, look up type size from map
       auto type_it = type_to_bits.find(field.type);
       if (type_it != type_to_bits.end()) {
-        size += type_it->second;
+        field_bits = type_it->second;
       } else {
         throw std::runtime_error("Unknown type: " + field.type);
       }
     }
+    size += field_bits;
   }
   return (size + byte_alignment) / bits_per_byte; // Convert bit width to byte size
 }
@@ -200,18 +203,26 @@ create_field_indices(const firmware_log_config& config)
   return indices;
 }
 
-uint64_t 
+uint64_t
 firmware_log_parser::
-extract_value(const uint8_t* data_ptr, 
-              size_t byte_offset, 
-              size_t bit_offset, 
+extract_value(const uint8_t* data_ptr,
+              size_t buf_size,
+              size_t byte_offset,
+              size_t bit_offset,
               size_t bit_width) const
 {
-  // Read 8 bytes starting from the byte containing our bit field
+  // Read up to 8 bytes starting from the byte containing our bit field.
+  // Clamp to the bytes actually available to avoid reading past the buffer.
   uint64_t raw_data = 0;
   size_t start_byte = byte_offset + (bit_offset / bits_per_byte);
-  std::memcpy(&raw_data, data_ptr + start_byte, sizeof(uint64_t));
-  
+  if (start_byte >= buf_size)
+    throw std::runtime_error("extract_value: field offset exceeds buffer bounds");
+
+  // Clamp read length to bytes actually remaining — the last field in a
+  // buffer may be truncated by up to 7 bytes (CWE-125 / SWSPLAT-30726).
+  size_t avail = std::min(sizeof(uint64_t), buf_size - start_byte);
+  std::memcpy(&raw_data, data_ptr + start_byte, avail);
+
   // Extract the field: shift right to align, then mask to width
   size_t shift = bit_offset % bits_per_byte;
   uint64_t mask = (bit_width == bits_per_uint64) ? ~0ULL : ((1ULL << bit_width) - 1);
@@ -236,11 +247,11 @@ format_value(const firmware_log_config::field_info& field,
   return field_value;
 }
 
-std::string 
+std::string
 firmware_log_parser::
 parse_message(const uint8_t* data_ptr,
-              size_t msg_offset,
-              size_t buf_size) const
+              size_t buf_size,
+              size_t msg_offset) const
 {
   // Always try to read as null-terminated string
   if (msg_offset < buf_size) {
@@ -254,48 +265,64 @@ parse_message(const uint8_t* data_ptr,
     if (str_len > 0) {
       std::string message{str_ptr, str_len};
       // Remove trailing newlines
-      message.erase(message.find_last_not_of("\n") + 1);
+      auto last = message.find_last_not_of("\n");
+      if (last == std::string::npos)
+        return "";  // entire string is newlines
+      message.erase(last + 1);
       return message;
     }
   }
   return "";
 }
 
-std::vector<std::string> 
+std::vector<std::string>
 firmware_log_parser::
 parse_entry(const uint8_t* data_ptr,
-            size_t offset,
-            size_t buf_size) const
+            size_t buf_size,
+            size_t offset) const
 {
   std::vector<std::string> entry_data;
   size_t bit_offset = 0;
-  for (const auto& field : m_message.fields) 
+  for (const auto& field : m_message.fields)
   {
-    uint64_t value = extract_value(data_ptr, offset, bit_offset, field.width);
+    uint64_t value = extract_value(data_ptr, buf_size, offset, bit_offset, field.width);
     std::string field_value = format_value(field, value);
     entry_data.emplace_back(field_value);
     bit_offset += field.width;
   }
   size_t msg_offset = offset + m_message_size;
-  entry_data.emplace_back(parse_message(data_ptr, msg_offset, buf_size));
+  entry_data.emplace_back(parse_message(data_ptr, buf_size, msg_offset));
   return entry_data;
 }
 
-uint32_t 
+uint32_t
 firmware_log_parser::
 calculate_entry_size(uint32_t argc, uint32_t format) const
 {
-  uint32_t entry_size = argc;
+  // Reject pathologically large argc values before any multiplication.
+  // A legitimate firmware log entry cannot have more than 64k arguments.
+  constexpr uint32_t max_argc = 0xFFFF;
+  if (argc > max_argc)
+    return 0;
+
   if (format == 0) {
     // Firmware uses 8-byte alignment to optimize DMA transfers and memory operations.
     // Each log argument is 4 bytes, so argc*4 = total argument payload size.
     // Round up to next 8-byte boundary: ((size + 7) / 8) * 8
-    entry_size = ((static_cast<size_t>(argc) * 4 + byte_alignment) / bits_per_byte) * bits_per_byte + m_message_size; 
-  } else {
-    // Concise format: firmware writes byte-by-byte for minimal storage
-    entry_size = argc + m_message_size;
+    size_t arg_bytes = static_cast<size_t>(argc) * 4; // NOLINT
+    size_t aligned = ((arg_bytes + byte_alignment) / bits_per_byte) * bits_per_byte;
+    size_t total = aligned + m_message_size;
+    return (total <= std::numeric_limits<uint32_t>::max())
+      ? static_cast<uint32_t>(total)
+      : 0;
   }
-  return entry_size;
+  else {
+    // Concise format: firmware writes byte-by-byte for minimal storage
+    size_t total = static_cast<size_t>(argc) + m_message_size;
+    return (total <= std::numeric_limits<uint32_t>::max())
+      ? static_cast<uint32_t>(total)
+      : 0;
+  }
 }
 
 
@@ -368,13 +395,18 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     
     // Parse the message to determine entry size
     const size_t msg_offset = offset + entry_header_size;
-    auto entry_data = parse_entry(data_ptr, msg_offset, buf_size);
+    auto entry_data = parse_entry(data_ptr, buf_size, msg_offset);
     auto format = std::stoul(entry_data[m_field_indices.at("format")]);
     auto argc = std::stoul(entry_data[m_field_indices.at("argc")]);
     
-    const size_t payload_size = calculate_entry_size(argc, format);
+    const size_t payload_size = calculate_entry_size(static_cast<uint32_t>(argc), static_cast<uint32_t>(format));
+    // calculate_entry_size returns 0 on overflow or implausible argc
+    if (payload_size == 0) {
+      offset += SCAN_STEP;
+      continue;
+    }
     const size_t full_entry_size = entry_header_size + payload_size + entry_footer_size;
-    
+
     // Check if we have space for the full entry
     if (offset + full_entry_size > buf_size) {
       break;
