@@ -1413,7 +1413,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
     }
 
     // Use static patch method (no state needed for shim tests)
-    xrt_core::elf_patcher::symbol_patcher::patch_symbol_raw(ibuf, arg_addr, it->second);
+    xrt_core::elf_patcher::symbol_patcher::patch_symbol_raw(ibuf, sz, arg_addr, it->second);
     index++;
   }
 }
