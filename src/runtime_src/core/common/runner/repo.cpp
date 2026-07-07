@@ -294,13 +294,24 @@ class file_repo : public base_repo
   std::string
   resolve_key(const std::string& key) const override
   {
-    return (m_base_dir / std::filesystem::path(key)).string();
+    // Guard against path traversal from recipe-supplied keys
+    // (SWSPLAT-30720 / CWE-22).  Absolute keys (e.g. "/etc/passwd")
+    // and relative escapes (e.g. "../../secret") would bypass
+    // m_base_dir via std::filesystem::operator/ without this check.
+    auto resolved = (m_base_dir / key).lexically_normal();
+    auto rel = resolved.lexically_relative(m_base_dir);
+    if (rel.empty() || *rel.begin() == "..")
+      throw std::runtime_error("repo: artifact key escapes artifact directory: " + key);
+
+    return resolved.string();
   }
-  
+
 public:
   explicit
   file_repo(std::filesystem::path artifacts_dir)
-   : m_base_dir(std::move(artifacts_dir))
+    // Normalize at construction so lexically_relative() works correctly even
+    // when artifacts_dir contains redundant separators or "." components.
+   : m_base_dir(std::move(artifacts_dir).lexically_normal())
   {}
 
   // get() - Get artifact by key
