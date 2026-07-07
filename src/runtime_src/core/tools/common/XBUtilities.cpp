@@ -669,7 +669,7 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
 
   // Validate section bounds against the header-declared totalsize to guard
   // against a crafted file pointing m_sectionOffset past the file (SWSPLAT-30722).
-  const uint64_t totalsize = be32toh(a.m_header.m_length);
+  const uint64_t totalsize = be32toh(static_cast<uint32_t>(a.m_header.m_length));
   if (section->m_sectionOffset > totalsize ||
       section->m_sectionSize  > totalsize - section->m_sectionOffset)
     throw std::runtime_error("Section offset/size exceeds file totalsize");
