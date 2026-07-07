@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2018, 2020-2023 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "XclBinUtilities.h"
 
@@ -15,33 +15,30 @@
 #include <future>
 #include <set>
 
-#if (BOOST_VERSION >= 106400)
+#ifdef _WIN32
+# define _WIN32_WINNT 0x0501
+# pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
+#endif
 
-# ifdef _WIN32
-#  define _WIN32_WINNT 0x0501
-#  pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
-# endif
-
-# include <boost/asio/io_context.hpp>
-# if (BOOST_VERSION < 108600)
-#  include <boost/process.hpp>
-#  include <boost/process/child.hpp>
-#  include <boost/process/env.hpp>
-#  include <boost/process/search_path.hpp>
-# else
-#  include <boost/process/v1/args.hpp>
-#  include <boost/process/v1/async.hpp>
-#  include <boost/process/v1/child.hpp>
-#  include <boost/process/v1/env.hpp>
-#  include <boost/process/v1/io.hpp>
-#  include <boost/process/v1/search_path.hpp>
-# endif
+#include <boost/asio/io_context.hpp>
+#if (BOOST_VERSION < 108600)
+# include <boost/process.hpp>
+# include <boost/process/child.hpp>
+# include <boost/process/env.hpp>
+# include <boost/process/search_path.hpp>
+#else
+# include <boost/process/v1/args.hpp>
+# include <boost/process/v1/async.hpp>
+# include <boost/process/v1/child.hpp>
+# include <boost/process/v1/env.hpp>
+# include <boost/process/v1/io.hpp>
+# include <boost/process/v1/search_path.hpp>
 #endif
 
 #ifdef _WIN32
-  #include <winsock2.h>
+# include <winsock2.h>
 #else
-  #include <arpa/inet.h>
+# include <arpa/inet.h>
 #endif
 
 namespace XUtil = XclBinUtilities;
