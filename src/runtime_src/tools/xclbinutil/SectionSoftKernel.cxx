@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "SectionSoftKernel.h"
 
 #include "XclBinUtilities.h"
@@ -436,20 +422,20 @@ SectionSoftKernel::writeMetadata(std::ostream& _oStream) const
                              "  mpo_md5_value (0x%lx): '%s'\n"
                              "  mpo_symbol_name (0x%lx): '%s'\n"
                              "  m_num_instances: %d")
-               % pHdr->mpo_name % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_name)
+               % pHdr->mpo_name % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, m_bufferSize)
                % pHdr->m_image_offset % pHdr->m_image_size
-               % pHdr->mpo_version % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_version)
-               % pHdr->mpo_md5_value % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_md5_value)
-               % pHdr->mpo_symbol_name % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_symbol_name)
+               % pHdr->mpo_version % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version, m_bufferSize)
+               % pHdr->mpo_md5_value % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_md5_value, m_bufferSize)
+               % pHdr->mpo_symbol_name % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_symbol_name, m_bufferSize)
                % pHdr->m_num_instances);
 
   // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptSoftKernel;
 
-  ptSoftKernel.put("mpo_name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_name);
-  ptSoftKernel.put("mpo_version", reinterpret_cast<char*>(pHdr) + pHdr->mpo_version);
-  ptSoftKernel.put("mpo_md5_value", reinterpret_cast<char*>(pHdr) + pHdr->mpo_md5_value);
-  ptSoftKernel.put("mpo_symbol_name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_symbol_name);
+  ptSoftKernel.put("mpo_name",        XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name,        m_bufferSize));
+  ptSoftKernel.put("mpo_version",     XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version,     m_bufferSize));
+  ptSoftKernel.put("mpo_md5_value",   XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_md5_value,   m_bufferSize));
+  ptSoftKernel.put("mpo_symbol_name", XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_symbol_name, m_bufferSize));
   ptSoftKernel.put("m_num_instances", (boost::format("%d") % pHdr->m_num_instances).str());
 
   boost::property_tree::ptree root;

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2018, 2020-2023 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2018-2023 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
-
 #include "XclBinUtilities.h"
 
 #include "Section.h"                           // TODO: REMOVE SECTION INCLUDE
@@ -235,6 +234,23 @@ XclBinUtilities::safeStringCopy(char* _destBuffer,
 
   // Copy the string
   memcpy(_destBuffer, _source.c_str(), bytesToCopy);
+}
+
+const char*
+XclBinUtilities::bounded_mpo_cstr(const void* pHdr, uint32_t mpo_offset, size_t bufferSize)
+{
+  // Reject offsets that lie outside the buffer entirely (SWSPLAT-30717 / CWE-125).
+  if (mpo_offset >= bufferSize)
+    throw std::runtime_error("mpo offset exceeds section buffer size");
+
+  const char* str = static_cast<const char*>(pHdr) + mpo_offset;
+  size_t remaining = bufferSize - mpo_offset;
+
+  // Verify a null terminator exists within the buffer before forming a C string.
+  if (strnlen(str, remaining) == remaining)
+    throw std::runtime_error("mpo string is not null-terminated within section buffer");
+
+  return str;
 }
 
 unsigned int
