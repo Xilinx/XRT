@@ -99,7 +99,7 @@ namespace XBUtilities {
    *
    * Return: list of UUIDs
    */
-  std::vector<std::string> get_uuids(const void *dtbuf);
+  std::vector<std::string> get_uuids(const void *dtbuf, size_t buf_size);
 
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 

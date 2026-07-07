@@ -2,11 +2,9 @@
 // Copyright (C) 2019-2022 Xilinx, Inc
 // Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
-// ------ I N C L U D E   F I L E S -------------------------------------------
 #include "XBUtilities.h"
 #include "XBUtilitiesCore.h"
 
-// Local - Include Files
 #include "common/error.h"
 #include "common/info_vmr.h"
 #include "common/utils.h"
@@ -18,15 +16,14 @@
 #include "common/module_loader.h"
 #include "xrt/detail/version-slim.h"
 
-// 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
 #include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 
-// System - Include Files
 #include <algorithm>
 #include <filesystem>
+#include <limits>
 #include <iostream>
 #include <map>
 #include <regex>
@@ -652,8 +649,9 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
     throw std::runtime_error(boost::str(boost::format("Can't read axlf from %s") % filename));
 
   // Reread axlf from dsabin file, including all sections headers.
-  // Sanity check for number of sections coming from user input file
-  if (a.m_header.m_numSections > 10000)
+  // Sanity check for number of sections coming from user input file.
+  // Reject zero explicitly: (m_numSections - 1) would wrap uint32_t to ~4B (SWSPLAT-30722).
+  if (a.m_header.m_numSections == 0 || a.m_header.m_numSections > 10000)
     throw std::runtime_error("Incorrect file passed in");
 
   sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
@@ -669,6 +667,13 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   if (!section)
     throw std::runtime_error("Section not found");
 
+  // Validate section bounds against the header-declared totalsize to guard
+  // against a crafted file pointing m_sectionOffset past the file (SWSPLAT-30722).
+  const uint64_t totalsize = be32toh(a.m_header.m_length);
+  if (section->m_sectionOffset > totalsize ||
+      section->m_sectionSize  > totalsize - section->m_sectionOffset)
+    throw std::runtime_error("Section offset/size exceeds file totalsize");
+
   std::vector<char> buf(section->m_sectionSize);
   in.seekg(section->m_sectionOffset);
   in.read(buf.data(), section->m_sectionSize);
@@ -677,40 +682,83 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
 }
 
 std::vector<std::string>
-XBUtilities::get_uuids(const void *dtbuf)
+XBUtilities::get_uuids(const void *dtbuf, size_t buf_size)
 {
   std::vector<std::string> uuids;
-  struct fdt_header *bph = (struct fdt_header *)dtbuf;
-  uint32_t version = be32toh(bph->version);
-  uint32_t off_dt = be32toh(bph->off_dt_struct);
-  const char *p_struct = (const char *)dtbuf + off_dt;
-  uint32_t off_str = be32toh(bph->off_dt_strings);
-  const char *p_strings = (const char *)dtbuf + off_str;
-  const char *p, *s;
-  uint32_t tag;
-  int sz;
+  if (!dtbuf || buf_size < sizeof(fdt_header))
+    return uuids;
 
-  p = p_struct;
-  uuids.clear();
-  while ((tag = be32toh(GET_CELL(p))) != FDT_END) {
+  const auto* buf_begin = static_cast<const char*>(dtbuf);
+  const char* buf_end   = buf_begin + buf_size;
+
+  const struct fdt_header *bph = static_cast<const struct fdt_header*>(dtbuf);
+  uint32_t version = be32toh(bph->version);
+  uint32_t off_dt  = be32toh(bph->off_dt_struct);
+  uint32_t off_str = be32toh(bph->off_dt_strings);
+
+  // Validate offsets before forming any pointer (SWSPLAT-30722).
+  if (off_dt  >= buf_size || off_str >= buf_size)
+    throw std::runtime_error("FDT: off_dt_struct or off_dt_strings exceeds buffer");
+
+  const char *p_struct  = buf_begin + off_dt;
+  const char *p_strings = buf_begin + off_str;
+  const char *p = p_struct;
+
+  // Helper: ensure [ptr, ptr+n) lies within the buffer.
+  auto in_bounds = [&](const char* ptr, size_t n = 0) {
+    return ptr >= buf_begin && ptr <= buf_end && (buf_end - ptr) >= static_cast<ptrdiff_t>(n);
+  };
+
+  while (true) {
+    if (!in_bounds(p, sizeof(uint32_t)))
+      break;
+    
+    uint32_t tag = be32toh(GET_CELL(p));
+    if (tag == FDT_END)
+      break;
+
     if (tag == FDT_BEGIN_NODE) {
-      s = p;
-      p = PALIGN(p + strlen(s) + 1, 4);
+      if (!in_bounds(p))
+        break;
+      
+      const char* s = p;
+      // strnlen to avoid running off the buffer
+      size_t max_len = static_cast<size_t>(buf_end - p);
+      size_t slen = strnlen(s, max_len);
+      if (slen == max_len)
+        break; // no null terminator within buffer
+      
+      p = PALIGN(p + slen + 1, 4);
       continue;
     }
     if (tag != FDT_PROP)
       continue;
 
-    sz = be32toh(GET_CELL(p));
-    s = p_strings + be32toh(GET_CELL(p));
+    if (!in_bounds(p, 2 * sizeof(uint32_t)))
+      break;
+    
+    int sz = static_cast<int>(be32toh(GET_CELL(p)));
+    uint32_t name_off = be32toh(GET_CELL(p));
+
     if (version < 16 && sz >= 8)
       p = PALIGN(p, 8);
 
-    if (!strcmp(s, "logic_uuid")) {
-      uuids.insert(uuids.begin(), std::string(p));
-    }
-    else if (!strcmp(s, "interface_uuid")) {
-      uuids.push_back(std::string(p));
+    // Validate the property name pointer
+    if (!in_bounds(p_strings + name_off))
+      break;
+    
+    size_t str_max = static_cast<size_t>(buf_end - (p_strings + name_off));
+    const char* s = p_strings + name_off;
+
+    // Validate the property value pointer
+    if (sz < 0 || !in_bounds(p, static_cast<size_t>(sz)))
+      break;
+
+    if (strnlen(s, str_max) < str_max) {
+      if (strcmp(s, "logic_uuid") == 0)
+        uuids.insert(uuids.begin(), std::string(p, strnlen(p, static_cast<size_t>(buf_end - p))));
+      else if (strcmp(s, "interface_uuid") == 0)
+        uuids.push_back(std::string(p, strnlen(p, static_cast<size_t>(buf_end - p))));
     }
 
     p = PALIGN(p + sz, 4);
@@ -853,6 +901,9 @@ XBUtilities::string_to_base_units(std::string str, const unit& conversion_unit)
     throw xrt_core::error(std::errc::invalid_argument);
   }
 
+  if (unit_value > 1 && size > std::numeric_limits<uint64_t>::max() / unit_value)
+    throw xrt_core::error(std::errc::invalid_argument);
+  
   size *= unit_value;
   return size;
 }
@@ -883,8 +934,10 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
   auto build_hash_date = pt_xrt.get<std::string>("build_hash_date", "N/A");
   if (!branch.empty() && !boost::iequals(branch, "N/A"))
     output << boost::format("  %-20s : %s\n") % "Branch" % branch;
+  
   if (!hash.empty() && !boost::iequals(hash, "N/A"))
     output << boost::format("  %-20s : %s\n") % "Hash" % hash;
+  
   if (!build_hash_date.empty() && !boost::iequals(build_hash_date, "N/A"))
     output << boost::format("  %-20s : %s\n") % "Hash Date" % build_hash_date;
 
