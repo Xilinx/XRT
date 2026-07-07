@@ -124,10 +124,14 @@ get_kernel_from_impl(const xrt::kernel_impl* kernel_impl);
 xrt::run
 get_run_from_impl(const xrt::run_impl*);
 
-// Fill XDP kernel data from a run_impl pointer for profiling hooks
+// Fill XDP kernel data from a run_impl pointer for profiling hooks.
+// include_state controls whether run_impl->state() is queried; that polls the
+// command and is only valid after submission, so callers that run before the
+// command is submitted (run_constructor/run_start hooks) must leave it false.
 XRT_CORE_COMMON_EXPORT
 void
-get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data);
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data,
+                    bool include_state = false);
 
 // Set dtrace control file on a run_impl handle
 // This is used by XDP profiling to set the CT file without requiring xrt::run
