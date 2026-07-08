@@ -181,7 +181,7 @@ namespace xrt::core::hip
   external_memory::get_mapped_device_address(size_t offset, size_t sz)
   {
     throw_invalid_value_if(!m_bo, "external memory has no imported XRT buffer.");
-    throw_invalid_value_if(offset + sz > get_size(),
+    throw_invalid_value_if(offset > get_size() || sz > get_size() - offset,
                            "mapped buffer range exceeds external memory size.");
     return reinterpret_cast<void*>(m_bo.address() + offset);
   }
