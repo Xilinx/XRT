@@ -672,7 +672,9 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   const uint64_t totalsize = be32toh(static_cast<uint32_t>(a.m_header.m_length));
   if (section->m_sectionOffset > totalsize ||
       section->m_sectionSize  > totalsize - section->m_sectionOffset)
-    throw std::runtime_error("Section offset/size exceeds file totalsize");
+    throw std::runtime_error(boost::str(
+      boost::format("File (%5%): section (%1%) offset/size (%2%/%3%) exceeds file totalsize (%4%)")
+      % kind % section->m_sectionOffset % section->m_sectionSize % totalsize % filename));
 
   std::vector<char> buf(section->m_sectionSize);
   in.seekg(section->m_sectionOffset);
