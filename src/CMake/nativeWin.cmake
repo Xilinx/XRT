@@ -41,6 +41,7 @@ if (MSVC)
     /Zc:__cplusplus
     /Zi           # generate pdb files even in release mode
     /sdl          # enable security checks
+    /Gs           # control stack checking calls
     /Qspectre     # compile with the Spectre mitigations switch
     /ZH:SHA_256   # enable secure source code hashing
     /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
@@ -58,8 +59,11 @@ if (MSVC)
     $<$<NOT:$<CONFIG:Debug>>:/LTCG>            # enable link time code generation for release builds
     $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>         # enable COMDAT folding
     $<$<NOT:$<CONFIG:Debug>>:/OPT:REF>         # eliminates functions and data that are never referenced
-    /DEBUG      # instruct linker to create debugging info
-    /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    /DEBUG           # instruct linker to create debugging info
+    /guard:cf        # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    /DYNAMICBASE     # enable ASLR
+    /HIGHENTROPYVA   # enable 64-bit ASLR
+    /LARGEADDRESSAWARE # enable large address awareness
     /experimental:deterministic # deterministic build
     )
   if (NOT ${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
