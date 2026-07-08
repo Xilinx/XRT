@@ -458,12 +458,15 @@ get_cu_memidx() const
   
   if (!mask.size())
     return m_cu_memidx;
+
+  if (mask.size() > static_cast<size_t>(std::numeric_limits<memidx_type>::max()))
+    throw std::runtime_error("memory index is out of range");
   
   // Select first common Group index if present prior to bank index.
   // Traverse from the higher order of the mask as groups comes in higher order
   for (size_t idx=mask.size() - 1; idx >= 0; --idx) {
     if (mask.test(idx)) {
-      m_cu_memidx = idx;
+      m_cu_memidx = static_cast<memidx_type>(idx);
       break;
     }
 
