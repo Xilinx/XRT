@@ -442,26 +442,35 @@ device::
 get_cu_memidx() const
 {
   std::lock_guard<std::mutex> lk(m_mutex);
-  if (m_cu_memidx == -2) {
-    m_cu_memidx = -1;
+  if (m_cu_memidx != -2)
+    return m_cu_memidx;
+  
+  m_cu_memidx = -1;
 
-    if (get_num_cus()) {
-      // compute intersection of all CU memory masks
-      memidx_bitmask_type mask;
-      mask.set();
-      for (auto& cu : get_cu_range())
-        mask &= cu->get_memidx_intersect();
+  if (!get_num_cus())
+    return m_cu_memidx;
 
-      // Select first common Group index if present prior to bank index.
-      // Traverse from the higher order of the mask as groups comes in higher order
-      for (size_t idx=mask.size() - 1; idx >= 0; --idx) {
-        if (mask.test(idx)) {
-          m_cu_memidx = idx;
-          break;
-        }
-      }
+  // compute intersection of all CU memory masks
+  memidx_bitmask_type mask;
+  mask.set();
+  for (auto& cu : get_cu_range())
+    mask &= cu->get_memidx_intersect();
+  
+  if (!mask.size())
+    return m_cu_memidx;
+  
+  // Select first common Group index if present prior to bank index.
+  // Traverse from the higher order of the mask as groups comes in higher order
+  for (size_t idx=mask.size() - 1; idx >= 0; --idx) {
+    if (mask.test(idx)) {
+      m_cu_memidx = idx;
+      break;
     }
+
+    if (idx == 0)
+      break;
   }
+
   return m_cu_memidx;
 }
 
