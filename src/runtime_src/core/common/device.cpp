@@ -349,7 +349,7 @@ device::
 get_memory_type(size_t memidx) const
 {
   auto mem_topology = get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
-  if (!mem_topology || mem_topology->m_count < static_cast<int32_t>(memidx))
+  if (!mem_topology || static_cast<int32_t>(memidx) >= mem_topology->m_count)
     throw error(EINVAL, "invalid memory bank index");
 
   const auto& mem = mem_topology->m_mem_data[memidx];
