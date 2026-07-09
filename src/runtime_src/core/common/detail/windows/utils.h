@@ -72,6 +72,25 @@ strerror(int err)
   return buffer;
 }
 
+// Returns true when the process token is UAC-elevated (i.e. running as
+// Administrator). Checks token elevation rather than group membership so
+// the result is correct even when UAC is active (SWSPLAT-39875 / CWE-427).
+inline bool
+is_elevated_process()
+{
+  HANDLE token = nullptr;
+  if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token))
+    return false; // cannot determine — fail safe to non-elevated behaviour
+
+  TOKEN_ELEVATION elevation = {};
+  DWORD size = sizeof(elevation);
+  bool elevated = ::GetTokenInformation(token, TokenElevation,
+                                        &elevation, size, &size)
+                  && elevation.TokenIsElevated;
+  ::CloseHandle(token);
+  return elevated;
+}
+
 } // xrt_core::utils::detail
 #endif
 

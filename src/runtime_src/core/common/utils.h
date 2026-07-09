@@ -154,6 +154,15 @@ XRT_CORE_COMMON_EXPORT
 std::string
 strerror(int err);
 
+// is_elevated_process() - returns true when running with elevated privileges.
+//
+// On Linux: true when effective UID is 0 (root).
+// On Windows: true when the process token is UAC-elevated (Run as Administrator).
+// Used to restrict untrusted config-file search paths (SWSPLAT-39875 / CWE-427).
+XRT_CORE_COMMON_EXPORT
+bool
+is_elevated_process();
+
 } // xrt_core::utils
 
 #endif
