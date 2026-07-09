@@ -233,18 +233,23 @@ struct ert_cmd_chain_data {
 };
 
 #ifndef U30_DEBUG
+/* Guard against malformed packet where count <= extra_cu_masks (SWSPLAT-30733 / CWE-787).
+ * Both fields are uint32_t; cast to int before arithmetic to prevent unsigned
+ * wraparound producing a large positive value that becomes a negative index. */
 #define ert_write_return_code(cmd, value) \
 do { \
   struct ert_start_kernel_cmd *skcmd = (struct ert_start_kernel_cmd *)cmd; \
-  int end_idx = skcmd->count - 1 - skcmd->extra_cu_masks; \
-  skcmd->data[end_idx] = value; \
+  int end_idx = (int)skcmd->count - 1 - (int)skcmd->extra_cu_masks; \
+  if (end_idx >= 0) \
+    skcmd->data[end_idx] = value; \
 } while (0)
 
 #define ert_read_return_code(cmd, ret) \
 do { \
   struct ert_start_kernel_cmd *skcmd = (struct ert_start_kernel_cmd *)cmd; \
-  int end_idx = skcmd->count - 1 - skcmd->extra_cu_masks; \
-  ret = skcmd->data[end_idx]; \
+  int end_idx = (int)skcmd->count - 1 - (int)skcmd->extra_cu_masks; \
+  if (end_idx >= 0) \
+    ret = skcmd->data[end_idx]; \
 } while (0)
 #else
 /* These are for debug legacy U30 firmware */
