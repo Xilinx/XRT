@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <unistd.h>
 
 namespace xrt_core::utils::detail {
 
@@ -40,6 +41,14 @@ getenv(const char* name)
     return value;
 
   return {};
+}
+
+// Returns true when the process is running with elevated privileges (euid==0).
+// Used to harden config-file search paths (SWSPLAT-39875 / CWE-427).
+inline bool
+is_elevated_process()
+{
+  return ::geteuid() == 0;
 }
 
 } // xrt_core::utils::detail

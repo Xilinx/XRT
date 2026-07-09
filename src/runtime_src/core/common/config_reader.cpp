@@ -95,25 +95,38 @@ get_ini_path()
 {
   std::string full_path;
   try {
-    //The env variable should be the full path which includes xrt.ini
-    auto xrt_path = std::filesystem::path(xrt_core::utils::getenv("XRT_INI_PATH"));
-    if (std::filesystem::exists(xrt_path))
-      return xrt_path.string();
+    // When running with elevated privileges, ignore user-controllable search
+    // paths (CWD and environment variables) to prevent config injection via
+    // a planted xrt.ini in an attacker-writable directory (SWSPLAT-39875 / CWE-427).
+    // Non-privileged users retain the full search order including CWD.
+    const bool is_root = xrt_core::utils::is_elevated_process();
 
-    //The env variable should be the full path which includes sdaccel.ini
-    auto sda_path = std::filesystem::path(xrt_core::utils::getenv("SDACCEL_INI_PATH"));
-    if (std::filesystem::exists(sda_path))
-      return sda_path.string();
+    if (!is_root) {
+      // The env variable should be the full path which includes xrt.ini
+      auto xrt_path = std::filesystem::path(xrt_core::utils::getenv("XRT_INI_PATH"));
+      if (std::filesystem::exists(xrt_path))
+        return xrt_path.string();
+
+      // The env variable should be the full path which includes sdaccel.ini
+      auto sda_path = std::filesystem::path(xrt_core::utils::getenv("SDACCEL_INI_PATH"));
+      if (std::filesystem::exists(sda_path))
+        return sda_path.string();
+    }
 
     auto exe_path = std::filesystem::path(get_self_path()).parent_path();
     full_path = verify_ini_path(exe_path);
     if (!full_path.empty())
       return full_path;
 
-    auto self_path = std::filesystem::current_path();
-    full_path = verify_ini_path(self_path);
-    if (!full_path.empty())
-      return full_path;
+    if (!is_root) {
+      // CWD is only searched for non-root processes. When root, a planted
+      // xrt.ini in an attacker-writable directory would run with elevated
+      // privileges (SWSPLAT-39875).
+      auto self_path = std::filesystem::current_path();
+      full_path = verify_ini_path(self_path);
+      if (!full_path.empty())
+        return full_path;
+    }
 
   }
   catch (const std::filesystem::filesystem_error&) {
@@ -154,6 +167,12 @@ struct tree
   void
   reread(const std::string& fnm)
   {
+    // Refuse to load an arbitrary caller-supplied ini path when running with
+    // elevated privileges — same policy as get_ini_path() (SWSPLAT-39875 / CWE-427).
+    if (xrt_core::utils::is_elevated_process()) {
+      std::cerr << "[XRT] Ignoring xrt.ini reread request when running with elevated privileges\n";
+      return;
+    }
     read(fnm);
   }
 

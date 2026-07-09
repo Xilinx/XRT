@@ -354,4 +354,10 @@ strerror(int err)
   return detail::strerror(err);
 }
 
+bool
+is_elevated_process()
+{
+  return detail::is_elevated_process();
+}
+
 } // xrt_core::utils
