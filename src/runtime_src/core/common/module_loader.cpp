@@ -15,6 +15,10 @@
 #include <filesystem>
 #include <string_view>
 
+#ifdef __linux__
+# include <unistd.h>
+#endif
+
 #ifndef XRT_LIB_DIR
 # error "XRT_LIB_DIR is undefined"
 #endif
@@ -23,17 +27,41 @@ namespace sfs = std::filesystem;
 
 namespace {
 
+// safe_getenv() - return env var value only when the process has not been
+// elevated across a privilege boundary (SWSPLAT-24084 / CWE-426).
+//
+// On Linux we use secure_getenv() as the primary guard: the kernel clears
+// AT_SECURE (which secure_getenv() checks) on execve() for setuid/setgid
+// and capability-gaining transitions. We additionally check is_elevated_process()
+// (geteuid()==0) to cover sudo invocations where XILINX_XRT may be preserved
+// via sudoers env_keep.
+//
+// On Windows only is_elevated_process() (UAC TokenElevation) is available.
+static std::string
+safe_getenv(const char* name)
+{
+  if (xrt_core::utils::is_elevated_process())
+    return {};
+#ifdef __linux__
+  // secure_getenv returns nullptr when AT_SECURE is set (setuid/capability exec).
+  const char* val = ::secure_getenv(name); // NOLINT(concurrency-mt-unsafe)
+  return val ? val : std::string{};
+#else
+  return xrt_core::utils::getenv(name);
+#endif
+}
+
 static bool
 is_emulation()
 {
-  static bool val = !xrt_core::utils::getenv("XCL_EMULATION_MODE").empty();
+  static bool val = !safe_getenv("XCL_EMULATION_MODE").empty();
   return val;
 }
 
 static bool
 is_sw_emulation()
 {
-  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static auto xem = safe_getenv("XCL_EMULATION_MODE");
   static bool swem = xem.compare("sw_emu") == 0;
   return swem;
 }
@@ -41,7 +69,7 @@ is_sw_emulation()
 static bool
 is_hw_emulation()
 {
-  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static auto xem = safe_getenv("XCL_EMULATION_MODE");
   static bool hwem = xem.compare("hw_emu") == 0;
   return hwem;
 }
@@ -72,7 +100,9 @@ shim_name()
 static sfs::path
 get_xilinx_xrt()
 {
-  sfs::path xrt(xrt_core::utils::getenv("XILINX_XRT"));
+  // XILINX_XRT is a user-controlled env var; ignore it when elevated
+  // to prevent untrusted-search-path injection (SWSPLAT-24084 / CWE-426).
+  sfs::path xrt(safe_getenv("XILINX_XRT"));
   if (!xrt.empty())
     return xrt;
 
@@ -180,7 +210,8 @@ module_path(const std::string& module)
 static sfs::path
 sdk_path(const std::string& module)
 {
-  sfs::path sdk(xrt_core::utils::getenv("AMD_NPU_SDK_PATH"));
+  // AMD_NPU_SDK_PATH is user-controlled; ignore when elevated (SWSPLAT-24084).
+  sfs::path sdk(safe_getenv("AMD_NPU_SDK_PATH"));
   if (sdk.empty())
     throw std::runtime_error("AMD_NPU_SDK_PATH environment variable not set");
 

@@ -6,6 +6,7 @@
 // at this level.
 #include "core/common/debug.h"
 #include "core/common/module_loader.h"
+#include "core/common/utils.h"
 
 #include <dlfcn.h>
 
@@ -27,14 +28,40 @@ namespace xrt_core::detail {
 
 namespace sfs = std::filesystem;
 
-// Get XRT install path from DSO location or compile time constant
+// Get XRT install path from DSO location or compile time constant.
+//
+// For non-elevated processes, use dladdr() to find the directory that
+// the dynamic linker actually loaded libxrt_coreutil.so from.  This
+// allows developers to work with multiple XRT installations side-by-side:
+// whichever libxrt_coreutil.so the application resolved to (via
+// LD_LIBRARY_PATH, RPATH, etc.) is the one whose sibling libxrt_core.so
+// will be loaded (AIESW-32875).
+//
+// For elevated processes (geteuid()==0 / sudo), dladdr() would reflect
+// wherever LD_LIBRARY_PATH points, which an attacker could control.
+// We fall back to the compile-time XRT_INSTALL_PREFIX in that case to
+// prevent untrusted-search-path injection (SWSPLAT-24084 / CWE-426).
 sfs::path
 xilinx_xrt()
 {
+  // Safety valve: elevated processes must use the compile-time path.
+  if (!xrt_core::utils::is_elevated_process()) {
+    // Use a symbol defined in this translation unit so dladdr() always
+    // resolves to libxrt_coreutil.so regardless of which .so defines it.
+    Dl_info info = {};
+    if (::dladdr(reinterpret_cast<const void*>(&xilinx_xrt), &info) != 0
+        && info.dli_fname && *info.dli_fname) {
+      sfs::path coreutil_dir = sfs::path(info.dli_fname).parent_path();
+      if (!coreutil_dir.empty())
+        return coreutil_dir;
+    }
+  }
+
+  // Elevated process or dladdr() failed: use compile-time install prefix.
   // This returns CMAKE_INSTALL_PREFIX.  The internal default cmake
   // install path is /opt/xilinx/xrt, for upstreaming most likely /usr.
-  // In relocatable installs XILINX_XRT should be set and this function
-  // will not be called.
+  // In relocatable installs XILINX_XRT should be set (for non-elevated
+  // processes) and this function will not normally be reached.
   return sfs::path(XRT_INSTALL_PREFIX);
 }
 
