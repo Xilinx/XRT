@@ -398,7 +398,7 @@ void
 load()
 {
   static xrt_core::module_loader
-  xdp_ml_timeline_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_ml_timeline_plugin_npu3" : "xdp_ml_timeline_plugin",
+  xdp_ml_timeline_loader("xdp_ml_timeline_plugin",
                          register_callbacks,
                          warning_callbacks_empty);
 }
