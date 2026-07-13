@@ -13,6 +13,9 @@ add_library(hip_api_library_objects OBJECT
 target_include_directories(hip_api_library_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
-  ${HIP_INCLUDE_DIRS}
   ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
   )
+
+# Vendored HIP headers are third-party; mark SYSTEM so the compiler, clang-tidy
+# and Coverity do not analyze/warn on them.
+target_include_directories(hip_api_library_objects SYSTEM PRIVATE ${HIP_INCLUDE_DIRS})
