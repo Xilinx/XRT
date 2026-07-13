@@ -59,9 +59,12 @@ install (FILES hip_xrt.h
   COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
 
-if (WIN32)
-  # Windows: install entire hip include directory
-  install (DIRECTORY ${HIP_INCLUDE_DIR}/hip
+# Install the vendored minimal HIP host headers so downstream consumers
+# (e.g. the HIP unit tests) can build against them without a ROCm install.
+# On x86_64 Linux a system ROCm/HIP is expected to provide these headers, so
+# install them only on Windows (as before) and on arm64 platforms.
+if (WIN32 OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+  install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/detail/hip
     DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
     COMPONENT ${XRT_BASE_DEV_COMPONENT}
   )
