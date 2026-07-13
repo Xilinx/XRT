@@ -107,12 +107,10 @@ shim_name()
 static sfs::path
 get_xilinx_xrt()
 {
-  // XILINX_XRT is a user-controlled env var; ignore it when elevated
-  // to prevent untrusted-search-path injection (SWSPLAT-24084 / CWE-426).
-  sfs::path xrt(safe_getenv("XILINX_XRT"));
-  if (!xrt.empty())
-    return xrt;
-
+  // On Linux, xilinx_xrt() uses dladdr() to locate the XRT root relative to
+  // libxrt_coreutil.so — XILINX_XRT is not needed and is intentionally ignored.
+  // On Windows, xilinx_xrt() honours XILINX_XRT as a developer override of the
+  // driver store path before falling back to D3DKMT/dlpath discovery.
   return xrt_core::detail::xilinx_xrt();
 }
 
