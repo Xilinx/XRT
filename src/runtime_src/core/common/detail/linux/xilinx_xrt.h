@@ -30,38 +30,44 @@ namespace sfs = std::filesystem;
 
 // Get XRT install path from DSO location or compile time constant.
 //
-// For non-elevated processes, use dladdr() to find the directory that
-// the dynamic linker actually loaded libxrt_coreutil.so from.  This
-// allows developers to work with multiple XRT installations side-by-side:
-// whichever libxrt_coreutil.so the application resolved to (via
-// LD_LIBRARY_PATH, RPATH, etc.) is the one whose sibling libxrt_core.so
-// will be loaded (AIESW-32875).
+// Use dladdr() on a symbol in this translation unit to find the directory
+// that the dynamic linker actually loaded libxrt_coreutil.so from.  This
+// makes XRT relocatable: whichever libxrt_coreutil.so the application
+// resolved to (via RPATH, LD_LIBRARY_PATH, etc.) is the one whose sibling
+// libxrt_core.so will be loaded (AIESW-32875).  It also fixes CI builds
+// that run as root inside a Docker container, where the libraries live in
+// a staging directory rather than XRT_INSTALL_PREFIX.
 //
-// For elevated processes (geteuid()==0 / sudo), dladdr() would reflect
-// wherever LD_LIBRARY_PATH points, which an attacker could control.
-// We fall back to the compile-time XRT_INSTALL_PREFIX in that case to
-// prevent untrusted-search-path injection (SWSPLAT-24084 / CWE-426).
+// Security (SWSPLAT-24084 / CWE-426): dladdr() reports where the kernel's
+// dynamic linker actually mapped the DSO — it is not an env-variable lookup.
+// The attacker-controlled inputs (XILINX_XRT, LD_LIBRARY_PATH, etc.) are
+// already neutralized by safe_getenv() / secure_getenv() in module_loader.cpp
+// before any path is acted on.  On true setuid/capability execs the kernel
+// sets AT_SECURE, causing the dynamic linker itself to strip LD_LIBRARY_PATH
+// before the process starts, so dladdr() cannot reflect an attacker-supplied
+// path in that scenario either.
+//
+// Fall back to the compile-time XRT_INSTALL_PREFIX only when dladdr() fails
+// (e.g. statically linked or unusual runtime environment).
 sfs::path
 xilinx_xrt()
 {
-  // Safety valve: elevated processes must use the compile-time path.
-  if (!xrt_core::utils::is_elevated_process()) {
-    // Use a symbol defined in this translation unit so dladdr() always
-    // resolves to libxrt_coreutil.so regardless of which .so defines it.
-    Dl_info info = {};
-    if (::dladdr(reinterpret_cast<const void*>(&xilinx_xrt), &info) != 0
-        && info.dli_fname && *info.dli_fname) {
-      sfs::path coreutil_dir = sfs::path(info.dli_fname).parent_path();
-      if (!coreutil_dir.empty())
-        return coreutil_dir;
-    }
+  // Use a symbol defined in this translation unit so dladdr() always
+  // resolves to libxrt_coreutil.so regardless of which .so defines it.
+  Dl_info info = {};
+  if (::dladdr(reinterpret_cast<const void*>(&xilinx_xrt), &info) != 0
+      && info.dli_fname && *info.dli_fname) {
+    // info.dli_fname is the full path to libxrt_coreutil.so, e.g.
+    // /opt/xilinx/xrt/lib/libxrt_coreutil.so.2 — go up two levels to
+    // get the XRT root that callers expect (e.g. /opt/xilinx/xrt).
+    sfs::path xrt_root = sfs::path(info.dli_fname).parent_path().parent_path();
+    if (!xrt_root.empty())
+      return xrt_root;
   }
 
-  // Elevated process or dladdr() failed: use compile-time install prefix.
-  // This returns CMAKE_INSTALL_PREFIX.  The internal default cmake
-  // install path is /opt/xilinx/xrt, for upstreaming most likely /usr.
-  // In relocatable installs XILINX_XRT should be set (for non-elevated
-  // processes) and this function will not normally be reached.
+  // dladdr() failed: fall back to compile-time install prefix.
+  // The internal default cmake install path is /opt/xilinx/xrt,
+  // for upstreaming most likely /usr.
   return sfs::path(XRT_INSTALL_PREFIX);
 }
 
