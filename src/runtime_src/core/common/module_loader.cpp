@@ -27,21 +27,28 @@ namespace sfs = std::filesystem;
 
 namespace {
 
-// safe_getenv() - return env var value only when the process has not been
-// elevated across a privilege boundary (SWSPLAT-24084 / CWE-426).
+// safe_getenv() - return env var value only when it was not smuggled across
+// a privilege boundary (SWSPLAT-24084 / CWE-426).
 //
-// On Linux we use secure_getenv() as the primary guard: the kernel clears
-// AT_SECURE (which secure_getenv() checks) on execve() for setuid/setgid
-// and capability-gaining transitions. We additionally check is_elevated_process()
-// (geteuid()==0) to cover sudo invocations where XILINX_XRT may be preserved
-// via sudoers env_keep.
+// On Linux, secure_getenv() is the guard: the kernel sets AT_SECURE on
+// execve() for setuid/setgid/capability-gaining transitions, and
+// secure_getenv() returns nullptr in that case.  This is a kernel
+// guarantee and covers the true privilege-escalation scenario.
 //
-// On Windows only is_elevated_process() (UAC TokenElevation) is available.
+// The sudo+env_keep vector (a low-privilege user sets XILINX_XRT=/tmp/evil
+// then runs sudo some-xrt-tool with a sudoers env_keep rule) is a sudoers
+// misconfiguration: the default sudoers policy (env_reset) strips env vars
+// before exec.  It is not XRT's responsibility to compensate for a
+// deliberately weakened sudo policy, and doing so (by checking
+// is_elevated_process()) has the side effect of ignoring env vars that a
+// root user legitimately set within an already-elevated shell (e.g. inside
+// a docker container running as root).
+//
+// On Windows, secure_getenv() is unavailable; plain getenv() is used and
+// the caller is responsible for env hygiene.
 static std::string
 safe_getenv(const char* name)
 {
-  if (xrt_core::utils::is_elevated_process())
-    return {};
 #ifdef __linux__
   // secure_getenv returns nullptr when AT_SECURE is set (setuid/capability exec).
   const char* val = ::secure_getenv(name); // NOLINT(concurrency-mt-unsafe)
