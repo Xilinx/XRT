@@ -44,7 +44,10 @@ required_patch_bytes(symbol_type type)
     // words [8],[9] — buffer must cover indices [0..9]
     return 10 * sizeof(uint32_t);  // NOLINT(readability-magic-numbers)
   default:
-    return 0;
+    // all the newly added symbols should be added in this function,
+    // otherwise it will result in silent failure and potential memory corruption
+    // so throw an exception to catch the issue early
+    throw std::runtime_error("required_patch_bytes: unsupported symbol type");
   }
 }
 
@@ -84,7 +87,13 @@ symbol_patcher::
 symbol_patcher(const patcher_config* config)
   : m_config(config)
   , m_states(config ? config->m_patch_configs.size() : 0)
-{}
+{
+  if (m_config) {
+    auto patch_words = required_patch_bytes(m_config->m_symbol_type) / sizeof(uint32_t);
+    for (auto& state : m_states)
+      state.bd_data_ptrs.resize(patch_words);
+  }
+}
 
 void
 symbol_patcher::
@@ -214,19 +223,25 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
   auto bo_size = bo.size();
   const auto& configs = m_config->m_patch_configs;
 
-  // Ensure runtime state is properly sized
-  if (m_states.size() != configs.size())
+  auto patch_bytes = required_patch_bytes(m_config->m_symbol_type);
+  auto patch_words = patch_bytes / sizeof(uint32_t);
+
+  // Ensure runtime state is properly sized; new entries need bd_data_ptrs initialized
+  if (m_states.size() != configs.size()) {
+    auto old_size = m_states.size();
     m_states.resize(configs.size());
+    for (auto i = old_size; i < m_states.size(); ++i)
+      m_states[i].bd_data_ptrs.resize(patch_words);
+  }
 
   for (size_t i = 0; i < configs.size(); ++i) {
     const auto& config = configs[i];
     auto& state = m_states[i];
 
     auto offset = config.offset_to_patch_buffer;
-    auto patch_bytes = required_patch_bytes(m_config->m_symbol_type);
     if (offset > bo_size || patch_bytes > bo_size - offset)
       throw xrt_core::error(-EINVAL, "ELF patch offset exceeds instruction buffer");
-    
+
     auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
 
     // If the symbol patched is an argument to kernel we have to cache
@@ -234,13 +249,16 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
     // For non-arg symbols we only patch and sync without caching
     // as they are patched once and never changed.
     if (is_arg) {
+      if (state.bd_data_ptrs.size() != patch_words)
+        throw xrt_core::error(-EINVAL, "patch_symbol : BD cache size mismatch");
+
       if (!state.dirty) {
-        // first time patching cache bd ptr values using bd ptrs array in patch state
-        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, state.bd_data_ptrs.begin());
+        // first time patching: cache exact BD words needed for this symbol type
+        std::copy(bd_data_ptr, bd_data_ptr + patch_words, state.bd_data_ptrs.begin());
         state.dirty = true;
       }
       else {
-        // not the first time patching, restore bd ptr values from patch state bd ptrs array
+        // not the first time patching, restore cached BD words before re-patching
         std::copy(state.bd_data_ptrs.begin(), state.bd_data_ptrs.end(), bd_data_ptr);
       }
     }

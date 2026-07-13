@@ -86,9 +86,6 @@ enum class symbol_type {
   pl_ddr_64 = 11                           // patching scheme for PL kernel wts_params block (words 8+9 hold 64-bit DDR address)
 };
 
-// Maximum BD data words - AIE2P uses 8, AIE4/AIE2PS uses 9
-static constexpr size_t max_bd_words = 9;
-
 // Patching system for control code
 //
 // The patching system uses a split design for thread-safety:
@@ -108,7 +105,7 @@ struct patch_config {
 // Runtime state per patch location - owned by module_run
 struct patch_state {
   bool dirty = false; // Tells whether this entry is already patched or not
-  std::array<uint32_t, max_bd_words> bd_data_ptrs = {}; // array to store bd ptrs original values
+  std::vector<uint32_t> bd_data_ptrs; // stores original BD words; sized to exact patch coverage
 };
 
 // struct patcher_config - static configuration for a patcher
