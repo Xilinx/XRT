@@ -230,14 +230,12 @@ namespace xrt_core::detail {
 
 namespace sfs = std::filesystem;
 
+// The system Xilinx XRT installation path is determined by querying
+// the driver store for the AMD XDNA(TM) NPU adapter.  If not found,
+// the coreutil path is returned.
 sfs::path
-xilinx_xrt()
+system_xilinx_xrt()
 {
-  // Developer override: XILINX_XRT allows pointing at a non-default XRT
-  // installation without going through the driver store (e.g. a local build).
-  if (auto env = xrt_core::utils::getenv("XILINX_XRT"); !env.empty())
-    return sfs::path{env};
-
 #if defined(XRT_WINDOWS_HAS_WDK)
   windows::adapter_list adapters;
 
@@ -259,11 +257,22 @@ xilinx_xrt()
 #endif
 }
 
+sfs::path
+xilinx_xrt()
+{
+  // Developer override: XILINX_XRT allows pointing at a non-default XRT
+  // installation without going through the driver store (e.g. a local build).
+  if (auto env = xrt_core::utils::getenv("XILINX_XRT"); !env.empty())
+    return sfs::path{env};
+
+  return system_xilinx_xrt();
+}
+
 std::vector<sfs::path>
 platform_repo_path()
 {
-  // For time being, platform repo is same as xilinx_xrt
-  return {xilinx_xrt()};
+  // Platform repo path defaults to driver store even if XILINX_XRT is set
+  return {system_xilinx_xrt()};
 }
 
 } // xrt_core::detail
