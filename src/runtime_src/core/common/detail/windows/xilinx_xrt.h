@@ -3,6 +3,7 @@
 
 #include "core/common/debug.h"
 #include "core/common/dlfcn.h"
+#include "core/common/utils.h"
 
 #pragma warning(disable : 4005)
 #include <windows.h>
@@ -232,8 +233,12 @@ namespace sfs = std::filesystem;
 sfs::path
 xilinx_xrt()
 {
+  // Developer override: XILINX_XRT allows pointing at a non-default XRT
+  // installation without going through the driver store (e.g. a local build).
+  if (auto env = xrt_core::utils::getenv("XILINX_XRT"); !env.empty())
+    return sfs::path{env};
+
 #if defined(XRT_WINDOWS_HAS_WDK)
-  // For wdf make sure to continue loading from same location as coreutil
   windows::adapter_list adapters;
 
   // Tight coupling with KMD driver description string
