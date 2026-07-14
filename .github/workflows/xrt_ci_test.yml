@@ -120,7 +120,7 @@ jobs:
           boardType: 'pcie'
           boardMode: 'hw'
           testsPath: '/proj/sdxbf/xrt-test/2026.2'
-          boardFilter: '^xilinx_u50'
+          boardFilter: '^xilinx_u50_gen3x4_xdma_2_202010_1$'
 
   pcie-hw-tests:
     needs: extract-platforms
