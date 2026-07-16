@@ -70,7 +70,7 @@ public:
  * by any XRT-SMI report. It handles:
  * - Element filter parsing for watch mode options
  * - Signal handling (Ctrl+C interruption) with graceful cleanup
- * - Optional terminal clear between updates (examine --watch only)
+ * - Terminal clear between updates (disabled for streaming firmware-log/event-trace watch)
  * - Optional refresh interval (seconds; 0 = no delay between updates)
  * - Cross-platform compatibility (Windows/POSIX)
  * 
@@ -119,7 +119,8 @@ public:
    * @param output Output stream for the report (typically std::cout)
    * @param report_generator Function to generate report content for each iteration
    * @param refresh_interval_seconds Seconds to sleep after each update before the next (default 0 = no sleep)
-   * @param refresh_terminal If true, clear the terminal before each update after the first (examine reports only).
+   * @param refresh_terminal If true, clear the terminal before each update (default true).
+   *                         Set false for streaming watch modes (firmware-log, event-trace).
    *
    * @note Blocks until user interrupts with Ctrl+C
    */
@@ -128,5 +129,5 @@ public:
                  std::ostream& output,
                  const ReportGenerator& report_generator,
                  unsigned refresh_interval_seconds = 0,
-                 bool refresh_terminal = false);
+                 bool refresh_terminal = true);
 };
