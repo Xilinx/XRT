@@ -260,14 +260,14 @@ get_ml_timeline()
 inline std::string
 get_ml_timeline_settings_buffer_size()
 {
-  static std::string value = detail::get_string_value("ML_timeline_settings.buffer_size", "192K");
+  static std::string value = detail::get_string_value("ML_timeline_settings.buffer_size", "1920K");
   return value;
 }
 
-inline unsigned int
-get_ml_timeline_settings_num_buffer_segments()
+inline std::string
+get_ml_timeline_settings_buffer_config()
 {
-  static unsigned int value = detail::get_uint_value("ML_timeline_settings.num_buffer_segments", 0);
+  static unsigned int value = detail::get_uint_value("ML_timeline_settings.buffer_config", "");
   return value;
 }
 
