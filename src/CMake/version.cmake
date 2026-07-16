@@ -161,7 +161,7 @@ endif()
 
 # xrt component install
 install(FILES
-  ${PROJECT_BINARY_DIR}/gen/xrt/detail/version.h
+  ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-git.h
   ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
   COMPONENT ${XRT_BASE_DEV_COMPONENT})
@@ -178,6 +178,7 @@ if (XRT_ALVEO AND (NOT XRT_EDGE) AND (NOT WIN32) AND XRT_ENABLE_DKMS)
   set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
   install(FILES
     ${PROJECT_BINARY_DIR}/gen/xrt/detail/version.h
+    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-git.h
     ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
     DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include
     COMPONENT ${XRT_DEV_COMPONENT})
