@@ -2081,6 +2081,10 @@ public:
   xrt::elf
   get_ctrlcode_elf() const
   {
+    if (!m_module)
+      // Legacy DPU TXN flow
+      return {};
+
     return xrt::elf{xrt_core::module_int::get_elf_handle(m_module)};
   }
 
