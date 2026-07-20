@@ -511,7 +511,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   XBU::setElf(options.m_elf);
 
   // -- Process the options --------------------------------------------
-  Report::JsonSchemaSelection jsonSchema;
+  Report::JsonSchemaSelection jsonSchema{Report::SchemaVersion::unknown, false};
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = options.m_xclbin_path;

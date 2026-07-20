@@ -216,7 +216,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  Report::JsonSchemaSelection jsonSchema;
+  Report::JsonSchemaSelection jsonSchema{Report::SchemaVersion::unknown, false};
   try{
     if (vm.count("output") && options.m_output.empty())
       throw xrt_core::error("Output file not specified");

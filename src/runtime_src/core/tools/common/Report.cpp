@@ -118,12 +118,12 @@ Report::selectJsonSchema(bool hasJsonOption,
   bool useJsonAbi = false;
   if (device) {
     try {
-      useJsonAbi = xq::device_query<xq::device_class>(device.get()) == xq::device_class::type::ryzen
+      useJsonAbi = xrt_core::device_query<xq::device_class>(device) == xq::device_class::type::ryzen
         && !XBUtilities::is_strix_hardware(
-             xrt_core::smi::smi_hardware_config{}.get_hardware_type(xq::device_query<xq::pcie_id>(device)));
+             xrt_core::smi::smi_hardware_config{}.get_hardware_type(xrt_core::device_query<xq::pcie_id>(device)));
     } catch (const std::exception&) {
       try {
-        useJsonAbi = xq::device_query<xq::device_class>(device.get()) == xq::device_class::type::ryzen;
+        useJsonAbi = xrt_core::device_query<xq::device_class>(device) == xq::device_class::type::ryzen;
       } catch (const std::exception&) {}
     }
   }
