@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __SubCmdExamine_h_
 #define __SubCmdExamine_h_
@@ -25,6 +25,7 @@ struct SubCmdExamineOptions {
   std::vector<std::string>  m_reportNames;
   std::vector<std::string>  m_elementsFilter;
   std::string               m_format;
+  std::string               m_json;
   std::string               m_output;
   bool                      m_help;
   std::optional<unsigned>   m_watchIntervalSec;

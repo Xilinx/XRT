@@ -12,6 +12,7 @@
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/Report.h"
+#include "tools/common/ReportSchemaProjector.h"
 #include "tools/common/reports/platform/ReportPlatforms.h"
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
@@ -338,31 +339,39 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   return status;
 }
 
+static boost::property_tree::ptree
+build_validate_json_output(Report::SchemaVersion schemaVersion,
+                           bool useJsonVersionNaming,
+                           const boost::property_tree::ptree& ptDeviceTested)
+{
+  boost::property_tree::ptree canonical;
+  canonical.put_child("logical_devices", ptDeviceTested);
+
+  const auto projected = ReportSchemaProjector::project(schemaVersion, canonical);
+
+  boost::property_tree::ptree ptRoot;
+  ptRoot.add_child("schema_version", ReportSchemaProjector::makeSchemaVersionNode(schemaVersion, useJsonVersionNaming));
+  ptRoot.add_child("logical_devices", projected.get_child("logical_devices"));
+  return ptRoot;
+}
+
 static bool
 run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
                       Report::SchemaVersion schemaVersion,
+                      bool useJsonVersionNaming,
                       std::vector<std::shared_ptr<TestRunner>>& testObjectsToRun,
                       std::ostream & output,
                       unsigned int iter_count)
 {
-  // -- Root property tree
-  boost::property_tree::ptree ptDevCollectionTestSuite;
-
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
   auto has_failures = (run_test_suite_device(device, schemaVersion, testObjectsToRun, ptDeviceTested, iter_count) == test_status::failed);
 
-  ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
-
   // -- Write the formatted output
-  switch (schemaVersion) {
-    case Report::SchemaVersion::json_20202:
-      boost::property_tree::json_parser::write_json(output, ptDevCollectionTestSuite, true /*Pretty Print*/);
-      output << std::endl;
-      break;
-    default:
-      // Do nothing
-      break;
+  if (ReportSchemaProjector::emitsJsonDocument(schemaVersion)) {
+    const auto ptRoot = build_validate_json_output(schemaVersion, useJsonVersionNaming, ptDeviceTested);
+    boost::property_tree::json_parser::write_json(output, ptRoot, true /*Pretty Print*/);
+    output << std::endl;
   }
 
   return has_failures;
@@ -417,8 +426,11 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
   if (vm.count("pmode") && options.m_pmode.empty())
     throw xrt_core::error("Power mode not specified");
 
-  // When json is specified, make sure an accompanying output file is also specified
+  // When json output is requested, make sure an accompanying output file is also specified
    if (vm.count("format") && options.m_output.empty())
+    throw xrt_core::error("Please specify an output file to redirect the json to");
+
+   if (vm.count("json") && options.m_output.empty())
     throw xrt_core::error("Please specify an output file to redirect the json to");
 
   if (!options.m_output.empty() && !XBU::getForce() && std::filesystem::exists(options.m_output))
@@ -499,7 +511,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   XBU::setElf(options.m_elf);
 
   // -- Process the options --------------------------------------------
-  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
+  Report::JsonSchemaSelection jsonSchema;
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = options.m_xclbin_path;
@@ -519,10 +531,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   auto testOptions = getTestList(tests);
 
   try {
-    // Output Format
-    schemaVersion = Report::getSchemaDescription(options.m_format).schemaVersion;
-    if (schemaVersion == Report::SchemaVersion::unknown)
-      throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
+    jsonSchema = Report::selectJsonSchema(vm.count("json"), options.m_json,
+                                          vm.count("format"), options.m_format,
+                                          device);
+    if (jsonSchema.schemaVersion == Report::SchemaVersion::unknown)
+      throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
+                             % (vm.count("json") ? options.m_json : options.m_format)).str());
+
     // All Error Handling for xrt-smi validate should go here
     handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param);
 
@@ -632,7 +647,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput, options.m_loop);
+  bool has_failures = run_tests_on_devices(device, jsonSchema.schemaVersion, jsonSchema.useJsonVersionNaming,
+                                           testObjectsToRun, oSchemaOutput, options.m_loop);
 
   try {
     //reset pmode
@@ -655,7 +671,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
     fOutput << oSchemaOutput.str();
 
-    std::cout << boost::format("Successfully wrote the %s file: %s") % options.m_format % options.m_output << std::endl;
+    std::cout << boost::format("Successfully wrote the JSON file: %s") % options.m_output << std::endl;
   }
 
   if (has_failures == true)
@@ -666,6 +682,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
 {
   options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
   options.m_format = vm.count("format") ? vm["format"].as<std::string>() : "JSON";
+  options.m_json = vm.count("json") ? vm["json"].as<std::string>() : "default";
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_param = vm.count("param") ? vm["param"].as<std::string>() : "";
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";

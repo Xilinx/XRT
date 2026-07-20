@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -9,6 +9,7 @@
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenus.h"
+#include "ReportSchemaProjector.h"
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -243,6 +244,7 @@ void
 XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                               const ReportCollection & reportsToProcess, 
                               const Report::SchemaVersion schemaVersion, 
+                              bool useJsonVersionNaming,
                               const std::vector<std::string> & elementFilter,
                               std::ostream & consoleStream,
                               std::ostream & schemaStream)
@@ -261,14 +263,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
   // Working property tree
   boost::property_tree::ptree ptRoot;
 
-  // Add schema version
-  {
-    boost::property_tree::ptree ptSchemaVersion;
-    ptSchemaVersion.put("schema", Report::getSchemaDescription(schemaVersion).optionName.c_str());
-    ptSchemaVersion.put("creation_date", xrt_core::timestamp());
-
-    ptRoot.add_child("schema_version", ptSchemaVersion);
-  }
+  ptRoot.add_child("schema_version", ReportSchemaProjector::makeSchemaVersionNode(schemaVersion, useJsonVersionNaming));
 
   bool is_report_output_valid = true;
 
@@ -400,16 +395,10 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     }
   }
 
-  // -- Write the formatted output 
-  switch (schemaVersion) {
-    case Report::SchemaVersion::json_20202:
-      boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
-      schemaStream << std::endl;  
-      break;
-
-    default:
-      // Do nothing
-      break;
+  // -- Write the formatted output
+  if (ReportSchemaProjector::emitsJsonDocument(schemaVersion)) {
+    boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
+    schemaStream << std::endl;
   }
 
   // If any the data reports failed to generate with an exception throw an operation cancelled but output everything

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __Report_h_
 #define __Report_h_
@@ -16,20 +16,21 @@
 class Report : public JSONConfigurable {
  public:
   // Supported JSON schemas.
-  // 
-  // Remember to update the initialization of Report::m_schemaVersionMapping 
-  // if new enumeration values are added
+  // Numbered ABIs are introduced only for parser-breaking ptree
+  // changes. Alveo / AIE2 use --format (optionName). Following devices use --json
+  // (jsonVersionName). "JSON" / "default" always track the newest ABI.
   enum class SchemaVersion  {
     unknown,
     json_internal,
-    json_20202,
+    json_latest,
+    json_20202,      // Legacy ABI (--format JSON-2020.2 only, identical to JSON)
   };
  
-  // Helper mapping between string and enum
   struct SchemaDescription {
     SchemaVersion schemaVersion;
-    bool isVisable;
-    std::string optionName;
+    bool isVisable;              // Listed in --format help when optionName is set
+    std::string optionName;      // --format value (e.g. JSON, JSON-2020.2)
+    std::string jsonVersionName; // --json value (e.g. default)
     std::string shortDescription;
   };
 
@@ -39,6 +40,21 @@ class Report : public JSONConfigurable {
   static const Report::SchemaDescription & getSchemaDescription(const std::string & _schemaVersionName);
   static const Report::SchemaDescription & getSchemaDescription(SchemaVersion _schemaVersion);
   static const SchemaDescriptionVector & getSchemaDescriptionVector() { return m_schemaVersionVector; };
+
+  static SchemaVersion resolveSchemaFromJsonVersion(const std::string& jsonVersion);
+  static SchemaVersion resolveSchemaFromFormatName(const std::string& formatName);
+  static std::string getSchemaOutputLabel(SchemaVersion schemaVersion, bool useJsonVersionNaming);
+
+  struct JsonSchemaSelection {
+    SchemaVersion schemaVersion;
+    bool useJsonVersionNaming;
+  };
+
+  static JsonSchemaSelection selectJsonSchema(bool hasJsonOption,
+                                              const std::string& jsonVersion,
+                                              bool hasFormatOption,
+                                              const std::string& formatName,
+                                              const std::shared_ptr<xrt_core::device>& device);
 
   // Supporting APIs
  public:
@@ -83,5 +99,4 @@ class Report : public JSONConfigurable {
 using ReportCollection = std::vector<std::shared_ptr<Report>>;
 
 #endif
-
 
