@@ -145,6 +145,12 @@ class replay_impl
     static xrt::bo
     create_buffer(const xrt::device& device, const json& buffer_object)
     {
+      // flags and memgrp are used in legacy xclbin TXN flow 
+      auto flags = buffer_object.value<xrt::bo::flags>("flags", xrt::bo::flags::host_only);
+      auto memgrp = buffer_object.value<uint32_t>("memgrp", 0);
+      if (memgrp && flags != xrt::bo::flags::host_only)
+        return xrt::bo{device, buffer_object.at("size").get<size_t>(), flags, memgrp};
+ 
       return xrt::ext::bo{device, buffer_object.at("size").get<size_t>()};
     }
 

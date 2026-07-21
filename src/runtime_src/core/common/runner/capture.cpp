@@ -125,8 +125,10 @@ class frames
     // Set of runs that are valid with this bo.  Cleared when
     // bo is synced.
     mutable std::set<const run*> m_runs;
-    const char* m_data;  // mapped xrt::bo host ptr
-    size_t m_size;       // bo size
+    const char* m_data;      // mapped xrt::bo host ptr
+    size_t m_size;           // bo size
+    uint32_t m_memgrp;       // memory group (legacy xclbin)
+    xrt::bo::flags m_flags;  // xrt::bo flags (legacy non host-only use)
     uint64_t m_id;
     
     static uint64_t
@@ -141,6 +143,8 @@ class frames
     bo(const xrt::bo& bo)
       : m_data{bo.map<const char*>()}
       , m_size{bo.size()}
+      , m_memgrp{bo.get_memory_group()}
+      , m_flags{bo.get_flags()}
       , m_id{get_uid()}
     {}
 
@@ -154,6 +158,18 @@ class frames
     get_size() const
     {
       return m_size;
+    }
+
+    uint32_t
+    get_memgrp() const
+    {
+      return m_memgrp;
+    }
+
+    xrt::bo::flags
+    get_flags() const
+    {
+      return m_flags;
     }
 
     // erase() - invalidate a run with respeect to this bo
@@ -322,6 +338,9 @@ class frames
     dump_ctrlcode(const xrt::kernel& kernel, const elf_map& elfs, artifacts& repo)
     {
       auto elf = xrt_core::kernel_int::get_ctrlcode(kernel);
+      if (!elf)
+        return {};
+      
       auto& elf_data = elfs.at(elf.get_handle().get());
       return repo.dump({elf_data.data(), elf_data.size()});
     }
@@ -885,6 +904,15 @@ class frames
     j["name"] = bo->get_name();
     j["size"] = bo->get_size();
     j["type"] = "inout";  // no idea what the actual type is
+
+    // Legacy TXN xclbin flow need additional BO information
+    auto memgrp = bo->get_memgrp();
+    auto flags = bo->get_flags();
+    if (memgrp && flags != xrt::bo::flags::host_only) {
+      j["memgrp"] = memgrp;
+      j["flags"] = flags;
+    }
+    
     return j;
   }
 
