@@ -338,7 +338,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
             return console.str();
           };
       smi_watch_mode::run_watch_mode(device.get(), std::cout, examine_watch_snapshot,
-          *options.m_watchIntervalSec, true);
+          *options.m_watchIntervalSec);
     } else {
       XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, std::cout, oSchemaOutput);
     }
