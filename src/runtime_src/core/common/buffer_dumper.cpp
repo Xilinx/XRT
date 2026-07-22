@@ -434,7 +434,7 @@ append(const std::string& key, const std::string& result_json)
         write_to_file();
 
       m_spilled = true;
-      const auto max_mb = m_config.max_bytes / (1024 * 1024);
+      const auto max_mb = m_config.max_bytes / (1024 * 1024); // NOLINT
       xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
                               std::string{"[dtrace] : coalesce buffer limit ("} + std::to_string(max_mb) + " MB) reached. "
                               + "Further dtrace results will not be buffered for hardware context "

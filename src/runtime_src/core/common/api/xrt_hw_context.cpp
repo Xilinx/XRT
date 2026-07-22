@@ -41,13 +41,16 @@
 
 namespace {
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, bugprone-implicit-widening-of-multiplication-result)
 constexpr std::size_t
 operator""_kb(unsigned long long v) { return 1024U * v; }
 
+constexpr std::size_t
+operator""_mb(unsigned long long v) { return 1024U * 1024U * v; }
+
 constexpr double
 operator""_mhz(long double v) { return static_cast<double>(v) * 1'000'000.0; }
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, bugprone-implicit-widening-of-multiplication-result)
 
 template <typename T>
 using span = xrt::detail::span<T>;
@@ -223,7 +226,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       // Configure coalesce buffer size for this hw context slot
       xrt_core::dtrace_buffer_dumper::config config {};
       config.slot_idx = ctx_hdl->get_slotidx();
-      config.max_bytes = static_cast<size_t>(xrt_core::config::get_dtrace_coalesce_result_memory_mb()) * 1024 * 1024;
+      config.max_bytes = static_cast<size_t>(xrt_core::config::get_dtrace_coalesce_result_memory_mb()) * 1_mb;
       return std::make_unique<xrt_core::dtrace_buffer_dumper>(std::move(config));
     }
 
@@ -437,6 +440,10 @@ public:
   void
   append_dtrace_result(const std::string& key, const std::string& result_json)
   {
+    // Concurrent run clones can dump dtrace on the same hw context;
+    // protect lazy init and append with m_mutex
+    std::lock_guard lk(m_mutex);
+
     // Lazily create the coalesce buffer on first append for this hw context
     if (!m_hdl)
       return;
