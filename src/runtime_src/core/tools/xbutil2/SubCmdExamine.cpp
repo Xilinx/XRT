@@ -109,8 +109,8 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
 void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamineOptions& options) const
 {
   options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
-  options.m_format = vm.count("format") ? vm["format"].as<std::string>() : "JSON";
-  options.m_json = vm.count("json") ? vm["json"].as<std::string>() : "default";
+  options.m_format = vm.find("format") != vm.end() ? vm["format"].as<std::string>() : "JSON";
+  options.m_json = vm.find("json") != vm.end() ? vm["json"].as<std::string>() : "default";
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_reportNames = vm.count("report") ? vm["report"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
@@ -237,12 +237,15 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       // Device resolution errors are handled later.
     }
 
-    jsonSchema = Report::selectJsonSchema(vm.count("json"), options.m_json,
+    const bool usesJsonAbiOption = vm.count("json")
+      || (vm.find("json") != vm.end() && vm.find("format") == vm.end());
+
+    jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
                                           vm.count("format"), options.m_format,
                                           deviceForSchema);
     if (jsonSchema.schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
-                             % (vm.count("json") ? options.m_json : options.m_format)).str());
+                             % (usesJsonAbiOption ? options.m_json : options.m_format)).str());
 
     if (vm.count("format") && options.m_output.empty())
       throw xrt_core::error("Please specify an output file to redirect the json to");
@@ -292,7 +295,10 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  jsonSchema = Report::selectJsonSchema(vm.count("json"), options.m_json,
+  const bool usesJsonAbiOption = vm.count("json")
+    || (vm.find("json") != vm.end() && vm.find("format") == vm.end());
+
+  jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
                                         vm.count("format"), options.m_format,
                                         device);
 

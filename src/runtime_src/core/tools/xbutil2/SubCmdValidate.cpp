@@ -531,12 +531,15 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   auto testOptions = getTestList(tests);
 
   try {
-    jsonSchema = Report::selectJsonSchema(vm.count("json"), options.m_json,
+    const bool usesJsonAbiOption = vm.count("json")
+      || (vm.find("json") != vm.end() && vm.find("format") == vm.end());
+
+    jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
                                           vm.count("format"), options.m_format,
                                           device);
     if (jsonSchema.schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
-                             % (vm.count("json") ? options.m_json : options.m_format)).str());
+                             % (usesJsonAbiOption ? options.m_json : options.m_format)).str());
 
     // All Error Handling for xrt-smi validate should go here
     handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param);
@@ -681,8 +684,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValidateOptions& options) const
 {
   options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
-  options.m_format = vm.count("format") ? vm["format"].as<std::string>() : "JSON";
-  options.m_json = vm.count("json") ? vm["json"].as<std::string>() : "default";
+  options.m_format = vm.find("format") != vm.end() ? vm["format"].as<std::string>() : "JSON";
+  options.m_json = vm.find("json") != vm.end() ? vm["json"].as<std::string>() : "default";
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_param = vm.count("param") ? vm["param"].as<std::string>() : "";
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";
