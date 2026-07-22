@@ -33,6 +33,7 @@ struct SubCmdExamineOptions {
 class SubCmdExamine : public SubCmd {
   ReportCollection uniqueReportCollection;
   std::vector<std::shared_ptr<OptionOptions>> m_optionOptionsCollection;
+  bool m_jsonAbiPlatform = false;
 
   void fill_option_values(const boost::program_options::variables_map& vm, SubCmdExamineOptions& options) const;
   std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;

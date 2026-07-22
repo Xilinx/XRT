@@ -531,8 +531,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   auto testOptions = getTestList(tests);
 
   try {
-    const bool usesJsonAbiOption = vm.count("json")
-      || (vm.find("json") != vm.end() && vm.find("format") == vm.end());
+    const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
 
     jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
                                           vm.count("format"), options.m_format,
@@ -703,6 +702,8 @@ SubCmdValidate::setOptionConfig(const boost::property_tree::ptree &config)
   try{
     m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
     m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
+    m_jsonAbiPlatform = m_jsonConfig.hasOption(getName(), "json")
+                     && !m_jsonConfig.hasOption(getName(), "format");
   } 
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;

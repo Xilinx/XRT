@@ -129,7 +129,9 @@ SubCmdExamine::setOptionConfig(const boost::property_tree::ptree &config)
   try{
     m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
     m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
-  } 
+    m_jsonAbiPlatform = m_jsonConfig.hasOption(getName(), "json")
+                     && !m_jsonConfig.hasOption(getName(), "format");
+  }
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
   }
@@ -237,8 +239,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       // Device resolution errors are handled later.
     }
 
-    const bool usesJsonAbiOption = vm.count("json")
-      || (vm.find("json") != vm.end() && vm.find("format") == vm.end());
+    const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
 
     jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
                                           vm.count("format"), options.m_format,
@@ -295,8 +296,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  const bool usesJsonAbiOption = vm.count("json")
-    || (vm.find("json") != vm.end() && vm.find("format") == vm.end());
+  const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
 
   jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
                                         vm.count("format"), options.m_format,
