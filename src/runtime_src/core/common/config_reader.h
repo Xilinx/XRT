@@ -1180,6 +1180,21 @@ get_dtrace_output_json_format()
   return value;
 }
 
+inline bool
+get_dtrace_coalesce_result()
+{
+  static bool value = detail::get_bool_value("Debug.dtrace_coalesce_result", false);
+  return value;
+}
+
+inline unsigned int
+get_dtrace_coalesce_result_memory_mb()
+{
+  static constexpr unsigned int default_result_mb = 256U;
+  static unsigned int value = detail::get_uint_value("Debug.dtrace_coalesce_result_memory_mb", default_result_mb);
+  return value;
+}
+
 inline unsigned int
 get_run_buffer_pool_memory_mb()
 {
