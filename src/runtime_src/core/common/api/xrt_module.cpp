@@ -723,10 +723,19 @@ class module_run_aie_gen2_plus : public module_run
 
     dtrace_util(const std::string& ctrl_file_path, const std::string& map_data,
                 uint32_t log_level, uint32_t output_fmt)
-      : dtrace_handle(create_dtrace_handle(ctrl_file_path.c_str(), map_data.c_str(), log_level, output_fmt),
+      : dtrace_handle(create_dtrace_handle(ctrl_file_path, map_data, log_level, output_fmt),
                       destroy_dtrace_handle) {}
   };
   dtrace_util m_dtrace;
+
+  // Check dtrace coalesce buffer result is enabled based on both 
+  // buffer results and json output format config
+  bool
+  is_dtrace_buffer_result() const
+  {
+    return xrt_core::config::get_dtrace_coalesce_result()
+      && xrt_core::config::get_dtrace_output_json_format();
+  }
 
   // Creates dtrace util object.
   // Sets path (run-level overrides config file).
@@ -1142,19 +1151,30 @@ public:
     m_dtrace.ctrl_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     try {
-      // dtrace output is dumped into current working directory
-      // output is a python/json file
-      std::string result_file_path = std::filesystem::current_path().string()
-                                   + "/dtrace_dump"
-                                   + postfix
-                                   + (xrt_core::config::get_dtrace_output_json_format() ? ".json" : ".py");
+      if (is_dtrace_buffer_result()) {
+        // dtrace output is serialized and buffered into result buffer
+        std::string result_key = "dtrace_dump" + postfix;
 
-      get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_path.c_str());
+        // Get result as JSON string from aiebu
+        std::string result_json = get_dtrace_result_buffer(m_dtrace.dtrace_handle.get());
 
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
-                              std::string{"[dtrace] : dtrace buffer dumped successfully to - "} + result_file_path);
+        // Append JSON string to hwctx buffer
+        xrt_core::hw_context_int::append_dtrace_result(m_hwctx, result_key, result_json);
+      }
+      else {
+        // dtrace output is dumped into current working directory
+        // output is a python/json file
+        std::string result_file_name = "dtrace_dump"
+                                    + postfix
+                                    + (xrt_core::config::get_dtrace_output_json_format() ? ".json" : ".py");
+
+        get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_name);
+
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                                std::string{"[dtrace] : dtrace buffer dumped successfully to - "} + result_file_name);
+      }
     }
-    catch (const std::exception &e) {
+    catch (const std::exception& e) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what());
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as xrt_bo.h
 #define XRT_API_SOURCE         // in same dll as api
@@ -10,9 +10,11 @@
 #include "core/common/uc_log_schema.h"
 
 #include <cstring>
+#include <filesystem>
 #include <stdexcept>
 #include <sstream>
 #include <array>
+#include <utility>
 
 namespace xrt_core {
 
@@ -367,6 +369,104 @@ flush()
 {
   // process chunks to dump the remaining data
   process_chunks();
+}
+
+dtrace_buffer_dumper::
+dtrace_buffer_dumper(config cfg)
+  : m_config(std::move(cfg))
+  , m_results(nlohmann::ordered_json::object())
+{}
+
+dtrace_buffer_dumper::
+~dtrace_buffer_dumper()
+{
+  // Flush coalesced results before destruction
+  try {
+    flush();
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
+                            std::string{"Error during cleanup: "} + e.what());
+  }
+}
+
+void
+dtrace_buffer_dumper::
+write_to_file()
+{
+  // Write coalesced JSON to a timestamped file in the current working directory
+  const std::string result_file_path = std::filesystem::current_path().string()
+                                     + "/dtrace_dump"
+                                     + "_ctx_" + std::to_string(m_config.slot_idx)
+                                     + "_" + xrt_core::get_timestamp_for_filename()
+                                     + ".json";
+
+  std::ofstream json_file(result_file_path);
+  if (!json_file)
+    throw std::runtime_error("[dtrace] : failed to open file for dumping dtrace buffer result");
+
+  json_file << m_results.dump(4) << "\n";
+
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
+                          std::string{"[dtrace] : dtrace buffer dumped successfully to - "}
+                          + result_file_path);
+
+  m_results = nlohmann::ordered_json::object();
+}
+
+void
+dtrace_buffer_dumper::
+append(const std::string& key, const std::string& result_json)
+{
+  // No-op once the coalesce buffer has spilled or been disabled
+  if (m_spilled)
+    return;
+
+  try {
+    auto entry = nlohmann::ordered_json::parse(result_json);
+    m_results[key] = std::move(entry);
+
+    if (m_results.dump(4).size() > m_config.max_bytes) {
+      m_results.erase(key);
+
+      // Flush buffered runs, warn that the cap was reached, and disable further appends
+      if (!m_results.empty())
+        write_to_file();
+
+      m_spilled = true;
+      const auto max_mb = m_config.max_bytes / (1024 * 1024);
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
+                              std::string{"[dtrace] : coalesce buffer limit ("} + std::to_string(max_mb) + " MB) reached. "
+                              + "Further dtrace results will not be buffered for hardware context "
+                              + std::to_string(m_config.slot_idx));
+
+      return;
+    }
+
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
+                            std::string{"[dtrace] : dtrace buffered successfully for key - "} + key);
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
+                            std::string{"[dtrace] : failed to append coalesced result: "} + e.what());
+  }
+}
+
+void
+dtrace_buffer_dumper::
+flush()
+{
+  // Skip if already spilled or nothing remains to write
+  if (m_spilled || m_results.empty())
+    return;
+
+  try {
+    write_to_file();
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
+                            std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what());
+  }
 }
 
 } // xrt_core
