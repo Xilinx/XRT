@@ -414,8 +414,8 @@ if [[ $opt == 1 ]]; then
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.26.0/driver/xocl"
-    make -C usr/src/xrt-2.26.0/driver/xocl
+    echo "make -C usr/src/xrt-2.25.0/driver/xocl"
+    make -C usr/src/xrt-2.25.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
