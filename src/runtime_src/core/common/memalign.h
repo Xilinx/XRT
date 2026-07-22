@@ -28,7 +28,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 {
 #if defined(__linux__)
   return ::posix_memalign(memptr,alignment,size);
-#elif defined(_WINDOWS)
+#elif defined(_WIN32)
   // this is not good, _aligned_malloc requires _aligned_free
   // power of 2
   if (!alignment || (alignment & (alignment - 1)))
@@ -51,7 +51,7 @@ namespace detail {
 template <typename MyType>
 struct aligned_ptr_deleter
 {
-#if defined(_WINDOWS)
+#if defined(_WIN32)
   void operator() (MyType* ptr)  { _aligned_free(ptr); }
 #else
   void operator() (MyType* ptr)  { free(ptr); }
@@ -74,7 +74,7 @@ aligned_alloc(size_t align, size_t size)
   if (!align || (align & (align - 1)))
     throw std::runtime_error("xrt_core::aligned_alloc requires power of 2 for alignment");
 
-#if defined(_WINDOWS)
+#if defined(_WIN32)
   return aligned_ptr_t<MyType>(reinterpret_cast<MyType*>(_aligned_malloc(size, align)));
 #else
   return aligned_ptr_t<MyType>(reinterpret_cast<MyType*>(::aligned_alloc(align, size)));
