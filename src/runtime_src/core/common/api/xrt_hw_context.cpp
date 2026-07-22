@@ -215,33 +215,6 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
   };  // struct uc_log_buffer
 
-  // struct dtrace_result_buffer - coalesce per-run dtrace JSON result for this hwctx
-  struct dtrace_result_buffer
-  {
-    std::unique_ptr<xrt_core::dtrace_buffer_dumper> m_dtrace_dumper;
-
-    static std::unique_ptr<xrt_core::dtrace_buffer_dumper>
-    init_dtrace_buffer_dumper(xrt_core::hwctx_handle* ctx_hdl)
-    {
-      // Configure coalesce buffer size for this hw context slot
-      xrt_core::dtrace_buffer_dumper::config config {};
-      config.slot_idx = ctx_hdl->get_slotidx();
-      config.max_bytes = static_cast<size_t>(xrt_core::config::get_dtrace_coalesce_result_memory_mb()) * 1_mb;
-      return std::make_unique<xrt_core::dtrace_buffer_dumper>(std::move(config));
-    }
-
-    explicit
-    dtrace_result_buffer(xrt_core::hwctx_handle* ctx_hdl)
-      : m_dtrace_dumper(init_dtrace_buffer_dumper(ctx_hdl))
-    {}
-
-    void
-    append(const std::string& key, const std::string& result_json)
-    {
-      m_dtrace_dumper->append(key, result_json);
-    }
-  };  // struct dtrace_result_buffer
-
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
 
@@ -265,7 +238,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
-  std::unique_ptr<dtrace_result_buffer> m_dtrace_result_buf;
+  std::unique_ptr<xrt_core::dtrace_buffer_dumper> m_dtrace_result_buf;
 
   // During preemption, when a hardware context is interrupted
   // L2 memory contents are saved to a scratchpad memory allocated
@@ -370,6 +343,29 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
   }
 
+  // Initializes dtrace coalesce buffer
+  static std::unique_ptr<xrt_core::dtrace_buffer_dumper>
+  init_dtrace_buffer_dumper(xrt_core::hwctx_handle* ctx_hdl)
+  {
+    // Coalesce dtrace result requires both buffer mode and JSON output format
+    static auto dtrace_coalesce_enabled = xrt_core::config::get_dtrace_coalesce_result()
+                                       && xrt_core::config::get_dtrace_output_json_format();
+    if (!ctx_hdl || !dtrace_coalesce_enabled)
+      return nullptr;
+
+    try {
+      xrt_core::dtrace_buffer_dumper::config config {};
+      config.slot_idx = ctx_hdl->get_slotidx();
+      config.max_bytes = static_cast<size_t>(xrt_core::config::get_dtrace_coalesce_result_memory_mb()) * 1_mb;
+      return std::make_unique<xrt_core::dtrace_buffer_dumper>(std::move(config));
+    }
+    catch (const std::exception& e) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              std::string{"Failed to create dtrace coalesce results buffer : "} + e.what());
+      return nullptr;
+    }
+  }
+
   // Gets partition size from xclbin if AIE partition section is present
   static uint32_t
   get_partition_size_from_xclbin(const xrt::xclbin& xclbin)
@@ -449,7 +445,7 @@ public:
       return;
 
     if (!m_dtrace_result_buf)
-      m_dtrace_result_buf = std::make_unique<dtrace_result_buffer>(m_hdl.get());
+      m_dtrace_result_buf = init_dtrace_buffer_dumper(m_hdl.get());
 
     m_dtrace_result_buf->append(key, result_json);
   }

@@ -406,12 +406,20 @@ write_to_file()
     throw std::runtime_error("[dtrace] : failed to open file for dumping dtrace buffer result");
 
   json_file << m_results.dump(4) << "\n";
+  if (!json_file)
+    throw std::runtime_error("[dtrace] : failed to write dtrace buffer result to file");
+
+  json_file.flush();
+  if (!json_file)
+    throw std::runtime_error("[dtrace] : failed to flush dtrace buffer result file");
 
   xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
                           std::string{"[dtrace] : dtrace buffer dumped successfully to - "}
                           + result_file_path);
 
+  // Clear after the write completes without error
   m_results = nlohmann::ordered_json::object();
+  m_accumulated_bytes = 0;
 }
 
 void
@@ -424,12 +432,17 @@ append(const std::string& key, const std::string& result_json)
 
   try {
     auto entry = nlohmann::ordered_json::parse(result_json);
+    const auto entry_size = entry.dump(4).size();
     m_results[key] = std::move(entry);
+    m_accumulated_bytes += entry_size;
 
-    if (m_results.dump(4).size() > m_config.max_bytes) {
+    // Cap limits in-memory coalesce size. When exceeded, discard the run that
+    // triggered overflow, spill any previously buffered runs to disk, then stop
+    // accepting further appends for this hardware context.
+    if (m_accumulated_bytes > m_config.max_bytes) {
+      m_accumulated_bytes -= entry_size;
       m_results.erase(key);
 
-      // Flush buffered runs, warn that the cap was reached, and disable further appends
       if (!m_results.empty())
         write_to_file();
 
