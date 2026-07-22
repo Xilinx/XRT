@@ -1157,6 +1157,11 @@ public:
 
         // Get result as JSON string from aiebu
         std::string result_json = get_dtrace_result_buffer(m_dtrace.dtrace_handle.get());
+        if (result_json == "null") {
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "xrt_module",
+                                  "[dtrace] : failed to get dtrace result buffer");
+          return;
+        }
 
         // Append JSON string to hwctx buffer
         xrt_core::hw_context_int::append_dtrace_result(m_hwctx, result_key, result_json);

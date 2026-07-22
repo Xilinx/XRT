@@ -137,8 +137,10 @@ public:
 /**
  * dtrace_buffer_dumper - Coalesces per-run dtrace JSON results for a hw context.
  *
- * Accumulates JSON in memory up to max_bytes. On overflow, spills buffered runs
- * to disk, logs a warning, and disables further appends for this instance.
+ * Accumulates JSON in memory up to max_bytes.
+ * On overflow, the run that would exceed the cap is discarded, previously
+ * buffered runs are spilled to disk, a warning is logged, and further appends
+ * are disabled for this instance.
  */
 class dtrace_buffer_dumper
 {
@@ -173,6 +175,7 @@ public:
 private:
   config m_config;
   nlohmann::ordered_json m_results;
+  size_t m_accumulated_bytes = 0;
   bool m_spilled = false;
 
   // Write buffered JSON to file, log success, and clear the buffer
