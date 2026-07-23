@@ -155,6 +155,9 @@ public:
 
   virtual span<char>
   get(const std::string& key, file_mode hint) const = 0;
+
+  virtual std::filesystem::path
+  get_path(const std::string& key) const = 0;
 };
 
 // class base_repo - Base implementation of repository_impl
@@ -281,6 +284,12 @@ public:
 
     return base_repo::get(key);       // get() resolves key as well
   }
+
+  std::filesystem::path
+  get_path(const std::string& key) const override
+  {
+    return std::filesystem::path{resolve_key(key)};
+  }
 };
 
 ////////////////////////////////////////////////////////////////
@@ -386,6 +395,13 @@ repository::
 get(const std::string& key, file_mode hint) const
 {
   return handle->get(key, hint);
+}
+
+std::filesystem::path
+repository::
+get_path(const std::string& key) const
+{
+  return handle->get_path(key);
 }
 
 }  // namespace xrt_core::artifacts

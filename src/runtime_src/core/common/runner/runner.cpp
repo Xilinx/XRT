@@ -1148,6 +1148,19 @@ public:
         arg.bind(bo);
         std::visit(set_arg_visitor{arg.m_argidx, arg.get_xrt_bo()}, m_run);
       }
+
+      const std::string&
+      get_name() const
+      {
+        return m_name;
+      }
+
+      void
+      set_dtrace(const std::string& path)
+      {
+        if (std::holds_alternative<xrt::run>(m_run))
+          std::get<xrt::run>(m_run).set_dtrace_control_file(path);
+      }
     }; // class recipe::execution::run
 
     // struct runlist - a list of runs to execute
@@ -1426,7 +1439,14 @@ public:
         run.bind(name, bo);
     }
 
-    
+    void
+    set_dtrace(const std::string& name, const std::string& path)
+    {
+      for (auto& run : m_runs)
+        if (run.get_name() == name)
+          run.set_dtrace(path);
+    }
+
     // execute_runlist() - execute a runlist synchronously
     // The lambda function is executed asynchronously by an
     // xrt::queue object. The wait is necessary for an NPU runlist,
@@ -1998,6 +2018,47 @@ class profile
     }
   }; // class profile::bindings
 
+  // class dtrace - dtrace script binding section of the profile
+  //
+  // "dtrace": [
+  //   { "name": "run0", "file": "run0.ct" },
+  //   { "name": "run1", "file": "run1.ct" }
+  // ]
+  //
+  // Each element binds a dtrace control script to the recipe run
+  // identified by "name".  The "file" is resolved through the
+  // artifacts repository, consistent with buffer binding files.
+  class dtrace
+  {
+    using name_t = std::string;
+    using path_t = std::filesystem::path;
+    std::map<name_t, path_t> m_scripts;  // run name → resolved script path
+
+    static std::map<name_t, path_t>
+    init_scripts(const json& j, const xartifacts::repo& repo)
+    {
+      std::map<name_t, path_t> scripts;
+      for (const auto& node : j)
+        scripts.emplace(node.at("name").get<std::string>(),
+                        repo.get_path(node.at("file").get<std::string>()));
+      return scripts;
+    }
+
+  public:
+    dtrace() = default;
+
+    dtrace(const json& j, const xartifacts::repo& repo)
+      : m_scripts{init_scripts(j, repo)}
+    {}
+
+    void
+    apply(recipe::execution& re) const
+    {
+      for (const auto& [name, path] : m_scripts)
+        re.set_dtrace(name, path.string());
+    }
+  }; // class profile::dtrace
+
   // class execution - represents the execution section of a profile json
   //
   // {
@@ -2103,13 +2164,16 @@ class profile
         }
       }
 
-      // Bind buffers to recipe and to recipe::execution copies.
+      // Bind buffers and apply dtrace scripts to recipe and copies.
       void
       bind()
       {
         m_profile->bind(*m_base);
-        for (auto& exec : m_copies)
+        m_profile->apply_dtrace(*m_base);
+        for (auto& exec : m_copies) {
           m_profile->bind(exec);
+          m_profile->apply_dtrace(exec);
+        }
       }
 
       // Re-bind buffers to recipe and to recipe::execution copies.
@@ -2327,6 +2391,7 @@ private:
   size_t m_runlist_threshold;
   recipe m_recipe;
   bindings m_bindings;
+  dtrace m_dtrace;
   execution m_execution;
   std::vector<std::unique_ptr<execution>> m_executions;
 
@@ -2334,6 +2399,12 @@ private:
   bind(recipe::execution& exec)
   {
     m_bindings.bind(exec);
+  }
+
+  void
+  apply_dtrace(recipe::execution& exec)
+  {
+    m_dtrace.apply(exec);
   }
 
   void
@@ -2421,6 +2492,7 @@ public:
     , m_runlist_threshold{init_runlist_threshold(m_profile_json)}
     , m_recipe{device, load_json(recipe), m_qos, m_runlist_threshold, m_repo}
     , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo}
+    , m_dtrace{m_profile_json.value("dtrace", json::array()), m_repo}
     , m_execution(this, &m_recipe, m_profile_json.value("execution", json::object()), true)
     , m_executions(create_executions(this, &m_recipe, m_profile_json.value("executions", json::object())))
   {}
