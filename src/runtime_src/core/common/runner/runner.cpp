@@ -929,7 +929,7 @@ public:
         
       using run_type = std::variant<xrt::run, xrt_core::cpu::run>;
       using constant_type = std::variant<int, std::string>;
-      std::string m_name;
+      std::string m_kernel;
       run_type m_run;
       std::map<std::string, argument> m_args;
       std::map<int, constant_type> m_constants;
@@ -944,13 +944,13 @@ public:
       };
 
       struct copy_visitor {
-        const std::string& m_name;
+        const std::string& m_kernel;
         const resources& m_res;
-        copy_visitor(const std::string& nm, const resources& res) : m_name{nm}, m_res{res} {}
+        copy_visitor(const std::string& nm, const resources& res) : m_kernel{nm}, m_res{res} {}
         run_type operator() (const xrt::run&)
-        { return xrt::run{m_res.get_xrt_kernel_or_error(m_name)}; };
+        { return xrt::run{m_res.get_xrt_kernel_or_error(m_kernel)}; };
         run_type operator() (const xrt_core::cpu::run&)
-        { return xrt_core::cpu::run{m_res.get_cpu_function_or_error(m_name)}; };
+        { return xrt_core::cpu::run{m_res.get_cpu_function_or_error(m_kernel)}; };
       };
 
       static std::map<std::string, argument>
@@ -1065,19 +1065,19 @@ public:
       static run_type
       create_run(const resources& resources, const run& other)
       {
-        return std::visit(copy_visitor{other.m_name, resources}, other.m_run);
+        return std::visit(copy_visitor{other.m_kernel, resources}, other.m_run);
       }
 
     public:
       run(const resources& resources, const json& j)
-        : m_name{j.contains("kernel")
-                 ? j.at("kernel").get<std::string>()
-                 : j.at("name").get<std::string>()} // deprecated
+        : m_kernel{j.contains("kernel")
+                   ? j.at("kernel").get<std::string>()
+                   : j.at("name").get<std::string>()} // deprecated
         , m_run{create_run(resources, j)}
         , m_args{create_and_set_args(resources, m_run, j.at("arguments"))}
         , m_constants{create_and_set_constant_args(m_run, j.value("constants", json::object()))}
       {
-        XRT_DEBUGF("recipe::execution::run(%s)\n", m_name.c_str());
+        XRT_DEBUGF("recipe::execution::run(%s)\n", m_kernel.c_str());
       }
 
       // Create a run from another run using argument resources
@@ -1086,12 +1086,12 @@ public:
       // to the runs are copied, so this run along with the argument
       // other run are independent in regards to argument data.
       run(const resources& resources, const run& other)
-        : m_name{other.m_name}
+        : m_kernel{other.m_kernel}
         , m_run{create_run(resources, other)}
         , m_args{create_and_set_args(resources, m_run, other.m_args)}
         , m_constants{create_and_set_constant_args(m_run, other.m_constants)}
       {
-        XRT_DEBUGF("recipe::execution::run(other) name(%s)\n", m_name.c_str());
+        XRT_DEBUGF("recipe::execution::run(other) name(%s)\n", m_kernel.c_str());
       }
 
       bool
