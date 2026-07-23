@@ -20,14 +20,8 @@
 // Local - Include Files
 #include "Report.h"
 #include "ReportSchemaProjector.h"
-#include "tools/common/XBUtilities.h"
-
-#include "core/common/query_requests.h"
-#include "core/common/smi/smi.h"
 
 #include <boost/algorithm/string/predicate.hpp>
-
-namespace xq = xrt_core::query;
 
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
@@ -101,13 +95,12 @@ Report::getSchemaOutputLabel(SchemaVersion schemaVersion, bool useJsonVersionNam
 }
 
 Report::JsonSchemaSelection
-Report::selectJsonSchema(bool hasJsonOption,
+Report::selectJsonSchema(bool usesJsonAbiOption,
                          const std::string& jsonVersion,
                          bool hasFormatOption,
-                         const std::string& formatName,
-                         const std::shared_ptr<xrt_core::device>& device)
+                         const std::string& formatName)
 {
-  if (hasJsonOption) {
+  if (usesJsonAbiOption) {
     const std::string jsonVer = jsonVersion.empty() ? "default" : jsonVersion;
     return { resolveSchemaFromJsonVersion(jsonVer), true };
   }
@@ -115,20 +108,7 @@ Report::selectJsonSchema(bool hasJsonOption,
   if (hasFormatOption)
     return { resolveSchemaFromFormatName(formatName), false };
 
-  bool useJsonAbi = false;
-  if (device) {
-    try {
-      useJsonAbi = xrt_core::device_query<xq::device_class>(device) == xq::device_class::type::ryzen
-        && !XBUtilities::is_strix_hardware(
-             xrt_core::smi::smi_hardware_config{}.get_hardware_type(xrt_core::device_query<xq::pcie_id>(device)));
-    } catch (const std::exception&) {
-      try {
-        useJsonAbi = xrt_core::device_query<xq::device_class>(device) == xq::device_class::type::ryzen;
-      } catch (const std::exception&) {}
-    }
-  }
-
-  return { SchemaVersion::json_latest, useJsonAbi };
+  return { SchemaVersion::json_latest, false };
 }
 
 Report::Report(const std::string & _reportName,

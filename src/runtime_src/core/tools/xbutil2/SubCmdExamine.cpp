@@ -219,6 +219,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   }
 
   Report::JsonSchemaSelection jsonSchema{Report::SchemaVersion::unknown, false};
+  const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
   try{
     if (vm.count("output") && options.m_output.empty())
       throw xrt_core::error("Output file not specified");
@@ -229,21 +230,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     if (vm.count("element") && options.m_elementsFilter.empty())
       throw xrt_core::error("No element filter given to be produced");
 
-    std::shared_ptr<xrt_core::device> deviceForSchema;
-    try {
-      const bool hostOnly = options.m_reportNames.empty()
-        || (options.m_reportNames.size() == 1 && options.m_reportNames.front() == "host");
-      if (!hostOnly)
-        deviceForSchema = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true);
-    } catch (const std::runtime_error&) {
-      // Device resolution errors are handled later.
-    }
-
-    const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
-
     jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
-                                          vm.count("format"), options.m_format,
-                                          deviceForSchema);
+                                          vm.count("format"), options.m_format);
     if (jsonSchema.schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
                              % (usesJsonAbiOption ? options.m_json : options.m_format)).str());
@@ -295,12 +283,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-  const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
-
-  jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
-                                        vm.count("format"), options.m_format,
-                                        device);
 
   ReportCollection runnableReports;
   if (device){

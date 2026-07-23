@@ -50,11 +50,10 @@ class Report : public JSONConfigurable {
     bool useJsonVersionNaming;
   };
 
-  static JsonSchemaSelection selectJsonSchema(bool hasJsonOption,
+  static JsonSchemaSelection selectJsonSchema(bool usesJsonAbiOption,
                                               const std::string& jsonVersion,
                                               bool hasFormatOption,
-                                              const std::string& formatName,
-                                              const std::shared_ptr<xrt_core::device>& device);
+                                              const std::string& formatName);
 
   // Supporting APIs
  public:

@@ -534,8 +534,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
 
     jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
-                                          vm.count("format"), options.m_format,
-                                          device);
+                                          vm.count("format"), options.m_format);
     if (jsonSchema.schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
                              % (usesJsonAbiOption ? options.m_json : options.m_format)).str());
