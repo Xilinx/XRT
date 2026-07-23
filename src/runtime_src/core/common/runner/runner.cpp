@@ -929,7 +929,8 @@ public:
         
       using run_type = std::variant<xrt::run, xrt_core::cpu::run>;
       using constant_type = std::variant<int, std::string>;
-      std::string m_kernel;
+      std::string m_kernel; // name of kernel from which run is created
+      std::string m_name;   // identifier for this run
       run_type m_run;
       std::map<std::string, argument> m_args;
       std::map<int, constant_type> m_constants;
@@ -1045,11 +1046,15 @@ public:
       static xrt::run
       create_kernel_run(const resources& resources, const json& j)
       {
-        auto name = j.contains("kernel")
+        // The recipe should specify "kernel" name for the run, but
+        // legacy was to use "name" for the kernel.  "kernel" takes
+        // precedence, but if missing, then "name" is the identifier
+        // for the kernel
+        auto kname = j.contains("kernel")
           ? j.at("kernel").get<std::string>()
-          : j.at("name").get<std::string>();  // deprecated
+          : j.at("name").get<std::string>();  // deprecated, required w/o "kernel"
 
-        return xrt::run{resources.get_xrt_kernel_or_error(name)};
+        return xrt::run{resources.get_xrt_kernel_or_error(kname)};
       }
 
       static run_type
@@ -1073,6 +1078,7 @@ public:
         : m_kernel{j.contains("kernel")
                    ? j.at("kernel").get<std::string>()
                    : j.at("name").get<std::string>()} // deprecated
+        , m_name{j.value("name", m_kernel)}
         , m_run{create_run(resources, j)}
         , m_args{create_and_set_args(resources, m_run, j.at("arguments"))}
         , m_constants{create_and_set_constant_args(m_run, j.value("constants", json::object()))}
@@ -1087,6 +1093,7 @@ public:
       // other run are independent in regards to argument data.
       run(const resources& resources, const run& other)
         : m_kernel{other.m_kernel}
+        , m_name{other.m_name}
         , m_run{create_run(resources, other)}
         , m_args{create_and_set_args(resources, m_run, other.m_args)}
         , m_constants{create_and_set_constant_args(m_run, other.m_constants)}
