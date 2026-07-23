@@ -2,17 +2,31 @@
 // Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "info_telemetry.h"
+#include "error.h"
 #include "query_requests.h"
 
 #include <boost/format.hpp>
+#include <cerrno>
 #include <vector>
 
 namespace {
 template <typename IntegralType>
-bool 
-is_value_na(IntegralType value) 
+bool
+is_value_na(IntegralType value)
 {
   return value == std::numeric_limits<IntegralType>::max();
+}
+
+// Telemetry is an optional diagnostic. An older amdxdna driver may not
+// implement the telemetry GET_INFO query: the kernel returns EOPNOTSUPP for an
+// unknown query param (aie2_get_info default case) or if the get_aie_info op is
+// absent, and ENOTTY if the ioctl itself is not registered. Treat only those as
+// "telemetry not available". Any other error, including EINVAL (which the query
+// layer also uses for genuinely malformed requests), is a real failure.
+static bool
+telemetry_unsupported(const xrt_core::system_error& ex)
+{
+  return ex.value() == EOPNOTSUPP || ex.value() == ENOTTY;
 }
 
 static void
@@ -48,23 +62,36 @@ add_rtos_tasks(const xrt_core::device* device, boost::property_tree::ptree& pt)
 static boost::property_tree::ptree
 aie2_preemption_info(const xrt_core::device* device)
 {
-  const auto data = xrt_core::device_query<xrt_core::query::rtos_telemetry>(device);
   boost::property_tree::ptree pt_rtos_array;
-  int user_task = 0;
 
-  for (const auto& kp : data) {
-  boost::property_tree::ptree pt_preempt;
+  try {
+    const auto data = xrt_core::device_query<xrt_core::query::rtos_telemetry>(device);
+    int user_task = 0;
 
-  auto populate_value = [](uint64_t value) {
-    return is_value_na(value) ? "N/A" : std::to_string(value);
-  };
+    for (const auto& kp : data) {
+      boost::property_tree::ptree pt_preempt;
 
-  pt_preempt.put("fw_tid", user_task++);
-  pt_preempt.put("ctx_index", populate_value(kp.preemption_data.slot_index));
-  pt_preempt.put("layer_events", populate_value(kp.preemption_data.preemption_checkpoint_event));
-  pt_preempt.put("frame_events", populate_value(kp.preemption_data.preemption_frame_boundary_events));
+      auto populate_value = [](uint64_t value) {
+        return is_value_na(value) ? "N/A" : std::to_string(value);
+      };
 
-  pt_rtos_array.push_back({"", pt_preempt});
+      pt_preempt.put("fw_tid", user_task++);
+      pt_preempt.put("ctx_index", populate_value(kp.preemption_data.slot_index));
+      pt_preempt.put("layer_events", populate_value(kp.preemption_data.preemption_checkpoint_event));
+      pt_preempt.put("frame_events", populate_value(kp.preemption_data.preemption_frame_boundary_events));
+
+      pt_rtos_array.push_back({"", pt_preempt});
+    }
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Query not set up on this platform; nothing to report.
+  }
+  catch (const xrt_core::system_error& ex) {
+    // Same optional-telemetry contract as aie2_telemetry_info: an old driver
+    // that lacks the telemetry ioctl reports no preemption data instead of
+    // failing the whole report. Any other error is a real failure.
+    if (!telemetry_unsupported(ex))
+      throw;
   }
   return pt_rtos_array;
 }
@@ -134,6 +161,14 @@ aie2_telemetry_info(const xrt_core::device* device)
     // Queries are not setup
     boost::property_tree::ptree empty_pt;
     return empty_pt;
+  }
+  catch (const xrt_core::system_error& ex) {
+    // Keep whatever telemetry we already collected and skip the rest quietly
+    // when the driver does not implement the query. Surface any other error the
+    // same way as before.
+    if (!telemetry_unsupported(ex))
+      pt.put("error_msg", ex.what());
+    return pt;
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
