@@ -645,7 +645,7 @@ writeAIEPartitionImage(const char* pBuffer,
 
   // Name
   boost::property_tree::ptree ptAiePartition;
-  ptAiePartition.put("name", pBuffer + pHdr->mpo_name);
+  ptAiePartition.put("name", XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, bufferSize));
 
   // TOPs
   ptAiePartition.put("operations_per_cycle", (boost::format("%d") % pHdr->operations_per_cycle).str());
@@ -655,9 +655,9 @@ writeAIEPartitionImage(const char* pBuffer,
   // kernel_commit_id (modeled after mpo_name)
   // in order to be backward compatible with old xclbin which doesn't have
   // kernel_commit_id, we should make sure the offset is NOT 0
-  auto sKernelCommitId = "";
+  const char* sKernelCommitId = "";
   if (pHdr->kernel_commit_id != 0) {
-    sKernelCommitId = reinterpret_cast<const char*>(pBuffer + pHdr->kernel_commit_id);
+    sKernelCommitId = XUtil::bounded_mpo_cstr(pHdr, pHdr->kernel_commit_id, bufferSize);
   } else {
     XUtil::TRACE(boost::format("Open an existing xclbin: kernel_commit_id is 0x%lx") % pHdr->kernel_commit_id);
   }
@@ -728,7 +728,7 @@ SectionAIEPartition::readXclBinBinary(std::istream& iStream,
   auto pHdr = reinterpret_cast<const aie_partition*>(m_pBuffer);
 
   // Name
-  std::string name = m_pBuffer + pHdr->mpo_name;
+  std::string name = XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, m_bufferSize);
   XUtil::TRACE(std::string("Successfully read in the AIE_PARTITION section: '") + name + "' ");
   Section::m_sIndexName = name;
 }

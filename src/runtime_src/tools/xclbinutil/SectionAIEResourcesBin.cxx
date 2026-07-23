@@ -1,20 +1,5 @@
-
-/**
- * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "SectionAIEResourcesBin.h"
 
 #include "XclBinUtilities.h"
@@ -83,7 +68,7 @@ SectionAIEResourcesBin::getSubSectionEnum(const std::string& sSubSectionName)
 const std::string&
 SectionAIEResourcesBin::getSubSectionName(SectionAIEResourcesBin::SubSection eSubSection)
 {
-  auto subSectionTable = getSubSectionTable();
+  const auto& subSectionTable = getSubSectionTable();
   auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return entry.second == eSubSection;});
 
   if (iter == subSectionTable.end())
@@ -173,11 +158,11 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                              "  mpo_version (0x%lx): '%s'\n"
                              "  m_start_column (0x%lx): '%s'\n"
                              "  m_num_columns (0x%lx): '%s'")
-               % pHdr->mpo_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_name)
+               % pHdr->mpo_name % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name,       _origSectionSize)
                % pHdr->m_image_offset % pHdr->m_image_size
-               % pHdr->mpo_version % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_version)
-               % pHdr->m_start_column % (reinterpret_cast<const char*>(pHdr) + pHdr->m_start_column)
-               % pHdr->m_num_columns % (reinterpret_cast<const char*>(pHdr) + pHdr->m_num_columns));
+               % pHdr->mpo_version % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version,    _origSectionSize)
+               % pHdr->m_start_column % XUtil::bounded_mpo_cstr(pHdr, pHdr->m_start_column, _origSectionSize)
+               % pHdr->m_num_columns % XUtil::bounded_mpo_cstr(pHdr, pHdr->m_num_columns,  _origSectionSize));
 
   // Get the JSON metadata
   _istream.seekg(0, _istream.end);             // Go to the beginning
@@ -424,19 +409,19 @@ SectionAIEResourcesBin::writeMetadata(std::ostream& _oStream) const
                              "  mpo_version (0x%lx): '%s'\n"
                              "  m_start_column (0x%lx): '%s'\n"
                              "  m_num_columns (0x%lx): '%s'")
-               % pHdr->mpo_name % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_name)
+               % pHdr->mpo_name % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, m_bufferSize)
                % pHdr->m_image_offset % pHdr->m_image_size
-               % pHdr->mpo_version % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_version)
-               % pHdr->m_start_column % (reinterpret_cast<char*>(pHdr) + pHdr->m_start_column)
-               % pHdr->m_num_columns % (reinterpret_cast<char*>(pHdr) + pHdr->m_num_columns));
+               % pHdr->mpo_version % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version, m_bufferSize)
+               % pHdr->m_start_column % XUtil::bounded_mpo_cstr(pHdr, pHdr->m_start_column, m_bufferSize)
+               % pHdr->m_num_columns % XUtil::bounded_mpo_cstr(pHdr, pHdr->m_num_columns, m_bufferSize));
 
   // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptAieResourcesBin;
 
-  ptAieResourcesBin.put("name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_name);
-  ptAieResourcesBin.put("version", reinterpret_cast<char*>(pHdr) + pHdr->mpo_version);
-  ptAieResourcesBin.put("start_column", reinterpret_cast<char*>(pHdr) + pHdr->m_start_column);
-  ptAieResourcesBin.put("num_columns", reinterpret_cast<char*>(pHdr) + pHdr->m_num_columns);
+  ptAieResourcesBin.put("name",         XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, m_bufferSize));
+  ptAieResourcesBin.put("version",      XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version, m_bufferSize));
+  ptAieResourcesBin.put("start_column", XUtil::bounded_mpo_cstr(pHdr, pHdr->m_start_column, m_bufferSize));
+  ptAieResourcesBin.put("num_columns",  XUtil::bounded_mpo_cstr(pHdr, pHdr->m_num_columns, m_bufferSize));
 
   boost::property_tree::ptree root;
   root.put_child("aie_resources_bin_metadata", ptAieResourcesBin);

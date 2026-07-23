@@ -59,6 +59,18 @@ generate_key_string(const std::string& argument_name, buf_type type)
   return argument_name + std::to_string(static_cast<int>(type));
 }
 
+// Get symbol name from section name
+inline std::string
+get_symbol_name_from_section_name(const std::string& section_name)
+{
+  // Symbol name is section name without the grp idx
+  // if sec name is .ctrlpkt-57.grp_idx then sym name is .ctrlpkt-57
+  auto dot_pos = section_name.rfind('.');
+  return (dot_pos != std::string::npos && dot_pos > 0)
+      ? section_name.substr(0, dot_pos)
+      : section_name;
+}
+
 // Symbol type enum for patching schemes
 enum class symbol_type {
   uc_dma_remote_ptr_symbol_kind = 1,
@@ -70,11 +82,9 @@ enum class symbol_type {
   control_packet_57 = 7,                   // patching scheme needed by firmware to patch control packet for aie2ps
   address_64 = 8,                          // patching scheme needed to patch pdi address
   control_packet_57_aie4 = 9,              // patching scheme needed by firmware to patch control packet for aie4
-  unknown_symbol_kind = 10
+  unknown_symbol_kind = 10,
+  pl_ddr_64 = 11                           // patching scheme for PL kernel wts_params block (words 8+9 hold 64-bit DDR address)
 };
-
-// Maximum BD data words - AIE2P uses 8, AIE4/AIE2PS uses 9
-static constexpr size_t max_bd_words = 9;
 
 // Patching system for control code
 //
@@ -95,7 +105,7 @@ struct patch_config {
 // Runtime state per patch location - owned by module_run
 struct patch_state {
   bool dirty = false; // Tells whether this entry is already patched or not
-  std::array<uint32_t, max_bd_words> bd_data_ptrs = {}; // array to store bd ptrs original values
+  std::vector<uint32_t> bd_data_ptrs; // stores original BD words; sized to exact patch coverage
 };
 
 // struct patcher_config - static configuration for a patcher
@@ -132,13 +142,14 @@ struct symbol_patcher
 
   // Function to patch a symbol in the buffer.
   void
-  patch_symbol(xrt::bo bo, uint64_t value, bool first);
+  patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg = true);
 
   // static method for patching raw buffers passed by shim tests
   // where the caller handles sync themselves
   // It patches directly using config without maintaining state.
+  // buf_size is the total size of the buffer pointed to by base.
   static void
-  patch_symbol_raw(uint8_t* base, uint64_t value, const patcher_config& config);
+  patch_symbol_raw(uint8_t* base, size_t buf_size, uint64_t value, const patcher_config& config);
 
 private:
   // Different patching functions for different symbol types.
@@ -165,6 +176,9 @@ private:
 
   static void
   patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch);
+
+  static void
+  patch_pl_ddr64(uint32_t* bd_data_ptr, uint64_t patch);
 };
 
 } // namespace xrt_core::elf_patcher

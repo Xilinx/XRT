@@ -49,8 +49,6 @@ OO_FirmwareLog::validate_args() const {
 void
 OO_FirmwareLog::execute(const SubCmdOptions& _options) const
 {
-  XBUtilities::printAdvancedDisclaimer();
-
   XBUtilities::verbose("SubCommand option: Firmware Log");
   XBUtilities::sudo_or_throw("Firmware logging requires admin privileges");
 

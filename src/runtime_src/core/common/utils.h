@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
 // Copyright (C) 2023-2026 Advanced Micro Devices, Inc. - All rights reserved
-#ifndef xrt_core_common_utils_h_
-#define xrt_core_common_utils_h_
+#ifndef xrt_core_common_utils_h
+#define xrt_core_common_utils_h
 
 #include "config.h"
 #include "scope_guard.h"
@@ -22,7 +22,7 @@
 #define CU_AP_CONTINUE	(0x1 << 4)
 #define CU_AP_RESET	(0x1 << 5)
 
-namespace xrt_core { namespace utils {
+namespace xrt_core::utils {
 
 /**
  * ios_flags_restore() - scope guard for ios flags
@@ -142,6 +142,27 @@ XRT_CORE_COMMON_EXPORT
 std::string
 get_sys_last_err_msg();
 
-}} // utils, xrt_core
+XRT_CORE_COMMON_EXPORT
+std::string
+getenv(const char* name);
+
+XRT_CORE_COMMON_EXPORT
+bool
+is_env(const char* name);
+
+XRT_CORE_COMMON_EXPORT
+std::string
+strerror(int err);
+
+// is_elevated_process() - returns true when running with elevated privileges.
+//
+// On Linux: true when effective UID is 0 (root).
+// On Windows: true when the process token is UAC-elevated (Run as Administrator).
+// Used to restrict untrusted config-file search paths (SWSPLAT-39875 / CWE-427).
+XRT_CORE_COMMON_EXPORT
+bool
+is_elevated_process();
+
+} // xrt_core::utils
 
 #endif

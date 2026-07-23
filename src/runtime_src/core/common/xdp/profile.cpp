@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
-#define XRT_CORE_COMMON_SOURCE
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in same dll as coreutil
 #include "core/common/xdp/profile.h"
 
+#include "core/common/api/kernel_int.h"
+#include "core/common/api/module_int.h"
 #include "core/common/config_reader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
 #include "core/common/message.h"
-#include <cstring>
+#include "core/common/utils.h"
+#include "core/include/xrt/xrt_kernel.h"
+
 #include <functional>
 #include <sstream>
-#include <cstdlib>
-
-#ifdef _WIN32
-#pragma warning( disable : 4996 ) /* Disable warning for getenv */
-#endif
 
 // An anonymous namespace to hold a common set of blank functions
 // for all modules that don't require specialization and the common
@@ -59,8 +59,7 @@ namespace {
 #if !defined(XDP_CLIENT_BUILD) && !defined(XDP_VE2_BUILD)
   static bool is_hw_emulation()
   {
-    static auto xem = std::getenv("XCL_EMULATION_MODE");
-    static bool hwem = xem ? (std::strcmp(xem, "hw_emu") == 0) : false;
+    static bool hwem = (xrt_core::utils::getenv("XCL_EMULATION_MODE") == "hw_emu");
     return hwem;
   }
 #endif
@@ -74,10 +73,18 @@ namespace xrt_core::xdp::core {
   void
   load_core()
   {
-    static xrt_core::module_loader
-    xdp_core_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_core_npu3" : "xdp_core",
-                    register_callbacks_empty,
-                    warning_callbacks_empty);
+    if (xrt_core::utils::is_env("AMD_XDP_NPU3")) {
+      static xrt_core::sdk_loader
+      xdp_core_loader("xdp_core_npu3",
+                      register_callbacks_empty,
+                      warning_callbacks_empty);
+    }
+    else {
+      static xrt_core::module_loader
+      xdp_core_loader("xdp_core",
+                      register_callbacks_empty,
+                      warning_callbacks_empty);
+    }
   }
 }
 
@@ -101,12 +108,12 @@ load()
 {
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   static xrt_core::sdk_loader
-  xdp_aie_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
+  xdp_aie_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
                  register_callbacks,
                  warning_callbacks_empty);
 #else
   static xrt_core::module_loader
-  xdp_aie_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
+  xdp_aie_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
                  register_callbacks,
                  warning_callbacks_empty);
 #endif
@@ -137,6 +144,149 @@ end_poll(void* handle)
 
 } // end namespace xrt_core::xdp::aie::profile
 
+namespace xrt_core::xdp::aie::dtrace {
+
+std::function<void(void*, bool)> update_device_cb;
+std::function<void(void*)> end_poll_cb;
+std::function<void(void*, void*, uint32_t, const char*, void*)> run_constructor_cb;
+std::function<void(void*, void*, uint32_t, const char*)> run_start_cb;
+std::function<void(void*, void*, uint32_t, const char*, int)> run_wait_cb;
+
+void
+register_callbacks(void* handle)
+{
+  using ftype = void (*)(void*);
+  using utype = void (*)(void*, bool);
+  using rctype = void (*)(void*, void*, uint32_t, const char*, void*);
+  using rsctype = void (*)(void*, void*, uint32_t, const char*);
+  using rwctype = void (*)(void*, void*, uint32_t, const char*, int);
+
+  update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEDtraceDevice"));
+  end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDtracePoll"));
+  run_constructor_cb = reinterpret_cast<rctype>(xrt_core::dlsym(handle, "aieDtraceRunConstructor"));
+  run_start_cb = reinterpret_cast<rsctype>(xrt_core::dlsym(handle, "aieDtraceRunStart"));
+  run_wait_cb = reinterpret_cast<rwctype>(xrt_core::dlsym(handle, "aieDtraceRunWait"));
+}
+
+void
+load_xdna()
+{
+  static xrt_core::module_loader xdp_aie_dtrace_loader("xdp_aie_dtrace_plugin_xdna",
+                                                       register_callbacks,
+                                                       warning_callbacks_empty);
+}
+
+void
+load()
+{
+#if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
+  static xrt_core::sdk_loader
+  xdp_aie_dtrace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+                        register_callbacks,
+                        warning_callbacks_empty);
+#else
+  static xrt_core::module_loader
+  xdp_aie_dtrace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_dtrace_plugin_npu3" : "xdp_aie_dtrace_plugin",
+                        register_callbacks,
+                        warning_callbacks_empty);
+#endif
+}
+
+void
+update_device(void* handle, bool hw_context_flow)
+{
+  if (update_device_cb)
+    update_device_cb(handle, hw_context_flow);
+}
+
+void
+end_poll(void* handle)
+{
+  if (end_poll_cb)
+    end_poll_cb(handle);
+}
+
+void
+run_constructor(xrt::run_impl* run_impl)
+{
+  if (!run_constructor_cb)
+    return;
+
+  // The dtrace run hooks are best-effort profiling instrumentation. They must
+  // never affect the run lifecycle: an exception escaping here would propagate
+  // out of the run_impl constructor and corrupt the caller's run object (e.g.
+  // leaving FlexMLRT polling a command that was never submitted).
+  try {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
+    run_constructor_cb(run_impl,
+                       data.hwctx.get_handle().get(),
+                       data.uid,
+                       data.name.c_str(),
+                       elf_hdl.get());
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      std::string{"AIE dtrace run_constructor hook failed (ignored): "} + e.what());
+  }
+  catch (...) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "AIE dtrace run_constructor hook failed (ignored): unknown exception");
+  }
+}
+
+void
+run_start(const xrt::run_impl* run_impl)
+{
+  if (!run_start_cb)
+    return;
+
+  try {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    run_start_cb(nullptr, data.hwctx.get_handle().get(),
+                 data.uid,
+                 data.name.c_str());
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      std::string{"AIE dtrace run_start hook failed (ignored): "} + e.what());
+  }
+  catch (...) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "AIE dtrace run_start hook failed (ignored): unknown exception");
+  }
+}
+
+void
+run_wait(const xrt::run_impl* run_impl)
+{
+  if (!run_wait_cb)
+    return;
+
+  try {
+    xrt_kernel_data data{};
+    // run_wait fires after the command has completed, so polling state() here
+    // is valid and ert_state is the value this hook needs.
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data, true);
+    run_wait_cb(nullptr, data.hwctx.get_handle().get(),
+                data.uid,
+                data.name.c_str(),
+                data.ert_state);
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      std::string{"AIE dtrace run_wait hook failed (ignored): "} + e.what());
+  }
+  catch (...) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "AIE dtrace run_wait hook failed (ignored): unknown exception");
+  }
+}
+
+} // end namespace xrt_core::xdp::aie::dtrace
+
 namespace xrt_core::xdp::aie::debug {
 
 std::function<void (void*)> update_device_cb;
@@ -160,7 +310,7 @@ void
 load()
 {
   static xrt_core::module_loader
-  xdp_aie_debug_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_debug_plugin_npu3" : "xdp_aie_debug_plugin",
+  xdp_aie_debug_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_debug_plugin_npu3" : "xdp_aie_debug_plugin",
                        register_callbacks,
                        warning_callbacks_empty);
 }
@@ -190,15 +340,11 @@ std::function<void (void*)> end_status_cb;
 void
 register_callbacks(void* handle)
 {
-  #if defined(XDP_VE2_BUILD)
-    using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
-    
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
-    end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
-  #else
-    (void)handle;
-  #endif
+  using ftype = void (*)(void*);
+  using utype = void (*)(void*, bool);
+  
+  update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
+  end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
 }
 
 
@@ -252,7 +398,7 @@ void
 load()
 {
   static xrt_core::module_loader
-  xdp_ml_timeline_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_ml_timeline_plugin_npu3" : "xdp_ml_timeline_plugin",
+  xdp_ml_timeline_loader("xdp_ml_timeline_plugin",
                          register_callbacks,
                          warning_callbacks_empty);
 }
@@ -273,51 +419,6 @@ finish_flush_device(void* handle)
 }
 
 } // end namespace xrt_core::xdp::ml_timeline
-
-namespace xrt_core::xdp::aie_pc {
-
-std::function<void (void*)> update_device_cb;
-std::function<void (void*)> finish_flush_device_cb;
-
-void
-register_callbacks(void* handle)
-{ 
-  #ifdef XDP_CLIENT_BUILD
-    using ftype = void (*)(void*);
-
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEPC"));
-    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceAIEPC"));
-  #else
-    (void)handle;
-  #endif
-
-}
-
-void
-load()
-{
-  static xrt_core::module_loader
-  xdp_aie_pc_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_pc_plugin_npu3" : "xdp_aie_pc_plugin",
-                    register_callbacks,
-                    warning_callbacks_empty);
-}
-
-// Make connections
-void
-update_device(void* handle)
-{
-  if (update_device_cb)
-    update_device_cb(handle);
-}
-
-void
-finish_flush_device(void* handle)
-{
-  if (finish_flush_device_cb)
-    finish_flush_device_cb(handle);
-}
-
-} // end namespace xrt_core::xdp::aie_pc
 
 namespace xrt_core::xdp::pl_deadlock {
 
@@ -385,12 +486,12 @@ load()
 {
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   static xrt_core::sdk_loader
-  xdp_aie_trace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
+  xdp_aie_trace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
                        register_callbacks,
                        warning_callbacks_empty);
 #else
   static xrt_core::module_loader
-  xdp_aie_trace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
+  xdp_aie_trace_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
                        register_callbacks,
                        warning_callbacks_empty);
 #endif
@@ -444,12 +545,12 @@ load()
 {
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   static xrt_core::sdk_loader
-  xdp_aie_halt_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
+  xdp_aie_halt_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
                       register_callbacks,
                       warning_callbacks_empty);
 #else
   static xrt_core::module_loader
-  xdp_aie_halt_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
+  xdp_aie_halt_loader(xrt_core::utils::is_env("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
                       register_callbacks,
                       warning_callbacks_empty);
 #endif
@@ -517,6 +618,51 @@ finish_flush_device(void* handle)
 
 } // end namespace xrt_core::xdp::hal::device_offload
 
+namespace xrt_core::xdp::hal::device_offload_hwemu {
+
+std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> finish_flush_device_cb;
+  
+void
+register_callbacks(void* handle)
+{ 
+  #ifdef XDP_CLIENT_BUILD
+    (void)handle;	// Not supported on Client Devices.
+  #else
+    using utype = void (*)(void*, bool);
+    using ftype = void (*)(void*);
+
+    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateDeviceHWEmu"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "flushDeviceHWEmu"));
+  #endif
+
+}
+
+void
+load()
+{  
+  static xrt_core::module_loader xdp_offload_loader("xdp_hw_emu_device_offload_plugin",
+                                                    register_callbacks,
+                                                    warning_callbacks_empty);
+}
+  
+// Make connections
+void
+update_device(void* handle, bool hw_context_flow)
+{
+  if (update_device_cb)
+    update_device_cb(handle, hw_context_flow);
+}
+
+void
+finish_flush_device(void* handle)
+{
+  if (finish_flush_device_cb)
+    finish_flush_device_cb(handle);
+}
+  
+} // end namespace xrt_core::xdp::hal::device_offload_hwemu
+
 namespace xrt_core::xdp {
 
 void 
@@ -529,10 +675,10 @@ update_device(void* handle, bool hw_context_flow)
   #ifdef _WIN32
   if (xrt_core::config::get_ml_timeline()
       || xrt_core::config::get_aie_profile()
+      || xrt_core::config::get_aie_dtrace()
       || xrt_core::config::get_aie_trace()
       || xrt_core::config::get_aie_debug()
-      || xrt_core::config::get_aie_halt()
-      || xrt_core::config::get_aie_pc()) {
+      || xrt_core::config::get_aie_halt()) {
     /* All the above plugins are dependent on xdp_core library. So,
      * explicitly load it to avoid library search issue in implicit loading.
      */
@@ -584,12 +730,13 @@ update_device(void* handle, bool hw_context_flow)
 		       "Failed to setup for AIE Debug. Caught exception ",
 		       handle);
 
-  load_once_and_update(xrt_core::config::get_aie_pc,
-		       xrt_core::xdp::aie_pc::load,
-		       xrt_core::xdp::aie_pc::update_device,
-		       "Failed to load AIE PC library. Caught exception ",
-		       "Failed to setup for AIE PC. Caught exception ",
-		       handle);
+  load_once_and_update(xrt_core::config::get_aie_dtrace,
+		       xrt_core::xdp::aie::dtrace::load,
+		       xrt_core::xdp::aie::dtrace::update_device,
+		       "Failed to load AIE dtrace library. Caught exception ",
+		       "Failed to setup for AIE dtrace. Caught exception ",
+		       handle,
+		       hw_context_flow);
 
 #elif defined(XDP_VE2_BUILD)
 
@@ -658,12 +805,26 @@ update_device(void* handle, bool hw_context_flow)
            handle,
 	 	      hw_context_flow);
 
+  load_once_and_update(xrt_core::config::get_aie_dtrace,
+           []() {
+            if (xrt_core::config::get_xdp_mode() == "xdna") {
+              xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                "xdp_mode is XDNA; loading AIE dtrace plugin for XDNA device.");
+              xrt_core::xdp::aie::dtrace::load_xdna();
+            }
+           },
+           xrt_core::xdp::aie::dtrace::update_device,
+           "Failed to load AIE dtrace library. Caught exception ",
+           "Failed to setup for AIE dtrace. Caught exception ",
+           handle,
+           hw_context_flow);
+
 #else
 
   load_once_and_update(  
            []() {
             return xrt_core::config::get_pl_deadlock_detection() &&
-              nullptr == std::getenv("XCL_EMULATION_MODE");  
+              !xrt_core::utils::is_env("XCL_EMULATION_MODE");  
            },  
            xrt_core::xdp::pl_deadlock::load,  
            xrt_core::xdp::pl_deadlock::update_device,  
@@ -687,6 +848,14 @@ update_device(void* handle, bool hw_context_flow)
            handle,
            hw_context_flow);
 
+  load_once_and_update(xrt_core::config::get_aie_status,
+           xrt_core::xdp::aie::status::load,
+           xrt_core::xdp::aie::status::update_device,
+           "Failed to load AIE Status library. Caught exception ",
+           "Failed to setup for AIE Status. Caught exception ",
+           handle,
+           hw_context_flow);
+
   if (!is_hw_emulation()) {
     load_once_and_update(
              []() {
@@ -697,6 +866,18 @@ update_device(void* handle, bool hw_context_flow)
              xrt_core::xdp::hal::device_offload::update_device,
              "Failed to load HAL PL trace plugin. Caught exception ",
              "Failed to setup for HAL PL trace. Caught exception ",
+             handle,
+             hw_context_flow);
+  } else {
+    load_once_and_update(
+             []() {
+              return ((xrt_core::config::get_device_trace() != "off") ||
+                      (xrt_core::config::get_device_counters()));
+             },
+             xrt_core::xdp::hal::device_offload_hwemu::load,
+             xrt_core::xdp::hal::device_offload_hwemu::update_device,
+             "Failed to load HW Emu PL trace plugin. Caught exception ",
+             "Failed to setup for HW Emu PL trace. Caught exception ",
              handle,
              hw_context_flow);
   }
@@ -718,12 +899,12 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::halt::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
+  if (xrt_core::config::get_aie_dtrace())
+    xrt_core::xdp::aie::dtrace::end_poll(handle);
   if (xrt_core::config::get_aie_trace())
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_debug())
     xrt_core::xdp::aie::debug::end_debug(handle);
-  if (xrt_core::config::get_aie_pc())
-    xrt_core::xdp::aie_pc::finish_flush_device(handle);
 
 #elif defined(XDP_VE2_BUILD)
 
@@ -739,22 +920,57 @@ finish_flush_device(void* handle)
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
+  if (xrt_core::config::get_aie_dtrace())
+    xrt_core::xdp::aie::dtrace::end_poll(handle);
 
 #else
 
   if (xrt_core::config::get_pl_deadlock_detection()
-      && nullptr == std::getenv("XCL_EMULATION_MODE")) {
+      && !xrt_core::utils::is_env("XCL_EMULATION_MODE")) {
     xrt_core::xdp::pl_deadlock::finish_flush_device(handle);
   }
   if (xrt_core::config::get_aie_trace())
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
+  if (xrt_core::config::get_aie_status())
+    xrt_core::xdp::aie::status::end_status(handle);
   if ((xrt_core::config::get_device_trace() != "off") ||
-      (xrt_core::config::get_device_counters()))
-    xrt_core::xdp::hal::device_offload::finish_flush_device(handle) ;
+    (xrt_core::config::get_device_counters())) {
+    if (!is_hw_emulation())
+      xrt_core::xdp::hal::device_offload::finish_flush_device(handle);
+    else
+      xrt_core::xdp::hal::device_offload_hwemu::finish_flush_device(handle);
+  }
 
 #endif
+}
+
+void
+run_constructor(xrt::run_impl* run_impl)
+{
+  if (!xrt_core::config::get_aie_dtrace())
+    return;
+
+  xrt_core::xdp::aie::dtrace::run_constructor(run_impl);
+}
+
+void
+run_start(const xrt::run_impl* run_impl)
+{
+  if (!xrt_core::config::get_aie_dtrace())
+    return;
+
+  xrt_core::xdp::aie::dtrace::run_start(run_impl);
+}
+
+void
+run_wait(const xrt::run_impl* run_impl)
+{
+  if (!xrt_core::config::get_aie_dtrace())
+    return;
+
+  xrt_core::xdp::aie::dtrace::run_wait(run_impl);
 }
 
 } // end namespace xrt_core::xdp

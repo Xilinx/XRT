@@ -7,6 +7,7 @@ add_library(core_common_xdp_profile_objects OBJECT
 target_include_directories(core_common_xdp_profile_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
+  ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
   )
 
 # Compile defintions when building npu, alveo, or legacy xrt

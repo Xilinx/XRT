@@ -155,13 +155,8 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   // Determine report level
   std::vector<std::string> reportsToRun(m_reportNames);
   if (reportsToRun.empty()) {
-    if (!XBU::getAdvance()) {
-      reportsToRun.push_back("host");
-    } 
-    else {
-      print_help_internal();
-      return;
-    }
+    // Default report with or without --advanced (advanced only unlocks hidden options/reports).
+    reportsToRun.emplace_back("host");
   }
 
   if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
@@ -216,7 +211,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("         - %s\n") % report;
 
       // Print available devices
-      const auto dev_pt = XBU::get_available_devices(true);
+      const auto dev_pt = XBU::get_available_bdfs(true);
       if(dev_pt.empty())
         std::cout << "0 devices found" << std::endl;
       else

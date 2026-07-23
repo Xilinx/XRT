@@ -10,6 +10,9 @@
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/SmiWatchMode.h"
+
+#include <boost/algorithm/string.hpp>
 
 // ---- OptionOptions ------
 #include "tools/common/OptionOptions.h"
@@ -28,6 +31,7 @@
 #include "tools/common/reports/ReportClocks.h"
 #include "tools/common/reports/ReportCmcStatus.h"
 #include "tools/common/reports/ReportDynamicRegion.h"
+#include "tools/common/reports/ReportDebug.h"
 #include "tools/common/reports/ReportDebugIpStatus.h"
 #include "tools/common/reports/ReportElectrical.h"
 #include "tools/common/reports/ReportFirewall.h"
@@ -45,6 +49,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("examine", "Status of the system and device")
@@ -67,6 +72,7 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportBOStats>(),
     std::make_shared<ReportClocks>(),
+    std::make_shared<ReportDebug>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportDynamicRegion>(),
     std::make_shared<ReportHost>(),
@@ -89,9 +95,9 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
 
   // OptionOptions collection for examine-specific interactive functionality
   m_optionOptionsCollection = {
-    {std::make_shared<OO_FirmwareLogExamine>("firmware-log")}, //hidden
-    {std::make_shared<OO_EventTraceExamine>("event-trace")}, //hidden
-    {std::make_shared<OO_ContextHealth>("context-health")} //hidden
+    {std::make_shared<OO_FirmwareLogExamine>("firmware-log", true)}, //hidden
+    {std::make_shared<OO_EventTraceExamine>("event-trace", true)}, //hidden
+    {std::make_shared<OO_ContextHealth>("context-health", true)} //hidden
   };
 
   for (const auto& option : m_optionOptionsCollection){
@@ -107,7 +113,12 @@ void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamin
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_reportNames = vm.count("report") ? vm["report"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
-  options.m_elementsFilter = vm.count("element") ? vm["element"].as<std::vector<std::string>>() : std::vector<std::string>(); 
+  options.m_elementsFilter = vm.count("element") ? vm["element"].as<std::vector<std::string>>() : std::vector<std::string>();
+  options.m_watchIntervalSec.reset();
+  if (vm.count("watch")) {
+    const auto& s = vm["watch"].as<std::string>();
+    options.m_watchIntervalSec = static_cast<unsigned>(std::stoul(s.empty() ? "0" : s));
+  }
 }
 
 void
@@ -147,7 +158,6 @@ SubCmdExamine::getReportsList(const xrt_core::smi::tuple_vector& reports) const
 std::shared_ptr<OptionOptions>
 SubCmdExamine::checkForSubOption(const po::variables_map& vm) const
 {
-  // Check if any of the option options are present
   for (const auto& option : m_optionOptionsCollection) {
     if (vm.count(option->getConfigName()) > 0) {
       return option;
@@ -155,27 +165,6 @@ SubCmdExamine::checkForSubOption(const po::variables_map& vm) const
   }
   
   return nullptr;
-}
-
-std::vector<std::shared_ptr<OptionOptions>>
-SubCmdExamine::getOptionOptions(const xrt_core::smi::tuple_vector& options) const
-{
-  // Vector to store the matched option options
-  std::vector<std::shared_ptr<OptionOptions>> matchedOptionOptions;
-
-  for (const auto& opt : options) {
-    auto it = std::find_if(m_optionOptionsCollection.begin(), m_optionOptionsCollection.end(),
-              [&opt](const std::shared_ptr<OptionOptions>& optionOption) {
-                return std::get<0>(opt) == optionOption->getConfigName() &&
-                       (std::get<2>(opt) != "hidden" || XBU::getAdvance());
-              });
-
-    if (it != m_optionOptionsCollection.end()) {
-      matchedOptionOptions.push_back(*it);
-    }
-  }
-
-  return matchedOptionOptions;
 }
 
 void
@@ -187,7 +176,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   po::variables_map vm;
   SubCmdExamineOptions options;
   try{
-    const auto unrecognized_options = process_arguments(vm, _options, false);
+    // All JSON "hidden" options require --advanced to be accepted on the command line.
+    po::options_description empty_hidden;
+    const po::options_description& hidden_for_parse = XBU::getAdvance() ? m_hiddenOptions : empty_hidden;
+    const auto unrecognized_options = process_arguments(vm, _options, m_commonOptions, hidden_for_parse,
+                                                        m_positionals, m_subOptionOptions, false);
     fill_option_values(vm, options);
 
     // Check for OptionOptions first
@@ -244,6 +237,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
       throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
+    if (options.m_watchIntervalSec) {
+      if (vm.count("format"))
+        throw xrt_core::error("Watch mode cannot be used with --format; output is text only.");
+      if (!options.m_output.empty())
+        throw xrt_core::error("Watch mode cannot be used with --output.");
+    }
+
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -254,13 +254,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Determine report level
   std::vector<std::string> reportsToRun(options.m_reportNames);
   if (reportsToRun.empty()) {
-    if (!XBU::getAdvance()) {
-      reportsToRun.emplace_back("host");
-    } 
-    else {
-      printHelp();
-      return;
-    }
+    // Default report with or without --advanced (advanced only unlocks hidden options/reports).
+    reportsToRun.emplace_back("host");
   }
 
   if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
@@ -288,9 +283,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   if (device){
     const xrt_core::smi::tuple_vector& reportList = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::examine_reports);
     runnableReports = getReportsList(reportList);
-
-    if (XBU::isUsingAdvanced(reportList, reportsToRun))
-      XBU::printAdvancedDisclaimer();
   } 
   else {
     runnableReports = uniqueReportCollection;
@@ -324,7 +316,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("         - %s\n") % report;
 
       // Print available devices
-      const auto dev_pt = XBU::get_available_devices(true);
+      const auto dev_pt = XBU::get_available_bdfs(true);
       if(dev_pt.empty())
         std::cout << "0 devices found" << std::endl;
       else
@@ -337,7 +329,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(device, reportsToProcess, schemaVersion, options.m_elementsFilter, std::cout, oSchemaOutput);
+    if (options.m_watchIntervalSec) {
+      /* Bundle produce_reports() into a lamda and pass it to run_watch_mode() */
+      const auto examine_watch_snapshot =
+          [&](const xrt_core::device*) {
+            std::ostringstream console;
+            XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, console, oSchemaOutput);
+            return console.str();
+          };
+      smi_watch_mode::run_watch_mode(device.get(), std::cout, examine_watch_snapshot,
+          *options.m_watchIntervalSec);
+    } else {
+      XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, std::cout, oSchemaOutput);
+    }
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;

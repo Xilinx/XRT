@@ -153,13 +153,13 @@ handle_logging(const xrt_core::device* device) const {
       auto report_generator = [this, &parser](const xrt_core::device* dev) -> std::string {
         return generate_parsed_logs(dev, parser, true);
       };
-      smi_watch_mode::run_watch_mode(device, out, report_generator);
+      smi_watch_mode::run_watch_mode(device, out, report_generator, 0, false);
     } else {
       // Raw mode: no parser needed
       auto report_generator = [this](const xrt_core::device* dev) -> std::string {
         return generate_raw_logs(dev, true);
       };
-      smi_watch_mode::run_watch_mode(device, out, report_generator);
+      smi_watch_mode::run_watch_mode(device, out, report_generator, 0, false);
     }
   } else {
     if (output_helper.is_raw_mode() || !config) {

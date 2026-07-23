@@ -2,8 +2,15 @@
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "core/common/trace.h"
 
-#define SDT_USE_VARIADIC
-#include <sys/sdt.h>
+#ifdef XRT_ENABLE_USDT
+# define SDT_USE_VARIADIC
+# include <sys/sdt.h>
+#else
+# define STAP_PROBEV(provider, name, ...) do {} while (0)
+# define DTRACE_PROBE(provider, name)      do {} while (0)
+# define DTRACE_PROBE1(provider, name, a)  do {} while (0)
+# define DTRACE_PROBE2(p, n, a, b)         do {} while (0)
+#endif
 
 #define XRT_DETAIL_TRACE_POINT_LOG(probe, ...) \
   STAP_PROBEV(xrt, probe##_log, ##__VA_ARGS__)

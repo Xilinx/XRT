@@ -1,19 +1,5 @@
-/**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "SectionVenderMetadata.h"
 
 #include "XclBinUtilities.h"
@@ -268,13 +254,13 @@ SectionVenderMetadata::writeMetadata(std::ostream& _oStream) const
                               "Original: \n"
                               "  mpo_name (0x%lx): '%s'\n"
                               "  m_image_offset: 0x%lx, m_image_size: 0x%lx")
-                          % pHdr->mpo_name % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_name)
+                          % pHdr->mpo_name % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, m_bufferSize)
                           % pHdr->m_image_offset % pHdr->m_image_size));
 
   // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptVenderMetadata;
 
-  ptVenderMetadata.put("mpo_name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_name);
+  ptVenderMetadata.put("mpo_name", XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, m_bufferSize));
 
   boost::property_tree::ptree root;
   root.put_child("vender_metadata", ptVenderMetadata);

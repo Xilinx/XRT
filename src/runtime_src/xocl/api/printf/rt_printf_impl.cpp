@@ -1,22 +1,8 @@
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-// Copyright 2015 Xilinx, Inc. All rights reserved.
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2015-2017 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "rt_printf_impl.h"
+#include "core/common/utils.h"
 
 #include <array>
 #include <cstdio>
@@ -26,12 +12,6 @@
 #include <stdexcept>
 #include <iomanip>
 #include <algorithm>
-
-#ifdef _WIN32
-# pragma warning( disable : 4996 )
-# define snprintf _snprintf
-#endif
-
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -756,7 +736,6 @@ void BufferPrintf::print(std::ostream& os)
 
 void BufferPrintf::dbgDump(std::ostream& os) const
 {
-  char tmpbuf[8];
   IOS_FlagRestore ios_flagRestore(os);
   os << "------- BUFFER DEBUG DUMP --------\n";
   os << "String table:" << "\n";
@@ -773,8 +752,8 @@ void BufferPrintf::dbgDump(std::ostream& os) const
       os << std::dec << std::left << idx << ":\t";
     }
 
-    std::sprintf(tmpbuf, "%02X", (int)m_buf[idx]);
-    os << tmpbuf << "  ";
+    os << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
+       << static_cast<int>(m_buf[idx]) << std::dec << "  ";
   }
   os << "\n";
   os << "----- END BUFFER DEBUG DUMP ------\n";
@@ -1008,44 +987,42 @@ PrintfArg BufferPrintf::buildArg(int bufIdx, ConversionSpec& conversion) const
 std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
 {
   std::string retval = "";
-  char formatStr[32];
-  strcpy(formatStr, "%");
+  std::string formatStr = "%";
+
   if (conversion.m_leftJustify)
-    strcat(formatStr, "-");
+    formatStr += "-";
   if (conversion.m_signPlus)
-    strcat(formatStr, "+");
+    formatStr += "+";
   if (conversion.m_prefixSpace)
-    strcat(formatStr, " ");
+    formatStr += " ";
   if (conversion.m_alternative)
-    strcat(formatStr, "#");
+    formatStr += "#";
   if (conversion.m_padZero)
-    strcat(formatStr, "0");
+    formatStr += "0";
   if (conversion.m_fieldWidth) {
-    char *buf = formatStr + strlen(formatStr);
-    sprintf(buf, "%d", conversion.m_fieldWidthValue);
+    formatStr += std::to_string(conversion.m_fieldWidthValue);
   }
   if (conversion.m_precision) {
-    char *buf = formatStr + strlen(formatStr);
-    sprintf(buf, ".%d", conversion.m_precisionValue);
+    formatStr += "." + std::to_string(conversion.m_precisionValue);
   }
   switch ( conversion.m_lengthModifier ) {
     case ConversionSpec::CS_CHAR: {
-      strcat(formatStr, "hh");
+      formatStr += "hh";
       break;
     }
     case ConversionSpec::CS_SHORT: {
-      strcat(formatStr, "h");
+      formatStr += "h";
       break;
     }
     case ConversionSpec::CS_INT_FLOAT: {
       // TODO: Vec Only...
-      //strcat(formatStr, "hl");
+      //formatStr += "hl";
       break;
     }
     case ConversionSpec::CS_LONG: {
       // HACK: LONG only supported for non vectors now...
       if ( conversion.m_vectorSize == 1 ) {
-        strcat(formatStr, "l");
+        formatStr += "l";
       }
       break;
     }
@@ -1053,43 +1030,44 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       break;
   }
 
-  strcat(formatStr, " ");
-  formatStr[strlen(formatStr)-1] = conversion.m_specifier;
-  // TODO: later make this dynamically size... for now 1024 should be sufficient
-  int bufLen = 1024;
-  char *printBuf = new char[bufLen];
+  formatStr += conversion.m_specifier;
+
+  // Use ostringstream for safe formatting
+  constexpr int bufLen = 1024;
+  std::vector<char> printBuf(bufLen);
+
   switch ( arg.m_typeInfo ) {
     case PrintfArg::AT_PTR: {
-      snprintf(printBuf, bufLen, formatStr, arg.ptr);
-      retval = printBuf;
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.ptr); // NOLINT
+      retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_STR: {
-      snprintf(printBuf, bufLen, formatStr, arg.str.c_str());
-      retval = printBuf;
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.str.c_str()); // NOLINT
+      retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_INT: {
-      snprintf(printBuf, bufLen, formatStr, arg.int_arg);
-      retval = printBuf;
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.int_arg); // NOLINT
+      retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_UINT: {
-      snprintf(printBuf, bufLen, formatStr, arg.uint_arg);
-      retval = printBuf;
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.uint_arg); // NOLINT
+      retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_FLOAT: {
-      snprintf(printBuf, bufLen, formatStr, arg.float_arg);
-      retval = printBuf;
+      std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), arg.float_arg); // NOLINT
+      retval = printBuf.data();
       break;
     }
     case PrintfArg::AT_INTVEC: {
       size_t comma = 0;
       for (auto val : arg.intVec) {
         if (comma++) retval += ",";
-        snprintf(printBuf, bufLen, formatStr, val);
-        retval += printBuf;
+        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val); // NOLINT
+        retval += printBuf.data();
       }
       break;
     }
@@ -1097,8 +1075,8 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       size_t comma = 0;
       for (auto val : arg.uintVec) {
         if (comma++) retval += ",";
-        snprintf(printBuf, bufLen, formatStr, val);
-        retval += printBuf;
+        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val); // NOLINT
+        retval += printBuf.data();
       }
       break;
     }
@@ -1106,13 +1084,12 @@ std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
       size_t comma = 0;
       for (auto val : arg.floatVec) {
         if (comma++) retval += ",";
-        snprintf(printBuf, bufLen, formatStr, val);
-        retval += printBuf;
+        std::snprintf(printBuf.data(), bufLen, formatStr.c_str(), val); // NOLINT
+        retval += printBuf.data();
       }
       break;
     }
   }
-  delete[] printBuf;
   return retval;
 }
 
@@ -1176,11 +1153,14 @@ size_t getPrintfBufferSize(const std::array<size_t,3>& globalSize, const std::ar
 
   size_t workgroupBufferSize = totalLocal * getWorkItemPrintfBufferSize();
   size_t retval = workgroupCount * workgroupBufferSize;
-  char *p_bufEnv = getenv("XCL_PRINTF_BUFFER_SIZE");
-  if (p_bufEnv != NULL) {
-    retval = atol(p_bufEnv);
+
+  // Use xrt_core wrapper for safe cross-platform environment variable access
+  auto buf_size_str = xrt_core::utils::getenv("XCL_PRINTF_BUFFER_SIZE");
+  if (!buf_size_str.empty()) {
+    retval = std::strtoul(buf_size_str.c_str(), nullptr, 10);
   }
-  if ( getenv("XCL_PRINTF_DEBUG") ) {
+
+  if (xrt_core::utils::is_env("XCL_PRINTF_DEBUG")) {
     std::cout << "DEBUG: Workgroup_Count=" << workgroupCount << "  Workgroup_Buffer_Size=" << workgroupBufferSize << std::endl;
     std::cout << "DEBUG: Global_Size=" << totalGlobal << "  Local_Size=" << totalLocal << std::endl;
     std::cout << "DEBUG: XCL_PRINTF_BUFFER_SIZE=" << retval << std::endl;

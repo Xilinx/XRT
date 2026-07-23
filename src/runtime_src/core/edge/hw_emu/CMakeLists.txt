@@ -58,6 +58,7 @@ set(AIE_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_user_aie_object_hw_em>")
 
 add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
   $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
+  $<TARGET_OBJECTS:core_smi_alveo_objects>
   $<TARGET_OBJECTS:core_common_objects>
   $<TARGET_OBJECTS:core_edge_common_objects>
   $<$<AND:${AIE_BUILD_DEFINED},${AIE_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_user_aie_object_hw_em>>

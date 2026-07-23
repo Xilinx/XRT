@@ -215,7 +215,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power) {
     if (boost::iequals(tmp.label, "Total Power")) {
-      if ((tmp.input != std::numeric_limits<decltype(xq::sdm_sensor_info::data_type::input)>::max()) && (tmp.input != 0))
+      if (tmp.input != std::numeric_limits<decltype(xq::sdm_sensor_info::data_type::input)>::max())
         bd_power = xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3);
       bd_max_power = xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3);
     }
@@ -242,7 +242,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
     ptree_type pt;
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
-    pt.put("temp_C", tmp.input);
+    pt.put("temp_C", xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 2));
     pt.put("is_present", "true");
     thermal_array.push_back({"", pt});
   }

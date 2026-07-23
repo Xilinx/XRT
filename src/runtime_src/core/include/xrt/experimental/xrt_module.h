@@ -55,6 +55,19 @@ public:
   explicit
   module(const xrt::elf& elf);
 
+  /**
+   * module() - Constructor from elf with name
+   *
+   * @param elf
+   *  An elf binary with functions to execute
+   * @param name
+   *  A name for the module
+   *
+   */
+  XRT_API_EXPORT
+  explicit
+  module(const xrt::elf& elf, const std::string& name);
+
 
   /**
    * get_hw_context() - Get the hardware context associated with the module

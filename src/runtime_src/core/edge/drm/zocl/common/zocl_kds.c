@@ -30,9 +30,9 @@ do {\
 
 int kds_echo = 0;
 /*
- * Remove the client context and free all the memeory.
- * This function is also unlock the bitstrean for the slot associated with
- * this context.
+ * Deprecated: legacy client context teardown for xrt::device flow.
+ * The DEFAULT_HW_CTX_ID (0) backward-compatibility path will be removed
+ * when xrt::device context paths are fully retired.
  *
  * @param	zdev:   zocl device structure
  * @param       client:	KDS client structure
@@ -71,8 +71,9 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 }
 
 /*
- * Create a new client context and lock the bitstrean for the slot
- * associated with this context.
+ * Deprecated: legacy client context creation for xrt::device flow.
+ * The DEFAULT_HW_CTX_ID (0) backward-compatibility path will be removed
+ * when xrt::device context paths are fully retired.
  *
  * @param	zdev:   zocl device structure
  * @param       client:	KDS client structure
@@ -117,7 +118,7 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 
 	/* This is required to maintain the command stats per hw context.
 	 * for this case zocl hw context is not required. This is only for
-	 * backward compartability.
+	 * backward compatibility.
 	 */
 	client->next_hw_ctx_id = 0;
 	hw_ctx = kds_alloc_hw_ctx(client, cctx->xclbin_id, 0 /*slot id */);
@@ -440,7 +441,8 @@ int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 		if (!xcu)
 			continue;
 
-		apt_idx = get_apt_index_by_addr(zdev, xcu->info.addr);
+		apt_idx = get_apt_index_by_addr_and_slot(zdev, xcu->info.addr,
+			xcu->info.slot_idx);
 		if (apt_idx < 0) {
 			DRM_ERROR("CU address %llx is not found in XCLBIN\n",
 			    xcu->info.addr);

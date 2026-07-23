@@ -15,5 +15,8 @@ target_include_directories(hip_core_library_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
   ${XRT_SOURCE_DIR}/runtime_src/core/include
-  ${HIP_INCLUDE_DIRS}
   )
+
+# Vendored HIP headers are third-party; mark SYSTEM so the compiler, clang-tidy
+# and Coverity do not analyze/warn on them.
+target_include_directories(hip_core_library_objects SYSTEM PRIVATE ${HIP_INCLUDE_DIRS})

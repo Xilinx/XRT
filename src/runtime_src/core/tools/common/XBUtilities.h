@@ -11,7 +11,9 @@
 #include "core/common/query_requests.h"
 #include "core/common/archive.h"
 #include "core/common/runner/runner.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
+
+#include "SubCmd.h"
 
 #include <chrono>
 #include <iostream>
@@ -62,12 +64,25 @@ namespace XBUtilities {
   std::string get_device_class(const std::string& deviceBDF, bool in_user_domain);
 
   boost::property_tree::ptree
+  get_available_bdfs(bool inUserDomain);
+
+  boost::property_tree::ptree
   get_available_devices(bool inUserDomain);
 
   std::string
   str_available_devs(bool _inUserDomain);
 
-   /**
+  void
+  resolve_device(bool is_user_domain,
+                 const boost::program_options::variables_map& vm,
+                 std::string& device_bdf);
+
+  std::vector<std::shared_ptr<SubCmd>>
+  filter_subcmds(bool is_user_domain,
+                 const std::string& device_bdf,
+                 const std::vector<std::shared_ptr<SubCmd>>& all_subcmds);
+
+  /**
    * get_axlf_section() - Get section from the file passed in
    *
    * filename: file containing the axlf section
@@ -84,7 +99,7 @@ namespace XBUtilities {
    *
    * Return: list of UUIDs
    */
-  std::vector<std::string> get_uuids(const void *dtbuf);
+  std::vector<std::string> get_uuids(const void *dtbuf, size_t buf_size);
 
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
@@ -160,18 +175,6 @@ namespace XBUtilities {
 
   void
   printAdvancedDisclaimer();
-
-  /**
-   * isUsingAdvanced() - Check if user is using xrt-smi advanced/hidden features
-   *
-   * @configItems: Vector of tuples (name, description, type) from shim config
-   * @requestedNames: Vector of names requested by the user
-   * Return: true if advanced mode is enabled and user is using advanced/hidden features
-   */
-  bool
-  isUsingAdvanced(
-      const std::vector<std::tuple<std::string, std::string, std::string>>& configItems,
-      const std::vector<std::string>& requestedNames);
 
   /**
    * Open archive from device

@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2026 Xilinx, Inc. All rights reserved.
 #
 if (${XRT_BOOST_VERSION} VERSION_LESS 1.64.0)
   add_compile_options(-DNO_BOOST_PROCESS)
 endif()
 
 xrt_add_subdirectory(xbutil2)
-if(CMAKE_VERSION VERSION_LESS "3.18.0")
+
+if(NOT XRT_ENABLE_XBTRACER OR CMAKE_VERSION VERSION_LESS "3.18.0")
   # CPackDeb.cmake does not support -l{dir} which is required
   # when packaging plugin library libxrt_capture.so 
-  message(WARNING "CMake version is less than 3.18.0, build of xbtracer disabled")
+  message(WARNING "Build of xbtracer disabled")
 else()
   xrt_add_subdirectory(xbtracer)
 endif()

@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2019 - 2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "SectionFlash.h"
 
 #include "XclBinUtilities.h"
@@ -463,9 +450,9 @@ SectionFlash::writeMetadata(std::ostream& _oStream) const
 
   std::string sFlashType = getFlashTypeAsString((FLASH_TYPE)pHdr->m_flash_type);
   ptFlash.put("flash_type", sFlashType.c_str());
-  ptFlash.put("name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_name);
-  ptFlash.put("version", reinterpret_cast<char*>(pHdr) + pHdr->mpo_version);
-  ptFlash.put("md5", reinterpret_cast<char*>(pHdr) + pHdr->mpo_md5_value);
+  ptFlash.put("name",    XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name,      m_bufferSize));
+  ptFlash.put("version", XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version,   m_bufferSize));
+  ptFlash.put("md5",     XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_md5_value, m_bufferSize));
 
   boost::property_tree::ptree root;
   root.put_child("flash_metadata", ptFlash);

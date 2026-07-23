@@ -175,7 +175,7 @@ struct module_config_aie_gen2
   const buf& preempt_save_data;
   const buf& preempt_restore_data;
 
-  // Size of scratch pad memory
+  // Size of scratch pad memory per column
   size_t scratch_pad_mem_size;
 
   // Control scratch pad memory size (0 if not present)
@@ -214,6 +214,9 @@ struct module_config_aie_gen2_plus
 
   // Reference to dump buffer for debug/trace
   const buf& dump_buf;
+
+  // Size of scratch pad memory per column
+  size_t scratch_pad_mem_size;
   // NOLINTEND
 
   // Parent elf_impl pointer for any mutable operations
@@ -240,6 +243,7 @@ protected:
   // NOLINTBEGIN
   ELFIO::elfio m_elfio;
   xrt::elf::platform m_platform;
+  std::string m_path; // file path from which elf was loaded, empty if loaded from stream/buffer
 
   /* Parsed ELF data structures */
   // lookup map for section index to group index
@@ -262,6 +266,10 @@ protected:
   // Final kernel objects built from m_kernel_args_map and m_kernel_to_subkernels_map
   std::vector<elf::kernel> m_kernels;
 
+  // Map for custom sections
+  // key - custom section name, value - custom section data
+  std::map<std::string, detail::span<const char>> m_custom_section_map;
+
   /* Patcher related types and data - common between all platforms */
   // Aliases for patcher types
   using patcher_config = xrt_core::elf_patcher::patcher_config;
@@ -280,14 +288,19 @@ protected:
   static constexpr uint32_t addend_shift = 4;
   static constexpr uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
   static constexpr uint32_t schema_mask = ~addend_mask;
+
   // NOLINTEND
 
-  // Protected constructor - takes already-loaded ELFIO and platform
-  elf_impl(ELFIO::elfio&& elfio, elf::platform platform);
+  // elf_impl() - constructor
+  // 
+  // @elfio:  In memory ELFIO object
+  // @platform: ?
+  // @path: file path if ELFIO was loaded from from a file, empty otherwise
+  elf_impl(ELFIO::elfio&& elfio, elf::platform platform, std::string path);
 
-  // Parse .group sections in the ELF file and populate all maps
+  // Parse sections in the ELF and populate internal maps
   void
-  parse_group_sections();
+  parse_sections();
 
 private:
   ////////////////////////////////////////////////////////////////
@@ -333,6 +346,10 @@ private:
   void
   parse_single_group_section(const ELFIO::section* section);
 
+  // Parse custom sections and populate corresponding map
+  void
+  parse_custom_sections(const std::vector<uint32_t>& custom_section_ids);
+
 public:
   virtual ~elf_impl() = default;
 
@@ -347,6 +364,13 @@ public:
   get_elfio() const
   {
     return m_elfio;
+  }
+
+  // Get the filename this ELF was loaded from (empty if loaded from buffer/stream)
+  const std::string&
+  get_filename() const
+  {
+    return m_path;
   }
 
   // Get configuration UUID from ELF
@@ -434,10 +458,14 @@ public:
     return nullptr;
   }
 
-
   // Get the ERT command opcode in ELF flow
   virtual ert_cmd_opcode
   get_ert_opcode() const = 0;
+
+  // Get custom section data by name
+  // Returns span of custom section data
+  detail::span<const char>
+  get_custom_section(const std::string& name) const;
 };
 
 } // namespace xrt
@@ -452,6 +480,11 @@ static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
 std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
 get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name);
+
+// get_filename() - Return the filename this ELF was loaded from
+// Empty string if ELF was loaded from buffer/stream
+std::string
+get_filename(const xrt::elf_impl* elf_impl);
 
 } // namespace xrt_core::elf_int
 

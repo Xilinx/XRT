@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -130,7 +130,7 @@ get_os_info(boost::property_tree::ptree &pt)
 bool
 is_advanced()
 {
-  return true; //TODO: implement Linux side
+  return false; //TODO: remove once Windows side is removed
 }
 
 } //xrt_core::sysinfo

@@ -68,24 +68,28 @@ pairs.
 To use locally built xrt-runner.exe, it is important that KMD and UMD
 are in sync with what xrt-runner.exe is built from.
 ```
+xrt-runner --help
 usage: xrt-runner.exe [options]
  [--recipe <recipe.json>] recipe file to run
  [--profile <profile.json>] execution profile
  [--iterations <number>] override all profile iterations
  [--script <script>] runner script, enables multi-threaded execution
  [--threads <number>] number of threads to use when running script (default: #jobs)
+ [--queue-limit <number>] max jobs in job queue running script (default: threads or jobs)
  [--dir <path>] directory containing artifacts (default: current dir)
  [--mode <latency|throughput|validate>] execute only specified mode (default: all)
- [--progress] show progress
+ [--verbose <val>] set XRT verbosity level to specified value (default: 0)
+ [--nommap] disable mmap of buffers (default: profile.json)
+ [--progress] show progress (same as --verbose 6)
  [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'
 
 % xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]
 % xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]
-
 Note, [--threads <number>] overrides the default number, where default is the number of
-jobs in the runner script.  If the script has many resource heavy jobs then using 
-`--threads` may be necessary to limit how many jobs are created simultanously.
+jobs in the runner script.
 
+Note, [--queue-limit <num>] sets the maximum number of pending jobs when running in
+script mode.  If not set, the max number is set to 2 * number of threads used.
 Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.
 If the runner script specifies iterations for a recipe/profile pair, then this value is
 sticky for that recipe/profile pair.

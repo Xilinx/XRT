@@ -11,7 +11,7 @@
 #include "core/common/runner/runner.h"
 #include "core/common/json/nlohmann/json.hpp"
 #include "core/common/archive.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 
 namespace XBU = XBValidateUtils;
 namespace xq = xrt_core::query;
@@ -89,6 +89,10 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
   catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
+
+    // Restore the original preemption state
+    xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
+    return;
   }
 
   // Restore the original preemption state
@@ -116,6 +120,10 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
   catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
+
+    // Restore the original preemption state
+    xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
+    return;
   }
 
   // Restore the original preemption state
@@ -127,13 +135,6 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
 TestPreemptionOverhead::TestPreemptionOverhead()
   : TestRunner("preemption-overhead", "Measure preemption overhead at noop and memtile levels")
 {}
-
-boost::property_tree::ptree
-TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
 
 boost::property_tree::ptree
 TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)

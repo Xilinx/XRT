@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "core/include/xrt/experimental/xrt_system.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
@@ -12,13 +12,12 @@
 #include <mutex>
 #include <string>
 
-#ifdef _WIN32
-// to disable the compiler worning C4996: 'strncpy': This function or variable may be unsafe
-# pragma warning( disable : 4996)
-#endif
-
 // forward declaration
 namespace xrt::core::hip {
+// Defined first so it is initialized before the global x below (same
+// TU order).
+xrt_core::handle_map<device_handle, std::unique_ptr<device>> device_cache; //NOLINT
+
 static void
 device_init();
 }
@@ -112,10 +111,8 @@ hip_device_get_uuid(hipDevice_t device)
 
   hipUUID uid = {0};
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>((device_cache.get_or_error(device))->get_xrt_device().get_handle());
-  std::memcpy(uid.bytes, &std::get<0>(bdf), sizeof(uint16_t));
-  std::memcpy(uid.bytes + sizeof(uint16_t), &std::get<1>(bdf), sizeof(uint16_t));
-  std::memcpy(uid.bytes + 2 * sizeof(uint16_t), &std::get<2>(bdf), sizeof(uint16_t));
-  std::memcpy(uid.bytes + 3 * sizeof(uint16_t), &std::get<3>(bdf), sizeof(uint16_t));
+  auto uuid = xrt_core::query::pcie_bdf::to_uuid(bdf);
+  std::memcpy(uid.bytes, uuid.get(), sizeof(uid.bytes));
   return uid;
 }
 
@@ -132,7 +129,7 @@ hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
   // Query device name using rom_vbnv
   // Copy device name to device_props.name, ensuring no buffer overflow
   auto name_str = (xrt_core::device_query<xrt_core::query::rom_vbnv>(device_handle));
-  std::strncpy(device_props.name, name_str.c_str(), sizeof(device_props.name));
+  std::memcpy(device_props.name, name_str.c_str(), sizeof(device_props.name) - 1);
   device_props.name[sizeof(device_props.name) - 1] = '\0';
   // Extract and assign PCI domain, bus, and device IDs from the queried PCIe BDF tuple
   device_props.pciDomainID = std::get<0>(uuid);

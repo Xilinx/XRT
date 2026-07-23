@@ -62,3 +62,9 @@ EXPORTS
   hipGraphLaunch
   hipGraphExecDestroy
   hipGraphDestroy
+  hipImportExternalMemory
+  hipExternalMemoryGetMappedBuffer
+  hipDestroyExternalMemory
+  hipIpcGetMemHandle
+  hipIpcOpenMemHandle
+  hipIpcCloseMemHandle

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <charconv>
 #include <cstring>
 #include <dirent.h>
 #include <filesystem>
@@ -29,6 +30,34 @@
 namespace {
 
 namespace sfs = std::filesystem;
+
+// Parse a PCI sysfs name of the form "domain:bus:dev.func" (all hex),
+// e.g. "0000:01:00.0". Returns true only on a well-formed BDF.
+static bool
+parse_bdf(const std::string& name, uint16_t& domain, uint16_t& bus,
+          uint16_t& dev, uint16_t& func)
+{
+  constexpr int hex_base = 16;
+  const char* p = name.c_str();
+  const char* end = p + name.size();
+
+  auto field = [&](uint16_t& out, char sep) {
+    auto [ptr, ec] = std::from_chars(p, end, out, hex_base);
+    if (ec != std::errc{})
+      return false;
+    if (sep != '\0') {
+      if (ptr == end || *ptr != sep)
+        return false;
+      ++ptr;
+    }
+    p = ptr;
+    return true;
+  };
+
+  // Require the whole string to be a BDF and nothing else.
+  return field(domain, ':') && field(bus, ':')
+      && field(dev, '.') && field(func, '\0') && p == end;
+}
 
 static std::string
 get_name(const std::string& dir, const std::string& subdir)
@@ -158,19 +187,22 @@ namespace sysfs {
 static constexpr const char* dev_root = "/sys/bus/pci/devices/";
 
 static std::string
+get_dev_path(const std::string& name)
+{
+  if (!name.empty() && name.front() == '/')
+    return name;
+  return dev_root + name;
+}
+
+static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
 {
+  auto base = get_dev_path(name);
   std::string subdir;
-  if (get_subdev_dir_name(dev_root + name, subdev, subdir) != 0)
+  if (get_subdev_dir_name(base, subdev, subdir) != 0)
     return "";
 
-  std::string path = dev_root;
-  path += name;
-  path += "/";
-  path += subdir;
-  path += "/";
-  path += entry;
-  return path;
+  return base + "/" + subdir + "/" + entry;
 }
 
 static std::fstream
@@ -206,7 +238,7 @@ open(const std::string& name,
   if (path.empty()) {
     std::stringstream ss;
     ss << "Failed to find subdirectory for " << subdev
-       << " under " << dev_root + name << std::endl;
+       << " under " << get_dev_path(name) << std::endl;
     err = ss.str();
   } else {
     fs = open_path(path, err, write, binary);
@@ -458,24 +490,37 @@ dev(std::shared_ptr<const drv> driver, std::string sysfs)
   , m_driver(std::move(driver))
 {
   std::string err;
+  std::string sysfs_path = sysfs::get_dev_path(m_sysfs_name);
 
-  if(sscanf(m_sysfs_name.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
-    throw std::invalid_argument(m_sysfs_name + " is not valid BDF");
+  // A PCI device's sysfs name is a BDF (domain:bus:dev.func); anything
+  // else (rpmsg/platform canonical path) is non-PCI. Parsing the name
+  // both detects the bus type and fills in the BDF fields.
+  bool is_pci = parse_bdf(m_sysfs_name, m_domain, m_bus, m_dev, m_func);
 
-  m_is_mgmt = !m_driver->is_user();
+  // mgmt-vs-user PF is a PCI-only (Alveo dual-PF) concept; non-PCI
+  // devices are always user devices.
+  m_is_mgmt = is_pci && !m_driver->is_user();
 
-  if (m_is_mgmt) {
+  if (m_is_mgmt)
     sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
-  }
-  else {
+  else
     m_instance = get_render_value(
-      sysfs::dev_root + m_sysfs_name + "/" + m_driver->sysfs_dev_node_dir(),
+      sysfs_path + "/" + m_driver->sysfs_dev_node_dir(),
       m_driver->dev_node_prefix());
+
+  if (is_pci) {
+    // BAR-mapped register access used by xclRead/Write (pcieBarRead/Write).
+    sysfs_get<int>("", "userbar", err, m_user_bar, 0);
+    m_user_bar_size = bar_size(sysfs_path, m_user_bar);
+    sysfs_get<bool>("", "ready", err, m_is_ready, false);
+  } else {
+    // Non-PCI devices have no BAR; mark it invalid so BAR access fails
+    // cleanly instead of mmap()'ing a zero-length region.
+    m_user_bar = -1;
+    m_user_bar_size = 0;
+    m_is_ready = true;
   }
 
-  sysfs_get<int>("", "userbar", err, m_user_bar, 0);
-  m_user_bar_size = bar_size(sysfs::dev_root + m_sysfs_name, m_user_bar);
-  sysfs_get<bool>("", "ready", err, m_is_ready, false);
   m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 }
 
@@ -494,6 +539,10 @@ map_usr_bar() const
 
   if (m_user_bar_map != MAP_FAILED)
     return 0;
+
+  // No BAR to map (e.g. non-PCI device).
+  if (m_user_bar_size == 0)
+    return -ENODEV;
 
   int dev_handle = open("", O_RDWR);
   if (dev_handle < 0)
@@ -697,7 +746,13 @@ int
 get_runtime_active_kids(std::string &pci_bridge_path)
 {
   int curr_act_dev = 0;
-  std::vector<sfs::path> vec{sfs::directory_iterator(pci_bridge_path), sfs::directory_iterator()};
+  std::vector<sfs::path> vec;
+  try {
+    vec.assign(sfs::directory_iterator(pci_bridge_path), sfs::directory_iterator());
+  }
+  catch (const sfs::filesystem_error&) {
+    return 0;
+  }
 
   // Check number of Xilinx devices under this bridge.
   for (auto& path : vec) {

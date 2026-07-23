@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // System - Include Files
 #include <map>
+#include <string>
 
 // Local - Include Files
 #include "ReportRyzenPlatform.h"
@@ -34,7 +35,7 @@ ReportRyzenPlatform::getPropertyTree20202(const xrt_core::device* dev,
   pt = pt_platform;
 }
 
-void 
+void
 ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
                                  const boost::property_tree::ptree& _pt,
                                  const std::vector<std::string>& /*_elementsFilter*/,
@@ -53,12 +54,14 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
     _output << boost::format("  %-23s: %s \n") % "Power Mode" % pt_status.get<std::string>("power_mode");
     _output << boost::format("  %-23s: %s \n") % "Total Columns" % pt_static_region.get<std::string>("total_columns");
 
-
     auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
     if (watts != "N/A")
       _output << std::endl << boost::format("%-23s  : %s Watts\n") % "Estimated Power" % watts;
     else
       _output << std::endl << boost::format("%-23s  : %s\n") % "Estimated Power" % watts;
+
+    auto temp_c = pt_platform.get<std::string>("thermal.temp_C", "N/A");
+    _output << boost::format("%-23s  : %s\n") % "Temperature (C)" % temp_c;
   }
 
   _output << std::endl;

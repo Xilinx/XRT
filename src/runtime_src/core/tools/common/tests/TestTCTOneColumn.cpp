@@ -7,8 +7,10 @@
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_device.h"
+#include "core/common/runner/runner.h"
 #include "core/common/json/nlohmann/json.hpp"
 #include "core/common/archive.h"
+#include "core/common/smi/smi.h"
 
 // System - Include Files
 #include <filesystem>
@@ -16,16 +18,62 @@
 using json = nlohmann::json;
 namespace XBU = XBUtilities;
 
-/* This host application measures the average TCT latency and TCT throughput 
+/* This host application measures the average TCT latency and TCT throughput
  * for one columns tests.
- * The ELF code loopbacks the small chunk of input data from DDR through 
+ * The ELF code loopbacks the small chunk of input data from DDR through
  * a AIE MM2S Shim DMA channel back to DDR through a S2MM Shim DMA channel.
  * TCT is used for dma transfer completion. Host app measures the time for
- * predefined number of Tokens and calculate the latency and throughput.
+ * predefined number of Tokens and calculate the latency and throughput from
+ * the total elapsed time.
  */
 
-//This is an assumption coming from elf code running on the device.
-static constexpr int samples = 10000;
+// Number of sample tokens on Strix; assumption from ELF running on the device.
+static constexpr int strix_samples = 10000;
+
+static json
+run_tct_workload(const std::shared_ptr<xrt_core::device>& dev,
+                 const xrt_core::archive* archive,
+                 const std::vector<std::string>& artifacts)
+{
+  const std::string recipe_data = archive->data("recipe_tct_one_column.json");
+  const std::string profile_data = archive->data("profile_tct_one_column.json");
+  const auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, artifacts);
+
+  xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
+  runner.execute();
+  runner.wait();
+
+  return json::parse(runner.get_report());
+}
+
+static void
+calculate_tct_metrics(const json& report,
+                      int strix_token_samples,
+                      double& avg_latency_us,
+                      double& throughput_tct_s)
+{
+  const auto iterations = report["iterations"].get<int>();
+  const double elapsed_us = report["cpu"]["elapsed"].get<double>();
+
+  if (strix_token_samples > 0) {
+    avg_latency_us = elapsed_us / strix_token_samples;
+    throughput_tct_s = (strix_token_samples * iterations * 1000000.0) / elapsed_us; // NOLINT: elapsed is in microseconds
+  } else {
+    avg_latency_us = elapsed_us / iterations;
+    throughput_tct_s = (iterations * 1000000.0) / elapsed_us; // NOLINT: elapsed is in microseconds
+  }
+}
+
+static void
+log_tct_results(boost::property_tree::ptree& ptree,
+                double avg_latency_us,
+                double throughput_tct_s)
+{
+  if (XBU::getVerbose())
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % avg_latency_us));
+
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % throughput_tct_s));
+}
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestTCTOneColumn::TestTCTOneColumn()
@@ -33,49 +81,37 @@ TestTCTOneColumn::TestTCTOneColumn()
 {}
 
 boost::property_tree::ptree
-TestTCTOneColumn::run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
-
-boost::property_tree::ptree
 TestTCTOneColumn::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
+
   if (archive == nullptr) {
     ptree.put("status", XBValidateUtils::test_token_failed);
     XBValidateUtils::logger(ptree, "Error", "No archive found, skipping test");
     return ptree;
   }
-  
+
   try {
-    std::string recipe_data = archive->data("recipe_tct_one_column.json");
-    std::string profile_data = archive->data("profile_tct_one_column.json"); 
-    
-    // Extract artifacts using helper method
-    auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
-      "tct_one_col.xclbin", 
-      "tct_1col.elf" 
-    });
-    
-    // Create runner with recipe, profile, and artifacts repository
-    xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
-    runner.execute();
-    runner.wait();
+    using query = xrt_core::query::pcie_id;
+    const auto pcie_id = xrt_core::device_query<query>(dev);
+    xrt_core::smi::smi_hardware_config smi_hrdw;
+    const auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+    const bool is_strix = XBU::is_strix_hardware(hardware_type);
 
-    // Get final metrics from the last run 
-    auto report = json::parse(runner.get_report());
-    double latency = report["cpu"]["latency"].get<double>(); // Should be in microseconds
-    double throughput = report["cpu"]["throughput"].get<double>(); // Should be in operations/second
+    const std::vector<std::string> artifacts = is_strix
+      ? std::vector<std::string>{"tct_one_col.xclbin", "tct_1col.elf"}
+      : std::vector<std::string>{"tct_1col.elf"};
 
-    if(XBU::getVerbose())
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % (latency / samples)));
+    const auto report = run_tct_workload(dev, archive, artifacts);
 
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % (samples * throughput)));
+    double avg_latency_us = 0.0;
+    double throughput_tct_s = 0.0;
+    calculate_tct_metrics(report, is_strix ? strix_samples : 0, avg_latency_us, throughput_tct_s);
+
+    log_tct_results(ptree, avg_latency_us, throughput_tct_s);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
   }

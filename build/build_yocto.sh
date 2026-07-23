@@ -19,9 +19,9 @@ usage()
 {
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
-    echo "          -help                           Print this usage"
-    echo "          -clean, clean                   Remove build directories, Specify architecture"
-    echo "          -aarch [vek385|vrk160]          Specify architecture (required)"
+    echo "          -help                                 Print this usage"
+    echo "          -clean, clean                         Remove build directories, Specify architecture"
+    echo "          -aarch [vek385|vrk160|vck190|vek280]  Specify architecture (required)"
     echo ""
 }
 
@@ -39,13 +39,13 @@ set_architecture_params()
             MACHINE="amd-cortexa78-mali-common"
             RPM_ARCH_DIR="amd_cortexa78_mali_common"
             ;;
-        vrk160)
-            yocto_path="$ABS_PATH/yocto/edf/vrk160"
+        vrk160|vck190|vek280)
+            yocto_path="$ABS_PATH/yocto/edf/$ARCH"
             MACHINE="amd-cortexa72-common"
             RPM_ARCH_DIR="amd_cortexa72_common"
             ;;
         *)
-            error "Invalid architecture: $ARCH. Supported architectures: vek385, vrk160"
+            error "Invalid architecture: $ARCH. Supported architectures: vek385, vrk160, vck190, vek280"
             ;;
     esac
 }
@@ -77,7 +77,7 @@ install_recipes()
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
 	echo 'DEPENDS += " systemtap"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
-        echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
+        echo 'LICENSE = "GPL-2.0-or-later & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=de2c993ac479f02575bcbfb14ef9b485 \' >> $XRT_BB
         echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
     fi
@@ -88,7 +88,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
-        echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $ZOCL_BB
+        echo 'LICENSE = "GPL-2.0-or-later & Apache-2.0"' >> $ZOCL_BB
         echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8"' >> $ZOCL_BB
         if [[ ! -z $XRT_VERSION_PATCH ]]; then
             echo "EXTRA_OEMAKE += \"XRT_VERSION_PATCH=$XRT_VERSION_PATCH\"" >> $ZOCL_BB
@@ -132,7 +132,7 @@ fi
 
 # Check if architecture is specified for build
 if [[ -z "$ARCH" ]]; then
-    error "Architecture not specified. Use -aarch [vek385|vrk160]"
+    error "Architecture not specified. Use -aarch [vek385|vrk160|vck190|vek280]"
 fi
 
 # Set architecture-specific parameters

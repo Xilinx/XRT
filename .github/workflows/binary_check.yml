@@ -25,7 +25,7 @@ jobs:
           if [ $f == null ]; then
             continue;
           fi
-          if ! $(curl -s -L -I $f | grep "content-type:" | tail -1 | grep -q "text/"); then
+          if ! $(curl -s -L -I $f | grep "content-type:" | tail -1 | grep -qiE 'text/|image/svg[+]xml'); then
             echo "$f is not a text file"
             exit 1
           fi

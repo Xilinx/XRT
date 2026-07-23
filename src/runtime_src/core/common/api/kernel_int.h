@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Xilinx Runtime (XRT) Experimental APIs
 
@@ -17,9 +17,14 @@
 
 #include <bitset>
 #include <cstdint>
+#include <string>
 #include <vector>
 
-namespace xrt_core { namespace kernel_int {
+namespace xrt_core::xdp {
+struct xrt_kernel_data;
+}
+
+namespace xrt_core::kernel_int {
 
 // Provide access to kdma command based BO copy Used by xrt::bo::copy.
 // Arguably this should implemented by by shim->copy_bo, but must wait
@@ -83,15 +88,57 @@ XRT_CORE_COMMON_EXPORT
 size_t
 get_regmap_size(const xrt::kernel& kernel);
 
-// Get hw ctx using which this kernel is created
+// get_instance_name() - Get the kernel instance name
+// Return the name used to create the kernel before it is stripped to
+// remove instance identifier part.  In xclbin flow, this name is not
+// necessarily an instance name, but in ELF flow it uniquely
+// identifies a kernel instance.
+std::string
+get_instance_name(const xrt::kernel&);
+
+// get_hwctx() - Get hwctx in which this kernel is created
 xrt::hw_context
-get_hw_ctx(const xrt::kernel& kernel);
+get_hwctx(const xrt::kernel& kernel);
 
-// Allows the creation of the kernel object from a kernel_impl pointer
-// This is used for logging usage mertrics
+// get_ctrlcode() - Get kernel ctrlcode
+// For kernels created from legacy xrt::module
+xrt::elf
+get_ctrlcode(const xrt::kernel&);
+
+// get_hwctx() - Get hwctx in which the run kernel is created
+XRT_CORE_COMMON_EXPORT
+xrt::hw_context
+get_hwctx(const xrt::run&);
+
+// get_kernel() - Get xrt::kernel fron which run is created
 xrt::kernel
-create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl);
+get_kernel(const xrt::run&);
 
-}} // kernel_int, xrt_core
+// get_kernel_from_impl() - wrap impl in an xrt::kernel
+// Returns xrt::kernel created from shared kernel_impl.
+xrt::kernel
+get_kernel_from_impl(const xrt::kernel_impl* kernel_impl);
+
+// get_run_from_impl() - wrap impl in an xrt::run
+// Returns xrt::run created from shared run_impl.
+xrt::run
+get_run_from_impl(const xrt::run_impl*);
+
+// Fill XDP kernel data from a run_impl pointer for profiling hooks.
+// include_state controls whether run_impl->state() is queried; that polls the
+// command and is only valid after submission, so callers that run before the
+// command is submitted (run_constructor/run_start hooks) must leave it false.
+XRT_CORE_COMMON_EXPORT
+void
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data,
+                    bool include_state = false);
+
+// Set dtrace control file on a run_impl handle
+// This is used by XDP profiling to set the CT file without requiring xrt::run
+XRT_CORE_COMMON_EXPORT
+void
+set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path);
+
+} // xrt_core::kernel_int
 
 #endif

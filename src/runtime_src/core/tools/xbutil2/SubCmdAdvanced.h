@@ -12,7 +12,7 @@ class SubCmdAdvanced : public SubCmd {
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations);
+  SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary);
   virtual ~SubCmdAdvanced() {};
 
   private:

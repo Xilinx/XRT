@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "device.h"
 #include "memory.h"
 #include "program.h"
@@ -25,11 +12,11 @@
 #include "xrt/util/config_reader.h"
 
 #include "core/common/api/bo.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
-#include "core/common/xclbin_parser.h"
+#include "core/common/system.h"
 #include "core/common/utils.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
@@ -37,7 +24,7 @@
 #include <cstring>
 
 #ifdef _WIN32
-#pragma warning ( disable : 4244 4245 4267 4996 4505 )
+#pragma warning ( disable : 4267 )
 #endif
 
 namespace {
@@ -65,7 +52,7 @@ userptr_bad_alloc_message(void* addr)
                      + " instead of use CL_MEM_USE_HOST_PTR.");
 }
 
-XOCL_UNUSED static void
+[[maybe_unused]] static void
 host_copy_message(const xocl::memory* dst, const xocl::memory* src)
 {
   std::stringstream str;
@@ -74,7 +61,7 @@ host_copy_message(const xocl::memory* dst, const xocl::memory* src)
   xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,str.str());
 }
 
-XOCL_UNUSED static void
+[[maybe_unused]] static void
 cmd_copy_message(const xocl::memory* dst, const xocl::memory* src)
 {
   std::stringstream str;
@@ -138,8 +125,8 @@ is_hw_emulation()
 {
   // Temporary work-around used to set the mDevice based on
   // XCL_EMULATION_MODE=hw_emu.  Otherwise default is mSwEmDevice
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool hwem = xem ? std::strcmp(xem,"hw_emu")==0 : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool hwem = xem.empty() ? false : xem.compare("hw_emu")==0;
   return hwem;
 }
 
@@ -148,12 +135,12 @@ is_sw_emulation()
 {
   // Temporary work-around used to set the mDevice based on
   // XCL_EMULATION_MODE=hw_emu.  Otherwise default is mSwEmDevice
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem.empty() ? false : xem.compare("sw_emu")==0;
   return swem;
 }
 
-XOCL_UNUSED static bool
+[[maybe_unused]] static bool
 is_emulation_mode()
 {
   static bool val = is_sw_emulation() || is_hw_emulation();
@@ -455,26 +442,38 @@ device::
 get_cu_memidx() const
 {
   std::lock_guard<std::mutex> lk(m_mutex);
-  if (m_cu_memidx == -2) {
-    m_cu_memidx = -1;
+  if (m_cu_memidx != -2)
+    return m_cu_memidx;
+  
+  m_cu_memidx = -1;
 
-    if (get_num_cus()) {
-      // compute intersection of all CU memory masks
-      memidx_bitmask_type mask;
-      mask.set();
-      for (auto& cu : get_cu_range())
-        mask &= cu->get_memidx_intersect();
+  if (!get_num_cus())
+    return m_cu_memidx;
 
-      // Select first common Group index if present prior to bank index.
-      // Traverse from the higher order of the mask as groups comes in higher order
-      for (int idx=mask.size() - 1; idx >= 0; --idx) {
-        if (mask.test(idx)) {
-          m_cu_memidx = idx;
-          break;
-        }
-      }
+  // compute intersection of all CU memory masks
+  memidx_bitmask_type mask;
+  mask.set();
+  for (auto& cu : get_cu_range())
+    mask &= cu->get_memidx_intersect();
+  
+  if (!mask.size())
+    return m_cu_memidx;
+
+  if (mask.size() > static_cast<size_t>(std::numeric_limits<memidx_type>::max()))
+    throw std::runtime_error("memory index is out of range");
+  
+  // Select first common Group index if present prior to bank index.
+  // Traverse from the higher order of the mask as groups comes in higher order
+  for (size_t idx=mask.size() - 1; idx >= 0; --idx) {
+    if (mask.test(idx)) {
+      m_cu_memidx = static_cast<memidx_type>(idx);
+      break;
     }
+
+    if (idx == 0)
+      break;
   }
+
   return m_cu_memidx;
 }
 

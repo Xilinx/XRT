@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef xrtcore_config_reader_h_
 #define xrtcore_config_reader_h_
 
 #include "core/common/config.h"
-#include <string>
-#include <iosfwd>
 #include <climits>
+#include <iosfwd>
+#include <map>
+#include <string>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -47,6 +48,11 @@ namespace xrt_core { namespace config {
 
 namespace detail {
 
+// Get all values as a map of key / value pairs
+XRT_CORE_COMMON_EXPORT
+std::map<std::string, std::string>
+get_ini_values();
+  
 /**
  * Raw uncached accessors, should not be used
  * See xrt/test/util/tconfig.cpp for unit test
@@ -56,7 +62,7 @@ bool
 get_bool_value(const char*, bool);
 
 XRT_CORE_COMMON_EXPORT
-const char*
+std::string
 get_env_value(const char*);
 
 XRT_CORE_COMMON_EXPORT
@@ -118,13 +124,6 @@ get_profile()
 }
 
 inline bool
-get_sc_profile()
-{
-  static bool value = detail::get_bool_value("Debug.sc_profile", false);
-  return value ;
-}
-
-inline bool
 get_container()
 {
   static bool value = detail::get_bool_value("Debug.container",false);
@@ -175,6 +174,25 @@ get_aie_profile()
 }
 
 inline bool
+get_aie_dtrace()
+{
+  static bool value = detail::get_bool_value("Debug.aie_dtrace", false);
+  return value;
+}
+
+// Inline JSON blob carrying XDP profiling runtime configuration.
+// When non-empty, XDP parses this and uses it to drive per-plugin settings
+// (e.g. control_instrumentation for aie_dtrace) in preference to the
+// legacy AIE_*_settings.* xrt.ini sections. See
+// xdp/profile/plugin/vp_base/profiling_runtime_config.h for the consumer.
+inline std::string
+get_profiling_runtime_config()
+{
+  static std::string value = detail::get_string_value("Debug.profiling_runtime_config", "");
+  return value;
+}
+
+inline bool
 get_aie_debug()
 {
   static bool value = detail::get_bool_value("Debug.aie_debug",false);
@@ -193,21 +211,6 @@ get_aie_status_interval_us()
 {
   // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.aie_status_interval_us", 1000);
-  return value;
-}
-
-inline bool
-get_noc_profile()
-{
-  static bool value = detail::get_bool_value("Debug.noc_profile",false);
-  return value;
-}
-
-inline unsigned int
-get_noc_profile_interval_ms()
-{
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.noc_profile_interval_ms", 20);
   return value;
 }
 
@@ -257,29 +260,14 @@ get_ml_timeline()
 inline std::string
 get_ml_timeline_settings_buffer_size()
 {
-  static std::string value = detail::get_string_value("ML_timeline_settings.buffer_size", "192K");
-  return value;
-}
-
-inline unsigned int
-get_ml_timeline_settings_num_buffer_segments()
-{
-  static unsigned int value = detail::get_uint_value("ML_timeline_settings.num_buffer_segments", 0);
-  return value;
-}
-
-
-inline bool
-get_aie_pc()
-{
-  static bool value = detail::get_bool_value("Debug.aie_pc",false);
+  static std::string value = detail::get_string_value("ML_timeline_settings.buffer_size", "1920K");
   return value;
 }
 
 inline std::string
-get_aie_pc_settings()
+get_ml_timeline_settings_buffer_config()
 {
-  static std::string value = detail::get_string_value("AIE_pc_settings.addresses", "");
+  static std::string value = detail::get_string_value("ML_timeline_settings.buffer_config", "");
   return value;
 }
 
@@ -404,7 +392,7 @@ inline bool
 get_trace_logging()
 {
   static bool value = detail::get_bool_value("Runtime.trace_logging", false)
-    || detail::get_env_value("XRT_TRACE_LOGGING_ENABLE");
+    || !detail::get_env_value("XRT_TRACE_LOGGING_ENABLE").empty();
   return value;
 }
 
@@ -604,6 +592,13 @@ get_enable_aied()
   return value;
 }
 
+inline std::string
+get_aie_coredump_file()
+{
+  static std::string value = detail::get_string_value("Runtime.aie_coredump_file", "");
+  return value;
+}
+
 inline bool
 get_multiprocess()
 {
@@ -627,13 +622,6 @@ inline bool
 get_feature_toggle(const std::string& feature)
 {
   return detail::get_bool_value(feature.c_str(),false);
-}
-
-inline unsigned int
-get_noop_completion_delay_us()
-{
-  static unsigned int delay = detail::get_uint_value("Runtime.noop_completion_delay_us", 0);
-  return delay;
 }
 
 /**
@@ -714,6 +702,32 @@ inline bool
 get_rw_shared()
 {
   static bool value = detail::get_bool_value("Runtime.rw_shared",false);
+  return value;
+}
+
+inline unsigned int
+get_capture_frames()
+{
+  static auto value = detail::get_uint_value("Runtime.capture_frames", 0);
+  return value;
+}
+
+inline std::string
+get_capture_dir()
+{
+  static auto value = detail::get_string_value("Runtime.capture_output_dir", "./");
+  return value;
+}
+
+// Enable residency trim in xrt core.  This is used to trim down the
+// residency of buffers in the system when the buffers are unused
+// since last trim notification.  Affects Winndows MCDM UMD only.  If
+// set, then UMD creates a thread that invokes trim operation every
+// set interval.  The option is in addition to OS trim notification.
+inline unsigned int
+get_residency_trim_interval_ms()
+{
+  static auto value = detail::get_uint_value("Runtime.residency_trim_interval_ms", 0);
   return value;
 }
 
@@ -965,10 +979,27 @@ get_aie_profile_settings_start_iteration()
   return value;
 }
 
-inline bool
-get_aie_profile_settings_dtrace_debug()
+// Configurations under AIE_dtrace_settings (bandwidth / CT for Debug.aie_dtrace; no aie_profile CSV)
+inline unsigned int
+get_aie_dtrace_settings_interval_us()
 {
-  static bool value = detail::get_bool_value("AIE_profile_settings.dtrace_debug", "false");
+  static unsigned int value = detail::get_uint_value("AIE_dtrace_settings.interval_us", 1000);
+  return value;
+}
+
+inline std::string
+get_aie_dtrace_settings_graph_based_interface_tile_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.graph_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_dtrace_settings_tile_based_interface_tile_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.tile_based_interface_tile_metrics", "");
   return value;
 }
 
@@ -1114,10 +1145,17 @@ get_aie_trace_settings_poll_timers_interval_us()
   return value;
 }
 
+inline unsigned int
+get_aie_trace_settings_max_timer_samples()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.max_timer_samples", 2000000);
+  return value;
+}
+
 inline bool
 get_aie_trace_settings_enable_system_timeline()
 {
-  static bool value = detail::get_bool_value("AIE_trace_settings.enable_system_timeline", false);
+  static bool value = detail::get_bool_value("AIE_trace_settings.enable_system_timeline", true);
   return value;
 }
 
@@ -1131,7 +1169,14 @@ get_dtrace_control_file_path()
 inline unsigned int
 get_dtrace_log_level()
 {
-  static unsigned int value = detail::get_uint_value("Debug.dtrace_log_level", 1);
+  static unsigned int value = detail::get_uint_value("Debug.dtrace_log_level", 0);
+  return value;
+}
+
+inline bool
+get_dtrace_output_json_format()
+{
+  static bool value = detail::get_bool_value("Debug.dtrace_output_json_format", false);
   return value;
 }
 
@@ -1154,7 +1199,9 @@ get_run_buffer_pool_max_size()
 inline bool
 get_uc_log()
 {
-  static bool value = detail::get_bool_value("Debug.uc_log", false);
+  // Enabled by default for failure logs.
+  // This creates a per-uC log buffer (default 16KB per uC).
+  static bool value = detail::get_bool_value("Debug.uc_log", true);
   return value;
 }
 
@@ -1162,6 +1209,37 @@ inline bool
 get_uc_log_bin_format()
 {
   static bool value = detail::get_bool_value("Debug.uc_log_bin_format", false);
+  return value;
+}
+
+inline bool
+get_uc_log_dumper_thread()
+{
+  // Optional background dump thread; default false keeps dumping on-demand only.
+  static bool value = detail::get_bool_value("Debug.uc_log_dumper_thread", false);
+  return value;
+}
+
+inline unsigned int
+get_uc_log_size_per_uc_kb()
+{
+  // Per-uC log buffer size in KB. Default is 16KB per uC.
+  static constexpr unsigned int default_uc_log_size_per_uc_kb = 16U;
+  static unsigned int value =
+      detail::get_uint_value("Debug.uc_log_size_per_uc_kb", default_uc_log_size_per_uc_kb);
+  return value;
+}
+
+inline std::string
+get_uc_log_dump()
+{
+  // Sink for parsed uC log output: "file" (default), "syslog", "console", or "null"
+  // "file" or "" (default) -> write to timestamped per-chunk files
+  // "syslog"  -> route to OS system log (Linux syslog / Windows Event Log under AMD_XRT)
+  // "console" -> write to stderr
+  // "null"    -> discard
+  // Note: uc_log_bin_format=true always writes raw binary to 'file' regardless of this setting.
+  static std::string value = detail::get_string_value("Debug.uc_log_dump", "file");
   return value;
 }
 

@@ -12,7 +12,9 @@
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/runner/capture.h"
 
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <elfio/elfio.hpp>
@@ -34,6 +36,9 @@ using xrt_core::elf_int::no_ctrl_code_id;
 
 static constexpr size_t
 operator"" _kb(unsigned long long v)  { return 1024u * v; } // NOLINT
+
+static constexpr size_t
+operator"" _mb(unsigned long long v)  { return 1024u * 1024u * v; } // NOLINT
 
 ///////////////////////////////////////////////////////////////
 // Helper functions for kernel signature demangling and parsing
@@ -216,6 +221,7 @@ load_elfio(std::istream& stream)
   ELFIO::elfio elfio;
   if (!elfio.load(stream))
     throw std::runtime_error("not a valid ELF stream");
+
   return elfio;
 }
 
@@ -227,6 +233,7 @@ load_elfio(const void* data, size_t size)
   boost::interprocess::ibufferstream istr(static_cast<const char*>(data), size);
   if (!elfio.load(istr))
     throw std::runtime_error("not valid ELF data");
+
   return elfio;
 }
 
@@ -327,9 +334,10 @@ public:
 
 // Protected constructor
 elf_impl::
-elf_impl(ELFIO::elfio&& elfio, elf::platform platform)
+elf_impl(ELFIO::elfio&& elfio, elf::platform platform, std::string path)
   : m_elfio{std::move(elfio)}
   , m_platform{platform}
+  , m_path{std::move(path)}
 {}
 
 // Get symbol information from .symtab at given index
@@ -351,8 +359,9 @@ get_symbol_from_symtab(uint32_t sym_index) const
 
   if (!symbols.get_symbol(sym_index, info.name, value, size, bind,
                           info.type, info.section_index, other))
-    throw std::runtime_error("Unable to find symbol in .symtab section with index: " +
-                             std::to_string(sym_index));
+    throw std::runtime_error(
+      "Unable to find symbol in .symtab section with index: " +
+      std::to_string(sym_index));
 
   return info;
 }
@@ -412,12 +421,14 @@ get_kernel_subkernel_from_symtab(uint32_t sym_index)
   // Get subkernel symbol - must be of type OBJECT
   auto subkernel_sym = get_symbol_from_symtab(sym_index);
   if (subkernel_sym.type != ELFIO::STT_OBJECT)
-    throw std::runtime_error("Symbol doesn't point to subkernel entry (expected STT_OBJECT)");
+    throw std::runtime_error(
+      "Symbol doesn't point to subkernel entry (expected STT_OBJECT)");
 
   // Get parent kernel symbol - must be of type FUNC
   auto kernel_sym = get_symbol_from_symtab(subkernel_sym.section_index);
   if (kernel_sym.type != ELFIO::STT_FUNC)
-    throw std::runtime_error("Subkernel doesn't point to kernel entry (expected STT_FUNC)");
+    throw std::runtime_error(
+      "Subkernel doesn't point to kernel entry (expected STT_FUNC)");
 
   // Demangle kernel name and extract signature
   auto demangled_signature = demangle(kernel_sym.name);
@@ -462,14 +473,16 @@ parse_single_group_section(const ELFIO::section* section)
     return;
 
   // Parse kernel/subkernel from symtab using .group's info field
-  auto [kernel_name, subkernel_name] = get_kernel_subkernel_from_symtab(section->get_info());
+  auto [kernel_name, subkernel_name] =
+    get_kernel_subkernel_from_symtab(section->get_info());
 
   // Update kernel maps
   m_kernel_to_subkernels_map[kernel_name].push_back(subkernel_name);
   m_kernel_name_to_id_map[kernel_name + subkernel_name] = group_id;
 
   // Parse member section indices (skip flags at index 0)
-  const auto* word_data = reinterpret_cast<const ELFIO::Elf_Word*>(data);
+  const auto* word_data =
+    reinterpret_cast<const ELFIO::Elf_Word*>(data);
   const auto word_count = size / sizeof(ELFIO::Elf_Word);
 
   std::vector<uint32_t> member_sections;
@@ -482,24 +495,59 @@ parse_single_group_section(const ELFIO::section* section)
   m_group_to_sections_map.emplace(group_id, std::move(member_sections));
 }
 
-// Parse .group sections in the ELF file and populate all maps
 void
 elf_impl::
-parse_group_sections()
+parse_custom_sections(const std::vector<uint32_t>& custom_section_ids)
 {
-  if (!is_group_elf()) {
+  auto section_span = [](const ELFIO::section* sec) {
+    return detail::span<const char>(sec->get_data(), sec->get_size());
+  };
+
+  for (auto sec_id : custom_section_ids) {
+    auto sec = m_elfio.sections[sec_id];
+    if (!sec)
+      continue;
+
+    auto sec_name = sec->get_name();
+    auto data = section_span(sec);
+
+    m_custom_section_map[sec_name] = data;
+  }
+}
+
+// Parse ELF sections and populate all maps
+void
+elf_impl::
+parse_sections()
+{
+  if (!is_group_elf()) { // older ELF format without .group sections
     init_legacy_section_maps();
     finalize_kernels();
+    m_kernel_args_map.clear();
     return;
   }
 
+  // collect custom sections and parse .group sections to populate maps
+  std::vector<uint32_t> custom_section_ids;
+  constexpr ELFIO::Elf_Word custom_section_type = ELFIO::SHT_LOUSER + 1;
   for (const auto& section : m_elfio.sections) {
-    if (section && section->get_type() == ELFIO::SHT_GROUP)
+    if (!section)
+      continue;
+
+    if (section->get_type() == ELFIO::SHT_GROUP)
       parse_single_group_section(section.get());
+    else if (section->get_type() == custom_section_type)
+      custom_section_ids.push_back(section->get_index());
   }
 
   // Build elf::kernel objects after all group sections are parsed
   finalize_kernels();
+
+  // parse and collect custom sections from ELF
+  parse_custom_sections(custom_section_ids);
+
+  // Free parsing-only data, not used after parse_sections().
+  m_kernel_args_map.clear();
 }
 
 // Get configuration UUID from ELF
@@ -592,6 +640,16 @@ get_abi_version() const
   auto major = static_cast<uint8_t>((abi_version & major_ver_mask) >> shift);
   auto minor = static_cast<uint8_t>(abi_version & minor_ver_mask);
   return {major, minor};
+}
+
+detail::span<const char>
+elf_impl::
+get_custom_section(const std::string& name) const
+{
+  if (auto it = m_custom_section_map.find(name); it != m_custom_section_map.end())
+    return it->second;
+
+  throw std::runtime_error("Cannot get custom section " + name + " data, section not found in ELF");
 }
 
 ////////////////////////////////////////////////////////////////
@@ -860,11 +918,12 @@ class elf_aie_gen2 : public elf_impl
   }
 
 public:
-  elf_aie_gen2(ELFIO::elfio&& elfio, elf::platform platform)
-    : elf_impl{std::move(elfio), platform}
+  elf_aie_gen2(ELFIO::elfio&& elfio, elf::platform platform, std::string path)
+    : elf_impl{std::move(elfio), platform, std::move(path)}
   {
-    // Parse group sections to populate kernel and section maps
-    parse_group_sections();
+    XRT_TRACE_POINT_SCOPE(xrt_elf_aie_gen2);
+    // Parse ELF sections to populate kernel and section maps
+    parse_sections();
     // Initialize all section buffer maps
     initialize_section_buffer_maps();
     // Initialize argument patchers from relocation sections
@@ -1005,11 +1064,23 @@ class elf_aie_gen2_plus : public elf_impl
   // Helper functions
   ////////////////////////////////////////////////////////////////
 
-  // Extract the column and page information from the section name
-  // section name can be .ctrltext.<col>.<page> or .ctrldata.<col>.<page>
-  // or .ctrltext.<col>.<page>.<id> or .ctrldata.<col>.<page>.<id> - newer Elfs
+  // Returns true for merged-format ELFs where all pages per column are packed
+  // into a single .ctrltext.<col> section with no separate .ctrldata sections.
+  // Merged versions: 0x21 (config elf .target).
+  bool
+  is_merged_format() const
+  {
+    auto abi_ver = m_elfio.get_abi_version();
+    return (abi_ver == 0x21); // NOLINT
+  }
+
+  // Extract the column and page information from the section name.
+  // Partial ELF format: .ctrltext.<col>.<page> -> returns {col, page}
+  // Full ELF Per-page format: .ctrltext.<col>.<page>[.<group_id>] -> returns {col, page}
+  // Full ELF Merged format:   .ctrltext.<col>[.<group_id>]        -> returns {col, 0}
+  //
   static std::pair<uint32_t, uint32_t>
-  get_column_and_page(const std::string& name)
+  get_column_and_page(const std::string& name, bool is_merged)
   {
     constexpr size_t col_token_id  = 1;
     constexpr size_t page_token_id = 2;
@@ -1024,12 +1095,16 @@ class elf_aie_gen2_plus : public elf_impl
 
     try {
       if (tokens.size() <= col_token_id)
-        return {0, 0}; // Only prefix present
+        return {0, 0}; // section has no column token (e.g. ctrlpkt in partial ELF)
 
+      // 2 tokens: .ctrltext.<col> — no page or group_id present
       if (tokens.size() == (col_token_id + 1))
-        return {std::stoul(tokens[col_token_id]), 0}; // Only col present
+        return {std::stoul(tokens[col_token_id]), 0};
 
-      return {std::stoul(tokens[col_token_id]), std::stoul(tokens[page_token_id])};
+      // 3+ tokens: merged treats token[2] as group_id (page always 0);
+      //            per-page treats token[2] as page index.
+      return {std::stoul(tokens[col_token_id]),
+              is_merged ? 0 : std::stoul(tokens[page_token_id])};
     }
     catch (const std::exception&) {
       throw std::runtime_error("Invalid section name passed to parse col or page index\n");
@@ -1074,35 +1149,45 @@ class elf_aie_gen2_plus : public elf_impl
         auto name = sec->get_name();
 
         if (name.find(ctrltext_pattern) != std::string::npos) {
-          auto [col, page] = get_column_and_page(name);
+          auto [col, page] = get_column_and_page(name, is_merged_format());
           ctrl_map[id][col][page].ctrltext = sec;
         }
         else if (name.find(ctrldata_pattern) != std::string::npos) {
-          auto [col, page] = get_column_and_page(name);
+          auto [col, page] = get_column_and_page(name, is_merged_format());
           ctrl_map[id][col][page].ctrldata = sec;
         }
       }
     }
 
     // Create uC control code from the collected data
-    // Pad to page size for each page of a column
+    bool merged = is_merged_format();
     for (const auto& [id, uc_sec] : ctrl_map) {
       auto size = uc_sec.empty() ? 0 : uc_sec.rbegin()->first + 1;
       m_ctrlcodes_map[id].resize(size);
       pad_offsets[id].resize(size);
       for (auto& [ucidx, elf_sects] : uc_sec) {
-        for (auto& [page, page_sec] : elf_sects) {
+        if (merged) {
+          // Merged format: the single .ctrltext.<col> section already contains all
+          // pages laid out at pageNum*PAGE_SIZE offsets with header+text+data+padding
+          // embedded, meaning elf_sects contains only .ctrltext section
+          const auto& page_sec = elf_sects.begin()->second;
           if (page_sec.ctrltext)
             m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
+        }
+        else {
+          // Per-page format: each page has separate ctrltext + ctrldata sections;
+          // pad each page up to page boundary.
+          for (auto& [page, page_sec] : elf_sects) {
+            if (page_sec.ctrltext)
+              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
 
-          if (page_sec.ctrldata)
-            m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrldata);
+            if (page_sec.ctrldata)
+              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrldata);
 
-          // Pad to page boundary
-          auto current_size = m_ctrlcodes_map[id][ucidx].size();
-          auto target_size = (page + 1) * elf_page_size;
-          if (current_size < target_size) {
-            m_ctrlcodes_map[id][ucidx].add_padding_to_size(target_size);
+            auto current_size = m_ctrlcodes_map[id][ucidx].size();
+            auto target_size = (page + 1) * elf_page_size;
+            if (current_size < target_size)
+              m_ctrlcodes_map[id][ucidx].add_padding_to_size(target_size);
           }
         }
         pad_offsets[id][ucidx] = m_ctrlcodes_map[id][ucidx].size();
@@ -1116,7 +1201,7 @@ class elf_aie_gen2_plus : public elf_impl
         const auto& name = sec->get_name();
         if (name.find(pad_pattern) == std::string::npos)
           continue;
-        auto [col, page] = get_column_and_page(name);
+        auto [col, page] = get_column_and_page(name, is_merged_format());
         m_ctrlcodes_map[id][col].append_section_data(sec);
       }
     }
@@ -1197,7 +1282,7 @@ class elf_aie_gen2_plus : public elf_impl
         throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
       auto patch_sec_name = patch_sec->get_name();
-      auto [col, page] = get_column_and_page(patch_sec_name);
+      auto [col, page] = get_column_and_page(patch_sec_name, is_merged_format());
       auto sec_idx = patch_sec->get_index();
       auto grp_idx = m_section_to_group_map[sec_idx];
       if (m_ctrlcodes_map.find(grp_idx) == m_ctrlcodes_map.end())
@@ -1219,14 +1304,23 @@ class elf_aie_gen2_plus : public elf_impl
         // section to patch is ctrlpkt
         abs_offset += rela->r_offset;
         buf_type = patcher_buf_type::ctrlpkt;
+        // we have multiple ctrlpkt sections and to uniquely identify symbol
+        // for patching we add ctrlpkt section symbol name to key string
+        auto sym_name =
+            xrt_core::elf_patcher::get_symbol_name_from_section_name(patch_sec_name);
+        argnm += sym_name;
       }
       else {
         // section to patch is ctrlcode
         auto column_ctrlcode_size = ctrlcodes.at(col).size();
+        // r_offset = T_N + D_bd (T_N excludes the 16B page header).
+        // For merged format, page = 0 (get_column_and_page returns 0 for merged section names)
+        // so page * elf_page_size = 0 and r_offset already encodes the page_base.
+        // Formula works unchanged for both per-page and merged formats.
         auto sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16
         if (sec_offset >= column_ctrlcode_size)
           throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(sec_offset));
-        // Compute absolute offset
+        // Compute absolute offset across all columns
         for (uint32_t i = 0; i < col; ++i)
           abs_offset += ctrlcodes.at(i).size();
         abs_offset += sec_offset;
@@ -1270,11 +1364,12 @@ class elf_aie_gen2_plus : public elf_impl
   }
 
 public:
-  elf_aie_gen2_plus(ELFIO::elfio&& elfio, elf::platform platform)
-    : elf_impl{std::move(elfio), platform}
+  elf_aie_gen2_plus(ELFIO::elfio&& elfio, elf::platform platform, std::string path)
+    : elf_impl{std::move(elfio), platform, std::move(path)}
   {
-    // Parse group sections to populate kernel and section maps
-    parse_group_sections();
+    XRT_TRACE_POINT_SCOPE(xrt_elf_aie_gen2_plus);
+    // Parse ELF sections to populate kernel and section maps
+    parse_sections();
     // Initialize all section buffer maps
     initialize_section_buffer_maps();
   }
@@ -1312,10 +1407,17 @@ public:
 
     static const std::map<std::string, buf> empty_ctrlpkt_map;
 
+    auto scratch_pad_size = (m_platform == elf::platform::aie4  ||
+                             m_platform == elf::platform::aie4a ||
+                             m_platform == elf::platform::aie4z)
+      ? 3_mb  // NOLINT
+      : 0;
+
     return module_config_aie_gen2_plus{
       ctrlcode_it->second,                                                       // ctrlcodes
       ctrlpkt_it != m_ctrlpkt_buf_map.end() ? ctrlpkt_it->second : empty_ctrlpkt_map, // ctrlpkt_bufs
       dump_it != m_dump_buf_map.end() ? dump_it->second : buf::get_empty_buf(),  // dump_buf
+      scratch_pad_size,                                                          // scratch_pad_mem_size
       this                                                                       // elf_parent
     };
   }
@@ -1374,22 +1476,22 @@ namespace {
 
 // Factory function - creates correct derived type based on platform
 static std::shared_ptr<xrt::elf_impl>
-create_elf_impl(ELFIO::elfio&& elfio)
+create_elf_impl(ELFIO::elfio&& elfio, const std::string& path = {})
 {
-  auto os_abi = elfio.get_os_abi();
+  auto platform = static_cast<xrt::elf::platform>(elfio.get_os_abi());
 
-  switch (os_abi) {
-  case static_cast<uint8_t>(xrt::elf::platform::aie2p):
-    return std::make_shared<xrt::elf_aie_gen2>(std::move(elfio), xrt::elf::platform::aie2p);
-  case static_cast<uint8_t>(xrt::elf::platform::aie2ps):
-  case static_cast<uint8_t>(xrt::elf::platform::aie2ps_group):
-  case static_cast<uint8_t>(xrt::elf::platform::aie4):
-  case static_cast<uint8_t>(xrt::elf::platform::aie4a):
-  case static_cast<uint8_t>(xrt::elf::platform::aie4z):
-    return std::make_shared<xrt::elf_aie_gen2_plus>(std::move(elfio), static_cast<xrt::elf::platform>(os_abi));
+  switch (platform) {
+  case xrt::elf::platform::aie2p:
+    return std::make_shared<xrt::elf_aie_gen2>(std::move(elfio), platform, path);
+  case xrt::elf::platform::aie2ps:
+  case xrt::elf::platform::aie2ps_legacy:
+  case xrt::elf::platform::aie4:
+  case xrt::elf::platform::aie4a:
+  case xrt::elf::platform::aie4z:
+    return std::make_shared<xrt::elf_aie_gen2_plus>(std::move(elfio), platform, path);
   default:
     throw std::runtime_error("ELF contains unsupported platform OS/ABI: " +
-                             std::to_string(static_cast<int>(os_abi)));
+                             std::to_string(static_cast<int>(platform)));
   }
 }
 
@@ -1412,23 +1514,35 @@ valid_or_error(const std::shared_ptr<elf_impl>& handle)
 
 elf::
 elf(const std::string& fnm)
-  : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(fnm))}
-{}
+  : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(fnm), fnm)}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), fnm);
+}
 
 elf::
 elf(std::istream& stream)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(stream))}
-{}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), stream);
+}
 
 elf::
 elf(const void* data, size_t size)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(data, size))}
-{}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), data, size);
+}
 
 elf::
 elf(const std::string_view& sv)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(sv.data(), sv.size()))}
-{}
+{
+  // ELFIO cannot be post dumped. Track elf_impl to elf data
+  XRT_REPLAY_CAPTURE(elf_ctor, handle.get(), sv.data(), sv.size());
+}
 
 xrt::uuid
 elf::
@@ -1468,6 +1582,14 @@ get_kernels() const
 {
   valid_or_error(handle);
   return handle->get_kernels();
+}
+
+detail::span<const char>
+elf::
+get_custom_section(const std::string& section_name) const
+{
+  valid_or_error(handle);
+  return handle->get_custom_section(section_name);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -1531,6 +1653,14 @@ get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
     }
   }
   throw std::runtime_error("Kernel not found: " + kernel_name);
+}
+
+std::string
+get_filename(const xrt::elf_impl* elf_impl)
+{
+  return elf_impl
+    ? elf_impl->get_filename()
+    : "";
 }
 
 } // xrt_core::elf_int

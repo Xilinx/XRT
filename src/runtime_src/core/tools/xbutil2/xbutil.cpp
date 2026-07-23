@@ -14,10 +14,8 @@
 // Supporting tools
 #include "common/error.h"
 #include "tools/common/SubCmd.h"
-#include "tools/common/SubCmdJSON.h"
 #include "tools/common/XBMain.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/JSONConfigurable.h"
 #include "core/common/module_loader.h"
 
 // System include files
@@ -26,52 +24,12 @@
 #include <iostream>
 #include <string>
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
-const std::string& command_config = 
-R"(
-[{
-  "alveo": [{
-    "examine": [{}]
-  },{
-    "configure": [{}]
-  },{
-    "advanced":[{
-      "suboption": ["read-mem", "write-mem"]
-    }]
-  },{
-    "validate": [{}]
-  },{
-    "reset": [{}]
-  },{
-    "program": [{}]
-  }]
-},{
-  "aie": [{
-    "examine": [{}]
-  },{
-    "configure": [{}]
-  },{
-    "advanced":[{
-      "suboption": ["read-aie-reg", "aie-clock", "report"]
-    }]
-  },{
-    "validate": [{}]
-  }]
-}]
-)";
-
 // Program entry
 int main( int argc, char** argv )
 {
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
   const std::string executable = "xrt-smi";
-
-  boost::property_tree::ptree configTree;
-  std::istringstream command_config_stream(command_config);
-  boost::property_tree::read_json(command_config_stream, configTree);
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
@@ -80,14 +38,11 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false, false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false));
 
-    // Parse sub commands from json files
-    populateSubCommandsFromJSON(subCommands, executable);
-
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
 #endif
 
-    subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true, false, true, configTree));
+    subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true, false, true));
   }
 
   for (auto & subCommand : subCommands) {
@@ -104,7 +59,7 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_( argc, argv, executable, description, subCommands, configTree);
+    main_( argc, argv, executable, description, subCommands);
     return 0;
   } catch (const xrt_core::error& e) {
     // Clean exception exit

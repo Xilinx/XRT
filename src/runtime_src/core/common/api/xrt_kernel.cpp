@@ -14,11 +14,13 @@
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_mailbox.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 #include "core/include/xrt/detail/ert.h"
+#include "core/include/xrt/detail/span.h"
 #include "core/include/ert_fa.h"
 
 #include "bo.h"
@@ -43,9 +45,15 @@
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/common/time.h"
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
+#include "core/common/utils.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/runner/capture.h"
+#include "core/common/xdp/profile.h"
+
+#include "core/common/aiebu/src/cpp/include/aiebu/aiebu_debug.h"
 
 #include <boost/format.hpp>
 
@@ -58,6 +66,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <map>
 #include <memory>
@@ -73,7 +82,7 @@ using namespace std::chrono_literals;
 #endif
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4267 4996 4100 4201)
+# pragma warning(disable : 4100 4244 4267)
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -141,6 +150,9 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 
 namespace {
 
+template <typename T>
+using span = xrt::detail::span<T>;
+
 constexpr size_t mailbox_input_write = 1;
 constexpr size_t mailbox_output_read = 1;
 constexpr size_t mailbox_input_ack = (1 << 1);
@@ -153,15 +165,15 @@ constexpr size_t mailbox_output_ctrl_reg = 0x18;
 constexpr size_t max_cus = 128;
 constexpr size_t cus_per_word = 32;
 
-XRT_CORE_UNUSED // debug enabled function
+[[maybe_unused]] // debug enabled function
 std::string
 debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
 {
-  static auto fnm = std::getenv("MBS_PRINT_REGMAP");
-  if (!fnm)
+  static auto fnm = xrt_core::utils::getenv("MBS_PRINT_REGMAP");
+  if (fnm.empty())
     return "";
 
-  std::ofstream ostr(fnm,std::ios::app);
+  std::ofstream ostr(fnm, std::ios::app);
   //std::ostringstream ostr;
   constexpr auto indent3 = 3; // stupid lint warnings
   constexpr auto indent8 = 8; // stupid lint warnings
@@ -198,6 +210,156 @@ cmd_state_to_string(ert_cmd_state state)
     : itr->second;
 }
 
+static std::string
+ctx_status_to_string(uint32_t ctx_status)
+{
+  static constexpr std::array<const char*, 6> ctx_status_names {{
+    "CTX_STATUS_UNASSIGNED",
+    "CTX_STATUS_ERROR",
+    "CTX_STATUS_IDLE",
+    "CTX_STATUS_RUNNABLE",
+    "CTX_STATUS_RUNNING",
+    "CTX_STATUS_PREEMPTING",
+  }};
+
+  if (ctx_status >= ctx_status_names.size())
+    return "UNKNOWN";
+  return ctx_status_names[ctx_status];
+}
+
+static std::string
+uc_fwstate_to_string(uint32_t fw_status)
+{
+  static const std::map<uint32_t, const char*> fw_state_string {
+    {0x1001, "FW_STATE_LEADER_HOST_QUEUE_POP"},
+    {0x1002, "FW_STATE_LEADER_DISTRIBUTE_WORK"},
+    {0x1003, "FW_STATE_LEADER_POST_DIST_BARRIER"},
+    {0x1004, "FW_STATE_LEADER_POST_WORK_BARRIER"},
+    {0x1005, "FW_STATE_LEADER_RUN"},
+    {0x1006, "FW_STATE_LEADER_HOST_QUEUE_FINISH"},
+    {0x2001, "FW_STATE_WORKER_PRE_WORK_BARRIER"},
+    {0x2002, "FW_STATE_WORKER_POST_WORK_BARRIER"},
+    {0x2003, "FW_STATE_WORKER_RUN"},
+    {0x0FFE, "FW_STATE_HANDSHAKE"},
+    {0x0001, "FW_STATE_INIT_BARRIER"},
+    {0x0002, "FW_STATE_CONFIGURE_PARTITION"},
+    {0x0003, "FW_STATE_HSA_CONFIG"},
+    {0x0004, "FW_STATE_EXEC_PAGEIN"},
+    {0x0005, "FW_STATE_EXEC_INITIAL_PASS"},
+    {0x0006, "FW_STATE_EXEC_EVENTLOOP"},
+    {0x0007, "FW_STATE_OOO_OPCODE"},
+    {0x0008, "FW_STATE_OOO_PREFETCH"},
+    {0x0009, "FW_STATE_EMPTY_PAGE"},
+    {0x000A, "FW_STATE_WAKENUP_AFTER_PREEMPT"},
+    {0x000B, "FW_STATE_EXEC_PAGE"},
+    {0x000C, "FW_STATE_CHECK_NEWPAGE"},
+    {0x000D, "FW_STATE_RUN_TASK_COMPLETION"},
+    {0x000E, "FW_STATE_PREFETCH_IN_ORDER"},
+    {0x000F, "FW_STATE_RELOAD_OOO"},
+    {0x0010, "FW_STATE_RUN_SAVE"},
+    {0x0011, "FW_STATE_RELOAD_CORE"},
+    {0x0012, "FW_STATE_NO_PAGE"},
+    {0x0013, "FW_STATE_PREFETCH_OOO"},
+    {0x0014, "FW_STATE_WAIT_PAGE_LOAD"},
+    {0x0015, "FW_STATE_INVALID_PKT"},
+    {0x0016, "FW_STATE_ASYNC_DM2MM_HANG"},
+    {0x0017, "FW_STATE_SYNC_DM2MM_HANG"},
+    {0x0018, "FW_STATE_ASYNC_MM2DM_HANG"},
+    {0x0019, "FW_STATE_CTRL_CODE_HANG"},
+    {0x001A, "FW_STATE_FW_EXCEPTION"},
+    {0x001B, "FW_STATE_BARRIER_HANG"},
+    {0x001C, "FW_STATE_HW_UNCORRECTABLE_ERROR"},
+    {0x001D, "FW_STATE_HW_CORRECTABLE_ERROR"},
+    {0x001E, "FW_STATE_AXI_ERROR"},
+    {0x001F, "FW_STATE_ATOMIC_DM2MM_HANG"},
+    {0x0020, "FW_STATE_HSA_CRITICAL_ERROR"},
+    {0x0021, "FW_STATE_WAKENUP_AFTER_SWITCH_REQ"},
+    {0x0022, "FW_STATE_SYNC_MM2DM_HANG"},
+    {0x0FFF, "FW_STATE_EXIT"},
+  };
+
+  auto itr = fw_state_string.find(fw_status);
+  return itr == fw_state_string.end()
+    ? "UNKNOWN"
+    : itr->second;
+}
+static std::string
+ctx_error_type_to_string(uint32_t ctx_error_type)
+{
+  static constexpr std::array<const char*, 7> ctx_error_type_names {{
+    "NPU_ASYNC_EVENT_CTX_ERR_HWSCH_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_STOP_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_AIE_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_PREEMPTION_TIMEOUT",
+    "NPU_ASYNC_EVENT_CTX_ERR_NEW_PROCESS_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_UC_CRITICAL_ERROR",
+    "NPU_ASYNC_EVENT_CTX_ERR_UC_COMPLETION_TIMEOUT",
+  }};
+
+  if (ctx_error_type >= ctx_error_type_names.size())
+    return "UNKNOWN";
+
+  return ctx_error_type_names[ctx_error_type];
+}
+
+template <size_t N>
+static std::string
+flags_to_string(uint32_t value, const std::array<std::pair<uint32_t, const char*>, N>& flags)
+{
+  if (value == 0)
+    return "NONE";
+
+  std::string result;
+  uint32_t unknown = value;
+  for (const auto& entry : flags) {
+    if (!(value & entry.first))
+      continue;
+
+    if (!result.empty())
+      result += " | ";
+
+    result += entry.second;
+    unknown &= ~entry.first;
+  }
+  if (unknown != 0) {
+    if (!result.empty())
+      result += " | ";
+
+    result += (boost::format("UNKNOWN(0x%x)") % unknown).str();
+  }
+  return result;
+}
+
+// misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
+static std::string
+uc_misc_status_flags_to_string(uint32_t misc_status)
+{
+  static constexpr std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
+    {0x1U,  "FW_EXCEPTION"},
+    {0x2U,  "CTRL_HANG"},
+    {0x4U,  "ASYNC_DM2MM_HANG"},
+    {0x8U,  "ASYNC_MM2DM_HANG"},
+    {0x10U, "SYNC_DM2MM_HANG"},
+    {0x20U, "SYNC_MM2DM_HANG"},
+    {0x40U, "MISC_UNRECOVERABLE_ERROR"},
+  }};
+
+  return flags_to_string(misc_status, misc_status_flags);
+}
+
+// uc_idle_status is a bit mask (ert_uc_health_info / hsa_lite_status).
+std::string
+uc_idle_status_flags_to_string(uint32_t idle_status)
+{
+  static constexpr std::array<std::pair<uint32_t, const char*>, 3> idle_status_flags {{
+    {0x1U, "HSA_QUEUE_NOT_EMPTY"},
+    {0x2U, "PREEMPTION_SAVE_COMPLETE"},
+    {0x4U, "CERT_IS_IDLE"},
+  }};
+
+  return flags_to_string(idle_status, idle_status_flags);
+}
+
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
 // the kernel argument as provided by user and its size in number of
@@ -222,7 +384,8 @@ cmd_state_to_string(ert_cmd_state state)
 template <typename ValueType>
 class arg_range
 {
-  const ValueType* uval;
+  using value_type = ValueType;
+  const value_type* uval;
   size_t words;
 
   // Number of bytes must multiple of sizeof(ValueType)
@@ -240,13 +403,13 @@ public:
     , words(validate_bytes(bytes) / sizeof(ValueType))
   {}
 
-  const ValueType*
+  const value_type*
   begin() const
   {
     return uval;
   }
 
-  const ValueType*
+  const value_type*
   end() const
   {
     return uval + words;
@@ -261,13 +424,19 @@ public:
   size_t
   bytes() const
   {
-    return words * sizeof(ValueType);
+    return words * sizeof(value_type);
   }
 
-  const ValueType*
+  const value_type*
   data() const
   {
     return uval;
+  }
+
+  const span<const value_type>
+  data_as_span() const
+  {
+    return {uval, words};
   }
 };
 
@@ -287,8 +456,8 @@ to_uint64_t(ValueType value)
 inline bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  static auto xem = xrt_core::utils::getenv("XCL_EMULATION_MODE");
+  static bool swem = (xem.compare("sw_emu") == 0);
   return swem;
 }
 
@@ -529,6 +698,13 @@ class ip_context
     int32_t
     get_arg_memidx(size_t argidx) const
     {
+      // Calling group_id() on a scalar argument crashes with std::out_of_range
+      // because default_connection is only populated for arguments with memory
+      // connections. When a scalar argument appears after all pointer arguments,
+      // its index falls outside the vector bounds. The bounds check below
+      // intercepts this and returns no_memidx for such arguments.
+      if (argidx >= default_connection.size())
+        return no_memidx;
       return default_connection.at(argidx);
     }
 
@@ -693,7 +869,7 @@ public:
   using execbuf_type = xrt_core::bo_cache::cmd_bo<ert_start_kernel_cmd>;
   using callback_function_type = std::function<void(ert_cmd_state)>;
   using callback_list = std::vector<callback_function_type>;
-
+  static constexpr size_t allocation_size = xrt_core::bo_cache::bo_size;
 private:
   // Return state of underlying exec buffer packet This is an
   // asynchronous call, the command object may not be in the same
@@ -1399,6 +1575,7 @@ public:
 
 private:
   std::string name;                           // kernel name
+  std::string m_full_name;                    // full "kernel:instance" string
   std::shared_ptr<device_type> device;        // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
   xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
@@ -1752,6 +1929,7 @@ public:
   // construction and shared ownership must be tied to the kernel_impl
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
+    , m_full_name(nm)                                          // full name as passed (with or without ':')
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
@@ -1770,6 +1948,12 @@ public:
         XRT_DEBUGF("kernel_impl mailbox or counted auto restart detected, changing access mode to exclusive");
         xrt_core::hw_context_int::set_exclusive(hwctx);
     }
+
+#if 0
+    // AIE-only xclbins now have IP_LAYOUT; reject early with a clear message
+    if (auto axlf = xclbin.get_axlf(); axlf && xrt_core::xclbin::is_aie_only(axlf))
+      throw xrt_core::error(ENOTSUP, "xrt::kernel cannot be opened for AIE-only xclbins.");
+#endif
 
     // Compare the matching CUs against the CU sort order to create cumask
     const auto& kernel_cus = xkernel.get_cus(nm);  // xrt::xclbin::ip objects for matching nm
@@ -1802,6 +1986,7 @@ public:
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
+    , m_full_name(nm)                                                   // full name as passed (with or without ':')
     , device(std::move(dev))                                            // share ownership
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
@@ -1885,6 +2070,22 @@ public:
   get_name() const
   {
     return name;
+  }
+
+  std::string
+  get_full_name() const
+  {
+    return m_full_name;
+  }
+
+  xrt::elf
+  get_ctrlcode_elf() const
+  {
+    if (!m_module)
+      // Legacy DPU TXN flow
+      return {};
+
+    return xrt::elf{xrt_core::module_int::get_elf_handle(m_module)};
   }
 
   uint32_t
@@ -2084,10 +2285,11 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   struct arg_setter : argument::setter
   {
     uint8_t* data;
+    size_t m_payload_size; // bytes available in payload starting at data
 
-    explicit
-    arg_setter(uint32_t* d)
+    arg_setter(uint32_t* d, size_t payload_size)
       : data(reinterpret_cast<uint8_t*>(d))
+      , m_payload_size(payload_size)
     {}
 
     virtual
@@ -2118,9 +2320,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // AP_CTRL_HS, AP_CTRL_CHAIN
   struct hs_arg_setter : arg_setter
   {
-    explicit
-    hs_arg_setter(uint32_t* data)
-      : arg_setter(data)
+    hs_arg_setter(uint32_t* data, size_t payload_size)
+      : arg_setter(data, payload_size)
     {}
 
     void
@@ -2128,6 +2329,9 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     {
       // max 4 bytes supported for direct register write
       auto count = std::min<size_t>(4, value.size());
+      if (offset > m_payload_size || count > m_payload_size - offset)
+        throw xrt_core::error(-EINVAL, "kernel arg offset/size exceeds execbuf payload");
+      
       std::copy_n(value.begin(), count, data + offset);
     }
 
@@ -2135,12 +2339,18 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
     {
       auto count = std::min(arg.size(), value.size());
+      if (arg.offset() > m_payload_size || count > m_payload_size - arg.offset())
+        throw xrt_core::error(-EINVAL, "kernel arg offset/size exceeds execbuf payload");
+      
       std::copy_n(value.begin(), count, data + arg.offset());
     }
 
     arg_range<uint8_t>
     get_arg_value(const argument& arg) override
     {
+      if (arg.offset() > m_payload_size || arg.size() > m_payload_size - arg.offset())
+        throw xrt_core::error(-EINVAL, "kernel arg offset/size exceeds execbuf payload");
+      
       return { data + arg.offset(), arg.size() };
     }
   };
@@ -2148,9 +2358,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // FAST_ADAPTER
   struct fa_arg_setter : arg_setter
   {
-    explicit
-    fa_arg_setter(uint32_t* data)
-      : arg_setter(data)
+    fa_arg_setter(uint32_t* data, size_t payload_size)
+      : arg_setter(data, payload_size)
     {}
 
     void
@@ -2162,7 +2371,12 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
     {
+      auto fa_offset = arg.fa_desc_offset() / sizeof(uint32_t) * sizeof(uint32_t);
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+      if (fa_offset > m_payload_size - offsetof(ert_fa_descriptor, data)
+          || sizeof(ert_fa_desc_entry) > m_payload_size - offsetof(ert_fa_descriptor, data) - fa_offset)
+        throw xrt_core::error(-EINVAL, "kernel fa_desc_offset exceeds execbuf payload");
+      
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
       desc_entry->arg_offset = arg.offset();
       desc_entry->arg_size = arg.size();
@@ -2173,7 +2387,12 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     arg_range<uint8_t>
     get_arg_value(const argument& arg) override
     {
+      auto fa_offset = arg.fa_desc_offset() / sizeof(uint32_t) * sizeof(uint32_t);
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+      if (fa_offset > m_payload_size - offsetof(ert_fa_descriptor, data)
+          || sizeof(ert_fa_desc_entry) > m_payload_size - offsetof(ert_fa_descriptor, data) - fa_offset)
+        throw xrt_core::error(-EINVAL, "kernel fa_desc_offset exceeds execbuf payload");
+      
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
       return { reinterpret_cast<uint8_t*>(desc_entry->arg_value), arg.size() };
     }
@@ -2182,9 +2401,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // PS_KERNEL
   struct ps_arg_setter : hs_arg_setter
   {
-    explicit
-    ps_arg_setter(uint32_t* data)
-      : hs_arg_setter(data)
+    ps_arg_setter(uint32_t* data, size_t payload_size)
+      : hs_arg_setter(data, payload_size)
     {}
 
     void
@@ -2221,18 +2439,48 @@ class run_impl : public std::enable_shared_from_this<run_impl>
         hwctx, ctrl_code_id, ctrlpkt_bo);
   }
 
+  // payload_size() - Number of bytes in command payload that can be
+  // used for kernel arguments.
+  size_t
+  payload_size() const
+  {
+    // run_impl::data is offset from cmd->get_ert_cmd() computed
+    // during command initialization.  The command buffer size is
+    // kernel_command::allocation_size (4K).
+    // Total number of bytes available for payload is size of command
+    // buffer minus number of bytes assigned during command
+    // initialization.
+    auto reserved = (data - cmd->get_ert_cmd<uint32_t*>()) * sizeof(uint32_t);
+    auto payload_size = kernel_command::allocation_size - reserved;
+
+    // If regmap_size is initialized, it holds the number of words
+    // used by command arguments, which must not be greater than
+    // the remaining payload size
+    if (auto regmap_size = kernel->get_regmap_size()) {
+      auto regmap_bytes = regmap_size * sizeof(uint32_t);
+      if (regmap_bytes > payload_size)
+        throw xrt_core::error(-EINVAL, "kernel register map exceeed command payload size");
+
+      return regmap_bytes;
+    }
+
+    // Without regmap_size, unlimitted number of arguments is
+    // supported, but must not exceeed remaining payload size
+    return payload_size;
+  }
+
   virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
     switch (kernel->get_kernel_type()) {
     case kernel_type::pl :
       if (kernel->get_ip_control_protocol() == control_type::fa)
-        return std::make_unique<fa_arg_setter>(data);
-      return std::make_unique<hs_arg_setter>(data);
+        return std::make_unique<fa_arg_setter>(data, payload_size());
+      return std::make_unique<hs_arg_setter>(data, payload_size());
     case kernel_type::ps :
-      return std::make_unique<ps_arg_setter>(data);
+      return std::make_unique<ps_arg_setter>(data, payload_size());
     case kernel_type::dpu :
-      return std::make_unique<hs_arg_setter>(data);
+      return std::make_unique<hs_arg_setter>(data, payload_size());
     case kernel_type::none :
       throw std::runtime_error("Internal error: unknown kernel type");
     }
@@ -2281,8 +2529,10 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   xrt::bo
   validate_bo_at_index(size_t index, const xrt::bo& bo)
   {
-    // ELF flow doesn't have arg connectivity, so skip validation
-    if (!kernel->get_xclbin())
+    // ELF flow doesn't have arg connectivity, so skip validation.
+    // Imported BOs have fixed physical backing from another device
+    // and bank re-mapping is not applicable.
+    if (!kernel->get_xclbin() || xrt_core::bo::is_imported(bo))
       return bo;
 
     // Check if connectivity validation should be skipped via INI option
@@ -2316,7 +2566,14 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     pkt->header = rhs_pkt->header;
     pkt->state = ERT_CMD_STATE_NEW;
     std::copy_n(rhs_pkt->data, rhs_pkt->count, pkt->data);
-    return pkt->data + (rhs->data - rhs_pkt->data);
+    auto cloned_data = pkt->data + (rhs->data - rhs_pkt->data);
+
+    // Initialize m_dpu_payload if present in rhs
+    m_dpu_payload = rhs->m_dpu_payload
+                  ? cloned_data + (rhs->m_dpu_payload - rhs->data)
+                  : nullptr;
+
+    return cloned_data;
   }
 
   // For DPU kernels, initialize the instruction buffer(s) in the
@@ -2370,6 +2627,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
+  uint32_t* m_dpu_payload = nullptr;      // start of ert_dpu_data in command (for dtrace reinit)
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t m_header;                      // cached intialized command header
   uint32_t uid;                           // internal unique id for debug
@@ -2377,12 +2635,12 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
-
-  const runlist_impl* m_runlist = nullptr;// runlist that owns this run (optional)
+  std::atomic<uint64_t> m_runlist_counter{0}; // number of runlists containing this run
   std::mutex m_mutex;                     // mutex synchronization
   // Run-level dtrace ct file: stored so clone inherits it
   std::string m_dtrace_control_file;
-  uint32_t* m_dpu_payload = nullptr;      // start of ert_dpu_data in command (for dtrace reinit)
+  // Run-level dtrace result file postfix
+  std::string m_dtrace_result_file_postfix;
 
 public:
   uint32_t
@@ -2406,6 +2664,7 @@ public:
   void
   set_dtrace_control_file(const std::string& path)
   {
+    XRT_TRACE_POINT_SCOPE(xrt_run_set_dtrace_control_file);
     std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_module) {
       throw xrt_core::error(
@@ -2419,12 +2678,13 @@ public:
           "Cannot set dtrace control file: run has already been started and is "
           "still in progress");
 
+    xrt_core::module_int::set_dtrace_control_file(m_module, path);
+    if (m_dpu_payload)
+      xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
+
+    // Store only after module and command payload are updated
+    // clone inherits this
     m_dtrace_control_file = path;
-    if (m_module) {
-      xrt_core::module_int::set_dtrace_control_file(m_module, path);
-      if (m_dpu_payload)
-        xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
-    }
   }
 
   // run_type() - constructor
@@ -2454,6 +2714,9 @@ public:
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
+
+    // XDP run_constructor hook
+    xrt_core::xdp::run_constructor(this);
   }
 
   // Clones a run impl, so that the clone can be executed concurrently
@@ -2472,13 +2735,6 @@ public:
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
     , m_dtrace_control_file(rhs->m_dtrace_control_file)
-    // Safe to apply rhs offset: clone_command_data() copies the entire packet
-    // (std::copy_n) and returns this->data at the same relative position as
-    // rhs->data, so the clone's buffer has identical layout and the relative
-    // offset (rhs->m_dpu_payload - rhs->data) points to the clone's dpu section.
-    , m_dpu_payload(rhs->m_dpu_payload
-                        ? data + (rhs->m_dpu_payload - rhs->data)
-                        : nullptr)
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -2523,6 +2779,21 @@ public:
     return kernel.get();
   }
 
+  const xrt::module&
+  get_module() const
+  {
+    return m_module;
+  }
+
+  const xrt::elf_impl*
+  get_elf_handle() const
+  {
+    if (!m_module)
+      return {};
+      
+    return xrt_core::module_int::get_elf_handle(m_module).get();
+  }
+
   kernel_command*
   get_cmd() const
   {
@@ -2537,20 +2808,15 @@ public:
   }
 
   void
-  set_runlist(const runlist_impl* rl)
+  set_runlist(const runlist_impl*)
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_runlist)
-      throw std::runtime_error("Run object already associated with a runlist");
-
-    m_runlist = rl;
+    ++m_runlist_counter;
   }
 
   void
   clear_runlist()
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_runlist = nullptr;
+    --m_runlist_counter;
   }
 
   // Use to explicitly restrict what CUs can be used
@@ -2590,13 +2856,13 @@ public:
     return get_arg_setter()->get_arg_value(arg);
   }
 
-  void
+  virtual void
   set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
   {
     get_arg_setter()->set_arg_value(arg, value);
   }
 
-  void
+  virtual void
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
@@ -2652,10 +2918,37 @@ public:
     set_arg(arg, args);
   }
 
+  // For DPU flows, warn once if the opcode arg carries the deprecated
+  // Legacy TXN flow opcode value.
+  void
+  warn_if_legacy_txn_flow(const argument& arg, const void* value, size_t bytes)
+  {
+    // check if the first arg (at index 0) equals the deprecated Legacy
+    // TXN flow opcode value, and warn if so.
+    constexpr uint64_t legacy_txn_flow_opcode = 2;
+    constexpr size_t opcode_arg_index  = 0;
+    if (arg.index() != opcode_arg_index || !value ||
+        kernel->get_kernel_type() != kernel_type::dpu ||
+        arg.type() != xarg::argtype::scalar)
+      return;
+
+    uint64_t opcode = 0;
+    std::memcpy(&opcode, value, std::min(bytes, sizeof(opcode)));
+    if (opcode != legacy_txn_flow_opcode)
+      return;
+
+    static std::once_flag warned;
+    std::call_once(warned, [] {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+        "Legacy TXN flow is deprecated. Please migrate to the TXN flow with upgraded xclbin/ELF.");
+    });
+  }
+
   void
   set_arg_at_index(size_t index, const void* value, size_t bytes)
   {
-    auto& arg = kernel->get_arg(index);
+    const auto& arg = kernel->get_arg(index);
+    warn_if_legacy_txn_flow(arg, value, bytes);
     set_arg_value(arg, value, bytes);
   }
 
@@ -2703,10 +2996,24 @@ public:
   void
   prep_start()
   {
-    if (m_module)
+    if (m_module) {
       // Sync the module to device to ensure any patches are applied,
       // noop if module patching hasn't changed since last sync.
       xrt_core::module_int::sync(m_module);
+
+      if (xrt_core::module_int::is_dtrace_enabled(m_module)) {
+        // create dtrace result file postfix
+        // New file is created for each run.start(), run.wait() pair execution.
+        // Also getting timestamp for filename in run.start() so there won't be
+        // multiple files created when command is retried.
+        auto hwctx = static_cast<xrt_core::hwctx_handle*>(kernel->get_hw_context());
+        std::string postfix{
+            "_ctx_" + std::to_string(hwctx->get_slotidx()) + "_run_"
+            + std::to_string(uid) + "_"};
+        m_dtrace_result_file_postfix = postfix;
+        m_dtrace_result_file_postfix += xrt_core::get_timestamp_for_filename();
+      }
+    }
 
     encode_compute_units();
 
@@ -2727,10 +3034,13 @@ public:
   virtual void
   start()
   {
-    if (m_runlist)
+    if (m_runlist_counter)
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
 
     prep_start();
+
+    // XDP profiling hook - called immediately before run is submitted
+    xrt_core::xdp::run_start(this);
 
     // log kernel start info
     // This is in critical path, we need to reduce log overhead
@@ -2815,19 +3125,15 @@ public:
   // Deprecated wait() semantics.
   // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
   // Return ert cmd state otherwise
-  ert_cmd_state
+  virtual ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        // dump dtrace buffer if ini option is enabled
-        dump_dtrace_buffer();
+        dump_logs(false);
 
-        // dump uc log buffer for timeout case
-        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
         return ERT_CMD_STATE_TIMEOUT;
       }
 
@@ -2837,19 +3143,39 @@ public:
       state = cmd->wait();
     }
 
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-    if (dump)
-      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
+    // XDP profiling hook - called after wait completes
+    xrt_core::xdp::run_wait(this);
 
-    // dump dtrace buffer if ini option is enabled
-    dump_dtrace_buffer();
-
-    // Dump uC log buffer for non-completed cases
-    if (state != ERT_CMD_STATE_COMPLETED)
-      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+    dump_logs(true); // dump required logs
 
     return state;
+  }
+
+  // abort_coredump_or_noop() - AIE coredump if enabled
+  // Dump core and abort, or do nothing.
+  void
+  abort_coredump_or_noop(ert_cmd_state state) const
+  {
+    if (state != ERT_CMD_STATE_TIMEOUT)
+      return;
+
+    auto file = xrt_core::config::get_aie_coredump_file();
+    if (file.empty())
+      return;
+
+    try {
+      auto hwctx = kernel->get_hw_context();
+      auto core = hwctx.get_aie_coredump();  // may throw
+
+      std::ofstream ostr{file, std::ios::binary};
+      if (!ostr)
+        throw std::runtime_error("Could not open '" + file + "' for writing");
+      ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
+      std::abort();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(std::string("Failed to create core dump: ") + ex.what());
+    }
   }
 
   void
@@ -2871,6 +3197,7 @@ public:
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      abort_coredump_or_noop(state);
       throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
     default:
       throw xrt::run::command_error(state, msg);
@@ -2881,15 +3208,15 @@ public:
   // Return std::cv_status::timeout on timeout
   // Return std::cv_status::no_timeout on successful completion
   // Throw on abnormal command termination
-  std::cv_status
+  virtual std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        // Dump uC log buffer in case of timeout for debugging
-        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+        // dump required logs before throwing error
+        dump_logs(false);
         return std::cv_status::timeout;
       }
 
@@ -2899,21 +3226,16 @@ public:
       state = cmd->wait();
     }
 
-    // dump dtrace buffer if ini option is enabled
-    // here dtrace is dumped in both passing and timeout cases
-    dump_dtrace_buffer();
+    // XDP profiling hook - called after wait completes
+    xrt_core::xdp::run_wait(this);
 
+    // dump required logs
+    dump_logs(true);
+
+    // throw error if command failed to complete successfully
     if (state != ERT_CMD_STATE_COMPLETED) {
-      // Dump uC log buffer for non-completed cases
-      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
       throw_command_error(state);
     }
-
-    // COMPLETED
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-    if (dump)
-      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
 
     return std::cv_status::no_timeout;
   }
@@ -2955,9 +3277,29 @@ public:
   dump_dtrace_buffer() const
   {
     if (m_module)
-      xrt_core::module_int::dump_dtrace_buffer(m_module, uid);
+      xrt_core::module_int::dump_dtrace_buffer(m_module, m_dtrace_result_file_postfix);
   }
-};
+
+private:
+  void
+  dump_logs(bool success) const
+  {
+    // dump dtrace buffer in both success and error cases
+    dump_dtrace_buffer();
+
+    // dump scratchpad memory in both success and error cases if it is enabled
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump)
+      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
+
+    // dump uc log in error cases
+    if (!success)
+      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+    else
+      // update usage logger in success cases
+      m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_COMPLETED);
+  }
+}; // class run_impl
 
 // class mailbox_impl - Extension of run_impl for mailbox support
 //
@@ -2988,8 +3330,8 @@ class mailbox_impl : public run_impl
     mailbox_impl* mbox;
     static constexpr size_t wsize = sizeof(uint32_t);  // register word size
 
-    hs_arg_setter(uint32_t* data, mailbox_impl* mimpl)
-      : run_impl::hs_arg_setter(data), data32(data), mbox(mimpl)
+    hs_arg_setter(uint32_t* data, size_t payload_size, mailbox_impl* mimpl)
+      : run_impl::hs_arg_setter(data, payload_size), data32(data), mbox(mimpl)
     {}
 
     void
@@ -3188,7 +3530,7 @@ public:
       if (kernel->get_ip_control_protocol() == control_type::fa)
         throw xrt_core::error("Mailbox not supported with FAST_ADAPTER");
 
-      return std::make_unique<hs_arg_setter>(data, this); // data is run_impl::data
+      return std::make_unique<hs_arg_setter>(data, payload_size(), this); // data is run_impl::data
     }
 
     throw xrt_core::error("Mailbox not supported for non pl kernel types");
@@ -3209,6 +3551,57 @@ public:
     run_impl::start();
   }
 };
+
+// class run_impl_debug - config enabled impl class
+//
+// Provides overrides for debug capture.  Maybe an overkill here since
+// quite possibly XRT_REPLAY_CAPTURE is faster than the vtbl indirect
+// call, but this class allows adding more bells and whistles in the
+// future.
+template <typename RunImplType>
+class run_impl_debug : public RunImplType
+{
+  void
+  set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
+  {
+    RunImplType::set_arg_value(arg, value);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), value.data_as_span());
+  }
+    
+  void
+  set_arg_value(const argument& arg, const xrt::bo& bo) override
+  {
+    RunImplType::set_arg_value(arg, bo);
+    XRT_REPLAY_CAPTURE(run_set_arg_at_index, this, arg.index(), bo);
+  }
+  
+  void
+  start() override
+  {
+    RunImplType::start();
+    XRT_REPLAY_CAPTURE(run_start, this);
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto status = RunImplType::wait_throw_on_error(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this); // TODO: revisit for timeout
+    return status;
+  }
+
+  ert_cmd_state
+  wait(const std::chrono::milliseconds& timeout_ms) const override
+  {
+    auto state = RunImplType::wait(timeout_ms);
+    XRT_REPLAY_CAPTURE(run_wait, this);
+    return state;
+    
+  }
+  
+public:
+  using RunImplType::RunImplType;
+}; // run_impl_debug
 
 // struct run_update_type - RTP update
 //
@@ -3335,7 +3728,6 @@ public:
     , m_state(m_run.state())
     , m_message(std::move(msg))
   {}
-
 };
 
 // class runlist_impl - The internals of a runlist
@@ -3346,6 +3738,8 @@ public:
 // point will be dyanmic.
 class runlist_impl
 {
+  friend class runlist_impl_debug;
+
   static constexpr size_t submit_size = 24;
   static constexpr size_t noidx = std::numeric_limits<size_t>::max();
   static constexpr size_t execbuf_size = sizeof(ert_packet) + sizeof(ert_cmd_chain_data) + submit_size * sizeof(uint64_t);
@@ -3520,10 +3914,23 @@ class runlist_impl
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      rhdl->abort_coredump_or_noop(state);
       throw xrt::runlist::aie_error(run, state, msg);
     default:
       throw xrt::runlist::command_error(run, state, msg);
     }
+  }
+
+  void
+  dump_logs(bool success) const
+  {
+    // dump dtrace buffer in both success and error cases
+    for (const auto& run : m_runlist)
+      run.get_handle()->dump_dtrace_buffer();
+
+    // dump uc log in error cases
+    if (!success)
+      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
   }
 
   // Wait for runlist to complete, then check each chained command
@@ -3584,7 +3991,7 @@ class runlist_impl
   // successfully submitted command must be waited for before the list
   // can be reset. Pre-condition ensured by execute() is that size of
   // runlist is greater than 0.
-  void
+  virtual void
   submit()
   {
     m_submitted_cmds.clear();
@@ -3615,6 +4022,7 @@ public:
     , m_hwqueue{m_hwctx}
   {}
 
+  virtual
   ~runlist_impl()
   {
     // Make sure all run objects are severed from this list
@@ -3626,7 +4034,7 @@ public:
     }
   }
 
-  void
+  virtual void
   add(xrt::run run)
   {
     if (m_state != state::idle)
@@ -3655,11 +4063,11 @@ public:
     cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size);
 
     // Once a run object is added to a list it will be in a state that
-    // makes it impossible to add to another list or to same list
-    // twice.  This state is managed by the run object itself by
-    // recording this runlist with the run object, but it doesn't
-    // proctect against caller manually controlling the run object,
-    // which is undefined behavior.  No exceptions after this point.
+    // makes it impossible to start the run explicitly.  A run can be
+    // added to multiple runlists, but it is undefined behavior to
+    // call runlist::execute() on two or more runlists that contain
+    // the same run object without calling runlist::wait() in between.
+    // No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
 
     // Non throwing state change
@@ -3705,26 +4113,20 @@ public:
 
   // Wait for runlist completion.  Throw exception with first failing
   // command if any.
-  std::cv_status
-  wait_throw_on_error(const std::chrono::milliseconds& timeout)
+  virtual std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout) const
   {
     if (m_state != state::running)
       return std::cv_status::no_timeout;
 
     // Wait throws on error. On timeout just return
     if (wait(timeout) == std::cv_status::timeout) {
-      // Dump dtrace buffer for all run objects in timeout case
-      for (const auto& run : m_runlist)
-        run.get_handle()->dump_dtrace_buffer();
-
-      // Dump uC log buffer for debug when timeout happens
-      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
+      // dump required logs before returning timeout
+      dump_logs(false);
       return std::cv_status::timeout;
     }
 
-    // dump dtrace buffer for all run objects on successful completion
-    for (const auto& run : m_runlist)
-      run.get_handle()->dump_dtrace_buffer();
+    dump_logs(true);
 
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;
@@ -3781,7 +4183,40 @@ public:
     m_cmds.clear();
     m_state = state::idle;
   }
-};
+}; // class runlist_impl
+
+// class runlist_impl_debug - config enabled impl class
+//
+// Provides overrides for debug capture
+// Consider templatizing on runlist_impl concrete type
+class runlist_impl_debug : public runlist_impl
+{
+  void
+  submit() override
+  {
+    runlist_impl::submit();
+    XRT_REPLAY_CAPTURE(runlist_start, this);
+  }
+
+  void
+  add(xrt::run run) override
+  {
+    runlist_impl::add(run);
+    XRT_REPLAY_CAPTURE(runlist_add_run, this, run.get_handle().get());
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout) const override
+  {
+    auto status = runlist_impl::wait_throw_on_error(timeout);
+    XRT_REPLAY_CAPTURE(runlist_wait, this); // TODO: revisit for tiemout
+    return status;
+  }
+  
+public:
+  using runlist_impl::runlist_impl;
+}; // class runlist_impl_debug
+
 
 // runlist::command_error_impl is in anticipation of additional
 // implementation data over that of run::command_error_impl
@@ -3893,6 +4328,14 @@ get_run_update(xrtRunHandle rhdl)
 static std::unique_ptr<xrt::run_impl>
 alloc_run(const std::shared_ptr<xrt::kernel_impl>& khdl)
 {
+  if (xrt_core::config::get_capture_frames()) {
+    // For some reason ternary doesn't work here
+    if (khdl->has_mailbox())
+      return std::make_unique<xrt::run_impl_debug<xrt::mailbox_impl>>(khdl);
+    else
+      return std::make_unique<xrt::run_impl_debug<xrt::run_impl>>(khdl);
+  }
+  
   return khdl->has_mailbox()
     ? std::make_unique<xrt::mailbox_impl>(khdl)
     : std::make_unique<xrt::run_impl>(khdl);
@@ -3942,6 +4385,15 @@ get_mailbox_impl(const xrt::run& run)
   if (!mimpl)
     throw xrt_core::error("Mailbox not supported by this run object");
   return mimpl;
+}
+
+static std::shared_ptr<xrt::runlist_impl>
+alloc_runlist(const xrt::hw_context& hwctx)
+{
+  if (xrt_core::config::get_capture_frames())
+    return std::make_shared<xrt::runlist_impl_debug>(hwctx);
+
+  return std::make_shared<xrt::runlist_impl>(hwctx);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -4144,14 +4596,38 @@ get_regmap_size(const xrt::kernel& kernel)
     return kernel.get_handle()->get_regmap_size();
 }
 
+std::string
+get_instance_name(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_full_name();
+}
+
+xrt::elf
+get_ctrlcode(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_ctrlcode_elf();
+}  
+
 xrt::hw_context
-get_hw_ctx(const xrt::kernel& kernel)
+get_hwctx(const xrt::kernel& kernel)
 {
   return kernel.get_handle()->get_hw_context();
 }
 
+xrt::hw_context
+get_hwctx(const xrt::run& run)
+{
+  return run.get_handle()->get_kernel()->get_hw_context();
+}
+
 xrt::kernel
-create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
+get_kernel(const xrt::run& run)
+{
+  return run.get_handle()->get_kernel()->get_shared_ptr();
+}
+
+xrt::kernel
+get_kernel_from_impl(const xrt::kernel_impl* kernel_impl)
 {
   if (!kernel_impl)
     throw std::runtime_error("Invalid kernel context implementation.");
@@ -4159,8 +4635,36 @@ create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
 }
 
-} // xrt_core::kernel_int
+xrt::run
+get_run_from_impl(const xrt::run_impl* run_impl)
+{
+  return xrt::run{const_cast<xrt::run_impl*>(run_impl)->get_shared_ptr()}; // NOLINT
+}
 
+void
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data,
+                    bool include_state)
+{
+  auto kernel = run_impl->get_kernel();
+  data->uid = run_impl->get_uid();
+  data->name = kernel->get_name();
+  data->hwctx = kernel->get_hw_context();
+  data->mod = kernel->get_module();
+  // run_impl->state() polls the command's ERT packet. That is only valid once
+  // the command has been submitted; calling it earlier (e.g. from the
+  // run_constructor / run_start hooks, which fire before submission) throws
+  // "Cannot poll a command that has not been submitted". Only the run_wait
+  // hook actually consumes ert_state, so query it only when explicitly asked.
+  data->ert_state = include_state ? static_cast<int>(run_impl->state()) : 0;
+}
+
+void
+set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path)
+{
+  run_impl->set_dtrace_control_file(path);
+}
+
+} // xrt_core::kernel_int
 
 ////////////////////////////////////////////////////////////////
 // xrt_kernel C++ API implmentations (xrt_kernel.h)
@@ -4356,6 +4860,12 @@ kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& n
 {}
 
 kernel::
+kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, bool ex)
+  : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
+      alloc_kernel, get_device(xdev), xclbin_id, name, ex ? cu_access_mode::exclusive : cu_access_mode::shared))
+{}
+
+kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
       alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
@@ -4453,7 +4963,7 @@ set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
 
 runlist::
 runlist(const xrt::hw_context& hwctx)
-  : detail::pimpl<runlist_impl>(std::make_shared<runlist_impl>(hwctx))
+  : detail::pimpl<runlist_impl>(alloc_runlist(hwctx))
 {}
 
 runlist::
@@ -4610,73 +5120,179 @@ what() const noexcept
 }
 
 static std::string
-aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
+aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
+                     const std::string& elf_filename, const std::string& kernel_instance,
+                     const std::string& elf_uuid, const xrt::elf_impl* elf_impl_ptr = nullptr)
 {
   constexpr auto indent8 = 8;
   auto ctx_health = get_ert_ctx_health_data_v1(epkt);
   std::ostringstream oss;
   oss << msg << "\n";
+  // Print kernel and ELF identity to aid post-mortem triage.
+  // ELF UUID (from .note.xrt.UID) is used when the filename is unavailable
+  // (e.g. ELF loaded from a buffer rather than a file path).
+  if (!kernel_instance.empty())
+    oss << "Kernel Instance: " << kernel_instance;
+
+  if (!elf_filename.empty())
+    oss << "\nELF File:        " << elf_filename;
+
+  if (!elf_uuid.empty())
+    oss << "\nELF UUID:        " << elf_uuid;
+
   if ( ctx_health->npu_gen == NPU_GEN_AIE2) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->aie2.txn_op_idx
-      << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->aie2.ctx_pc
-      << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_type
-      << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_type
-      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_pc
-      << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_app_module
-      << "\n";
-  } else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
+    oss << "\ntxn_op_idx = 0x" << std::setw(indent8)
+        << ctx_health->aie2.txn_op_idx
+        << "\nctx_pc = 0x"<< std::setw(indent8)
+        << ctx_health->aie2.ctx_pc
+        << "\nfatal_error_type = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_type
+        << "\nfatal_error_exception_type = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_exception_type
+        << "\nfatal_error_exception_pc = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_exception_pc
+        << "\nfatal_error_app_module = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_app_module
+        << "\n";
+  }
+  else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
-      << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type
-      << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
+    oss << "\nctx_state = 0x" << std::setw(indent8)
+        << ctx_health->aie4.ctx_state
+        << " (" <<ctx_status_to_string(ctx_health->aie4.ctx_state) << ")"
+        << "\nctx_error_type = 0x" << std::setw(indent8)
+        << ctx_health->aie4.ctx_error_type
+        << " ("<<ctx_error_type_to_string(ctx_health->aie4.ctx_error_type) << ")"
+        << "\nnumber of uC reported = " << std::dec
+        << ctx_health->aie4.num_uc;
+
     for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
-        << "\nuc_idx=0x" << std::setw(indent8) <<std::hex << ctx_health->aie4.uc_info[i].uc_idx
-        << "\nuc_idle_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_idle_status
-        << "\nmisc_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].misc_status
-        << "\nfw_state=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].fw_state
-        << "\npage_idx=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].page_idx
-        << "\noffset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].offset
-        << "\nrestore_page=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_page
-        << "\nrestore_offset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_offset
-        << "\nuc_ear=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_ear
-        << "\nuc_esr=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_esr
-        << "\n";
+          << "\nuc_idx=0x" << std::setw(indent8) << std::hex
+          << ctx_health->aie4.uc_info[i].uc_idx
+          << "\nuc_idle_status=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_idle_status
+          << " (" << uc_idle_status_flags_to_string(ctx_health->aie4.uc_info[i].uc_idle_status) << ")"
+          << "\nmisc_status=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].misc_status
+          << " ("<<uc_misc_status_flags_to_string(ctx_health->aie4.uc_info[i].misc_status) << ")"
+          << "\nfw_state=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].fw_state
+          << " ("<<uc_fwstate_to_string(ctx_health->aie4.uc_info[i].fw_state) << ")"
+          << "\npage_idx=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].page_idx
+          << "\noffset=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].offset
+          << "\nrestore_page=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].restore_page
+          << "\nrestore_offset=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].restore_offset
+          << "\nuc_ear=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_ear
+          << "\nuc_esr=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_esr
+          << "\n";
+
+      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary
+      if (elf_impl_ptr) {
+        aiebu::AIEDebug dbg(elf_impl_ptr->get_elfio());
+        auto info = dbg.get_opcode_information(
+          kernel_instance,
+          ctx_health->aie4.uc_info[i].uc_idx,
+          ctx_health->aie4.uc_info[i].page_idx,
+          ctx_health->aie4.uc_info[i].offset);
+        if (info.found) {
+          oss << "\nOpcode:         " << info.opcode_name;
+          if (!info.args_str.empty())
+            oss << "  " << info.args_str;
+          oss << "\nOpcode Size:    0x" << std::hex << info.opcode_size;
+          if (info.line > 0)
+            oss << "\nLine:           " << std::dec << info.line;
+          if (!info.source_file.empty())
+            oss << "\nFile:           " << info.source_file;
+          oss << "\n";
+        }
+        if (!info.diag_info.empty())
+          oss << "Opcode diag_info: " << info.diag_info << "\n";
+      }
     }
   }
   return oss.str();
 }
 
-static std::string
-amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
+// get_elf_identity_from_run() - Extract ELF identity
+//
+// The identity is tuple of filename, kernel instance name, and UUID
+// from a run object.
+//
+// Values are empty if the run has no associated ELF (non-ELF flow).
+// UUID (from .note.xrt.UID) serves as a fallback identifier when the
+// filename is unavailable.
+static std::tuple<std::string, std::string, std::string>
+get_elf_identity_from_run(const xrt::run& run)
 {
+  auto impl = run.get_handle();
+  if (!impl)
+    return {};
+
+  const auto* elf_handle = impl->get_elf_handle();
+  if (!elf_handle)
+    return {};
+
+  try {
+    return {xrt_core::elf_int::get_filename(elf_handle),
+            impl->get_kernel()->get_full_name(),
+            elf_handle->get_cfg_uuid().to_string()};
+  }
+  catch (const std::exception&) {
+    return {};
+  }
+}
+
+static std::string
+amend_aie_error_message(const xrt::run& run, const std::string& msg)
+{
+  const auto* epkt = run.get_ert_packet();
   constexpr auto indent8 = 8;
   if (epkt->state != ERT_CMD_STATE_TIMEOUT)
     return msg;
-  if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1)
-    return aie_error_message_v1(epkt, msg);
+
+  if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1) {
+    auto [elf_filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
+    // Retrieve parsed ELF for efficient binary decode (no re-parsing overhead)
+    auto impl = run.get_handle();
+    return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid,
+                                impl->get_elf_handle());
+  }
   else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
     return msg;
-  //below is for printing V0 exception message
+
+  // Below is for printing V0 exception message
   std::ostringstream oss;
   oss << msg << "\n";
   auto ctx_health = get_ert_ctx_health_data(epkt);
 
   oss << std::uppercase << std::hex << std::setfill('0');
-  oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->txn_op_idx
-    << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->ctx_pc
-    << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_type
-    << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_type
-    << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_pc
-    << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->fatal_error_app_module
-    << "\n";
+  oss << "txn_op_idx = 0x" << std::setw(indent8)
+      << ctx_health->txn_op_idx
+      << "\nctx_pc = 0x"<< std::setw(indent8)
+      << ctx_health->ctx_pc
+      << "\nfatal_error_type = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_type
+      << "\nfatal_error_exception_type = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_exception_type
+      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_exception_pc
+      << "\nfatal_error_app_module = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_app_module
+      << "\n";
   return oss.str();
 }
 
 run::aie_error::
 aie_error(const xrt::run& run, const std::string& what)
-  : command_error(run, amend_aie_error_message(run.get_ert_packet(), what))
+  : command_error{run, amend_aie_error_message(run, what)}
 {}
 
 } // xrt
@@ -4693,7 +5309,7 @@ command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
 
 runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
-  : command_error(run, state, amend_aie_error_message(run.get_ert_packet(), what))
+  : command_error{run, state, amend_aie_error_message(run, what)}
 {}
 
 xrt::run

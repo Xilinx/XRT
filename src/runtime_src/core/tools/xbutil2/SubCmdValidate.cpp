@@ -36,13 +36,14 @@
 #include "tools/common/tests/TestGemm.h"
 #include "tools/common/tests/TestNPUThroughput.h"
 #include "tools/common/tests/TestNPULatency.h"
-#include "tools/common/tests/TestCmdChainLatency.h"
-#include "tools/common/tests/TestCmdChainThroughput.h"
+#include "tools/common/tests/TestRunlistLatency.h"
+#include "tools/common/tests/TestRunlistThroughput.h"
 #include "tools/common/tests/TestAIEReconfigOverhead.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 #include "tools/common/tests/TestPreemptionOverhead.h"
 #include "tools/common/tests/TestValidateUtilities.h"
 #include "tools/common/tests/TestShimDMABW.h"
+#include "tools/common/tests/TestSanity.h"
 
 namespace XBU = XBUtilities;
 namespace xq = xrt_core::query;
@@ -114,12 +115,13 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestGemm>(),
   std::make_shared<TestNPUThroughput>(),
   std::make_shared<TestNPULatency>(),
-  std::make_shared<TestCmdChainLatency>(),
-  std::make_shared<TestCmdChainThroughput>(),
+  std::make_shared<TestRunlistLatency>(),
+  std::make_shared<TestRunlistThroughput>(),
   std::make_shared<TestAIEReconfigOverhead>(),
   std::make_shared<TestTemporalSharingOvd>(),
   std::make_shared<TestPreemptionOverhead>(),
   std::make_shared<TestShimDMABW>(),
+  std::make_shared<TestSanity>(),
 };
 
 /*
@@ -216,8 +218,6 @@ print_status(test_status status, std::ostream & _ostream)
     _ostream << "Validation completed";
   if (status == test_status::warning)
     _ostream << ", but with warnings";
-  if (!XBU::getVerbose())
-    _ostream << ". Please run the command '--verbose' option for more details";
   _ostream << std::endl;
 }
 
@@ -427,12 +427,7 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
 
   auto testsToRun = options.m_tests_to_run;
   if (testsToRun.empty()) {
-    if (!XBU::getAdvance()) {
-      testsToRun = std::vector<std::string>({"all"});
-    }
-    else {
-      throw xrt_core::error("No test given to validate against.");
-    }
+    testsToRun = std::vector<std::string>({"all"});
   }
   // Validate the user test requests
   for (auto &userTestName : testsToRun) {
@@ -529,10 +524,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     if (schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
     // All Error Handling for xrt-smi validate should go here
-    handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param); 
-
-    if (XBU::isUsingAdvanced(tests, validatedTests))
-      XBU::printAdvancedDisclaimer();
+    handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param);
 
     // check if xclbin folder path is provided
     if (!validateXclbinPath.empty()) {
@@ -640,7 +632,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput, options.m_iter);
+  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput, options.m_loop);
 
   try {
     //reset pmode
@@ -679,7 +671,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";
   options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
   options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>();
-  options.m_iter = vm.count("iter") ? static_cast<unsigned int>(std::stoul(vm["iter"].as<std::string>())) : 1;
+  options.m_loop = vm.count("loop") ? static_cast<unsigned int>(std::stoul(vm["loop"].as<std::string>())) : 1;
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
   options.m_elf = vm.count("elf") ? vm["elf"].as<bool>() : false;
 }

@@ -19,7 +19,7 @@
 // ./runner.exe -kp ... -kp ... -bd ... -bd ... -bg ... -recipe ...
 
 #include "xrt/xrt_device.h"
-#include "experimental/xrt_ext.h"
+#include "xrt/experimental/xrt_ext.h"
 #include "core/common/runner/runner.h"
 
 #include <algorithm>
@@ -69,7 +69,7 @@ static void
 add_repo_file(const std::string& key, const std::string& path)
 {
   auto data = read_file(path);
-  g_repo.emplace(key, std::move(data));
+  g_repo.add_data(key, std::move(data));
 }
 
 static void

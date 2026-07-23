@@ -2,12 +2,14 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrtcore_util_buffer_dumper_h_
 #define xrtcore_util_buffer_dumper_h_
+#include "core/common/uc_log.h"
 #include "core/include/xrt/xrt_bo.h"
 
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
 #include <fstream>
+#include <future>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -45,31 +47,33 @@ public:
     std::string dump_file_prefix;     // Output file prefix
     xrt::bo dump_buffer;              // xrt buffer object to dump
     bool dump_bin_format = false;     // Dump in binary format when enabled
+    bool enable_dumper_thread = false; // Enable background dumper thread
+    // Sink for parsed uC log text output:
+    // "file" (default), "syslog", "console", or "null"
+    // Ignored when dump_bin_format=true (binary always writes to file)
+    std::string uc_log_dump = "file";
   };
 
-  // Log entry struct for uc log binary format
-  struct log_entry
-  {
-    uint32_t length = 0;              // Log entry length in number of words
-    uint32_t ts_high = 0;             // Timestamp high 32 bits
-    uint32_t ts_low = 0;              // Timestamp low 32 bits
-    uint32_t file_id = 0;             // ID of log source file
-    uint32_t line_num = 0;            // Line number of log in source file
-    uint32_t log_id = 0;              // ID of format string
-    uint32_t argument1 = 0;           // First argument (present if length > 6)
-    uint32_t argument2 = 0;           // Second argument (present if length > 7)
-  };
+  // Log entry layout: shared definition in uc_log.h
+  using log_entry = uc_log_entry;
 
 private:
   config m_config;
   size_t m_data_size = 0;
   std::vector<size_t> m_dumped_counts;
   std::thread m_dump_thread;
+  std::promise<void> m_done_promise;
+  std::future<void>  m_done_future;
   std::atomic<bool> m_stop_thread{false};
+  std::atomic<bool> m_thread_created{false};
   std::mutex m_dump_mutex;
   std::condition_variable m_cv;
   std::vector<std::ofstream> m_file_streams;
   std::string m_session_timestamp;  // Set on first file open for consistent naming
+
+  bool
+  needs_file_streams() const
+  { return m_config.dump_bin_format || m_config.uc_log_dump == "file" || m_config.uc_log_dump.empty(); }
 
   // Open file for chunk lazily when first data is available; returns stream
   std::ofstream&
@@ -79,7 +83,20 @@ private:
   size_t
   read_logged_count(uint8_t* chunk);
 
-  // Write chunk data to file (metadata header + new data payload)
+  // Write raw binary data (metadata + payload) to file
+  void
+  dump_chunk_data_binary(size_t chunk_index, size_t start_offset, size_t bytes_to_end,
+                         size_t length, uint8_t* chunk);
+
+  // Parse log entries from chunk data into a formatted string
+  std::string
+  parse_log_entries(size_t start_offset, size_t bytes_to_end, size_t length, uint8_t* chunk);
+
+  // Route parsed log text to the configured sink (file, syslog, console, or null)
+  void
+  dispatch_parsed_log(size_t chunk_index, const std::string& text);
+
+  // Coordinate binary or parsed log dump for a chunk
   void
   dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk);
 

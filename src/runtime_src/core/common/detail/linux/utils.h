@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef core_common_detail_linux_utils_h
+#define core_common_detail_linux_utils_h
+
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <unistd.h>
+
+namespace xrt_core::utils::detail {
+
+inline std::string
+strerror(int err)
+{
+  return std::strerror(err);   // NOLINT(concurrency-mt-unsafe)
+}
+
+/**
+ * @brief Retrieves the last error message from the Linux operating system.
+ *
+ * This function uses the Linux API to obtain a human-readable error message
+ * corresponding to the last error code set by the system.
+ *
+ * @return A string containing the error message associated with the last error code.
+ *         If no error has occurred, the returned string may be empty.
+ */
+inline std::string
+sys_dep_get_last_err_msg()
+{
+  return strerror(errno);
+}
+
+// Safe cross-platform environment variable retrieval.
+// Returns empty string if variable is not set.
+inline std::string
+getenv(const char* name)
+{
+  if (const char* value = std::getenv(name)) // NOLINT(concurrency-mt-unsafe)
+    return value;
+
+  return {};
+}
+
+// Returns true when the process is running with elevated privileges (euid==0).
+// Used to harden config-file search paths (SWSPLAT-39875 / CWE-427).
+inline bool
+is_elevated_process()
+{
+  return ::geteuid() == 0;
+}
+
+} // xrt_core::utils::detail
+#endif
+

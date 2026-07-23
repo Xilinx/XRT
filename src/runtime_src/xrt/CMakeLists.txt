@@ -74,12 +74,8 @@ install(TARGETS xrt++
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
 
-# Install static library - exclude from xrt-targets export in yocto builds
-# to avoid find_package(XRT) failures when static libs are not in sysroot
-if(XRT_YOCTO)
-  install(TARGETS xrt++_static
-    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
-else()
+# Enable install of static library iff requested
+if(XRT_INSTALL_STATIC_LIBRARY)
   install(TARGETS xrt++_static
     EXPORT xrt-targets
     ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})

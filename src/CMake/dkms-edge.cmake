@@ -1,10 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2026 Advanced Micro Devices, Inc. - All rights reserved
 #
+
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
+# XRT_VERSION_STRING
 
-set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+if (NOT DEFINED XRT_DKMS_INSTALL_DIR)
+  set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+endif ()
 set (XRT_DKMS_INSTALL_DRIVER_DIR "${XRT_DKMS_INSTALL_DIR}/driver")
 
 message("-- XRT DRIVER SRC BASE DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}")
@@ -78,7 +83,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/include/zocl_xgq.h
   zocl/include/zocl_xgq_plat.h
   zocl/include/zocl_hwctx.h
-  
   zocl/zert/cu_scu.c
   zocl/zert/scu.c
   zocl/zert/zocl_csr_intc.c
@@ -97,22 +101,20 @@ SET (XRT_DKMS_DRIVER_SRCS
   )
 
 # includes relative to core
-SET (XRT_DKMS_CORE_INCLUDES
+SET (XRT_DKMS_CORE_INCLUDES_FLAT
   include/xrt/detail/ert.h
   include/xrt/detail/xclbin.h
   include/xrt/detail/xrt_error_code.h
-  include/xrt/detail/xrt_mem.h
   include/xrt/deprecated/xclerr.h
   include/ps_kernel.h
-  include/types.h
   include/xclfeatures.h
   include/xclerr_int.h
-  include/xclhal2_mem.h
   include/xgq_cmd_common.h
   include/xgq_cmd_ert.h
   include/xgq_cmd_vmr.h
   include/xgq_impl.h
   include/xgq_resp_parser.h
+  include/xclhal2_mem.h
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV
@@ -147,23 +149,43 @@ SET (XRT_DKMS_CORE_EDGE_INCLUDES
 
 foreach (DKMS_FILE ${XRT_DKMS_DRIVER_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
-  install (FILES ${XRT_DKMS_DRIVER_SRC_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
-endforeach()
+  install (FILES ${XRT_DKMS_DRIVER_SRC_DIR}/${DKMS_FILE}
+    DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR}
+    COMPONENT ${XRT_COMPONENT})
+endforeach ()
 
-foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include)
-endforeach()
+foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES_FLAT})
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE}
+    DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include
+    COMPONENT ${XRT_COMPONENT})
+endforeach ()
+
+# install(FILES) uses basename unless DESTINATION includes parent dirs — two explicit rules.
+install (FILES ${XRT_DKMS_CORE_DIR}/include/xrt/detail/xrt_mem.h
+  DESTINATION ${XRT_DKMS_INSTALL_DIR}/include/xrt/detail
+  COMPONENT ${XRT_COMPONENT})
+install (FILES ${XRT_DKMS_CORE_DIR}/include/xrt_mem.h
+  DESTINATION ${XRT_DKMS_INSTALL_DIR}/include
+  COMPONENT ${XRT_COMPONENT})
 
 foreach (DKMS_FILE ${XRT_DKMS_COMMON_XRT_DRV})
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/common)
-endforeach()
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE}
+    DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/common
+    COMPONENT ${XRT_COMPONENT})
+endforeach ()
 
 foreach (DKMS_FILE ${XRT_DKMS_COMMON_XRT_DRV_INCLUDES})
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include)
-endforeach()
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE}
+    DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include
+    COMPONENT ${XRT_COMPONENT})
+endforeach ()
 
 foreach (DKMS_FILE ${XRT_DKMS_CORE_EDGE_INCLUDES})
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include)
-endforeach()
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE}
+    DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include
+    COMPONENT ${XRT_COMPONENT})
+endforeach ()
 
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
+install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME}
+  DESTINATION ${XRT_DKMS_INSTALL_DIR}
+  COMPONENT ${XRT_COMPONENT})

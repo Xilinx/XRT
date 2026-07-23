@@ -1,8 +1,8 @@
 #!/bin/bash
-#
+
+# SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
-#
+# Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 # This script creates rpm and deb packages for Versal APU firmware and Built-in PS Kernels.
 # The firmware file (.xsabin) is installed to /lib/firmware/xilinx

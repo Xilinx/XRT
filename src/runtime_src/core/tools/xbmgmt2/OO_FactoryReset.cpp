@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
-
-// ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "OO_FactoryReset.h"
 
-// XRT - Include Files
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "flash/flasher.h"
@@ -20,10 +16,6 @@ namespace po = boost::program_options;
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
-
-#ifdef _WIN32
-#pragma warning(disable : 4996) //std::asctime
-#endif
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 OO_FactoryReset::OO_FactoryReset(const std::string& _longName, const std::string& _shortName, bool _isHidden)

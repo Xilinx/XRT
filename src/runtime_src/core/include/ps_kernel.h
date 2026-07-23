@@ -1,21 +1,16 @@
-/*
- * Copyright (C) 2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *		 http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: GPL-2.0
+ * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  */
+#ifndef PS_KERNEL_H_
+#define PS_KERNEL_H_
 
-#ifndef _PS_KERNEL_H_
-#define _PS_KERNEL_H_
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning( disable : 4200 )
+#endif
 
 /*
  * This header file contains data structure for xrt PS kernel metadata. This
@@ -34,7 +29,11 @@ struct ps_kernel_data {
 
 struct ps_kernel_node {
 	uint32_t		pkn_count;
-	struct ps_kernel_data	pkn_data[1];
+	struct ps_kernel_data	pkn_data[];
 };
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif /* _PS_KERNEL_H_ */

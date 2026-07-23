@@ -156,36 +156,6 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 }
 
 int
-zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct drm_zocl_slot* slot, struct axlf *axlf,
-			char __user *xclbin, struct kds_client *client)
-{
-	uint64_t size = 0;
-	char *pdi_buf = NULL;
-	int ret = 0;
-
-	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
-		DRM_ERROR("%s Shared context can not load xclbin", __func__);
-		return -EPERM;
-	}
-
-	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
-	if (size == 0)
-		return 0;
-
-	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
-	vfree(pdi_buf);
-
-	/* Mark AIE out of reset state after load PDI */
-	if (slot->aie) {
-		mutex_lock(&slot->aie_lock);
-		slot->aie->aie_reset = false;
-		mutex_unlock(&slot->aie_lock);
-	}
-
-	return ret;
-}
-
-int
 zocl_offsetof_sect(enum axlf_section_kind kind, void *sect,
 		struct axlf *axlf_full, char __user *xclbin_ptr)
 {
@@ -362,6 +332,8 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 	if (slot->ip) {
 		for (i = 0; i < slot->ip->m_count; ++i) {
 			ip = &slot->ip->m_ip_data[i];
+			if (ip->m_base_address == EMPTY_APT_VALUE)
+				continue;
 			apt_idx = get_next_free_apt_index(zdev);
 			if (apt_idx < 0) {
 				DRM_ERROR("No more free apertures\n");

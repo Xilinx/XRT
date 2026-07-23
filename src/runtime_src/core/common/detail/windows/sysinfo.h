@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
-
-// Local - Include files
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "core/common/error.h"
 
-// System - Include Files
-#include <windows.h>
 #include <string>
 #include <thread>
 #include <array>
 
-// 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 #include <boost/format.hpp>
 
-#ifdef _WIN32
-# pragma warning (disable : 4996)
+// Exclude rarely-used headers (e.g. Winsock) from <windows.h> for
+// faster builds and fewer conflicts.
+#ifndef WIN32_LEAN_AND_MEAN
+# define WIN32_LEAN_AND_MEAN
 #endif
+#define NOMINMAX
+#include <windows.h>
 
 namespace {
 
@@ -103,8 +102,19 @@ osNameImpl()
 {
   OSVERSIONINFO vi;
   vi.dwOSVersionInfoSize = sizeof(vi);
+
+#ifdef _WIN32
+# pragma warning (push)
+# pragma warning (disable : 4996)
+#endif
+
   if (GetVersionEx(&vi) == 0)
     throw xrt_core::error("Cannot get OS version information");
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
+
   switch (vi.dwPlatformId)
   {
   case VER_PLATFORM_WIN32s:

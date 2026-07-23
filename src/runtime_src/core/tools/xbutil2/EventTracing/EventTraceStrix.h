@@ -271,16 +271,6 @@ public:
 private:
 
   /**
-   * @brief Format summary header
-   * @param event_count Number of events found
-   * @param buf_size Buffer size in bytes
-   * @return Formatted summary string
-   */
-  std::string 
-  format_summary(size_t event_count, 
-                 size_t buf_size) const;
-
-  /**
    * @brief Format a single event for output
    * @param index Event index in the sequence
    * @param timestamp Event timestamp 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBHelpMenusCore.h"
@@ -313,7 +313,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   for (auto& subCmdEntry : _subCmds) {
     // Filter out hidden subcommand
-    if (!XBU::getAdvance() && subCmdEntry->isHidden())
+    if (!XBU::getShowHidden() && subCmdEntry->isHidden())
       continue;
 
     // Depricated sub-command
@@ -373,7 +373,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   report_option_help("OPTIONS", _optionDescription);
 
-  if (XBU::getAdvance())
+  if (XBU::getShowHidden())
     report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden);
 }
 

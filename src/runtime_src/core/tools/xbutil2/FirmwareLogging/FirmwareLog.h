@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef FIRMWARE_LOG_H
 #define FIRMWARE_LOG_H
@@ -282,10 +282,11 @@ private:
    * @param bit_width Number of bits to extract
    * @return uint64_t Extracted field value
    */
-  uint64_t 
-  extract_value(const uint8_t* data_ptr, 
-                size_t byte_offset, 
-                size_t bit_offset, 
+  uint64_t
+  extract_value(const uint8_t* data_ptr,
+                size_t buf_size,
+                size_t byte_offset,
+                size_t bit_offset,
                 size_t bit_width) const;
 
   /**
@@ -311,10 +312,10 @@ private:
    * This method extracts null-terminated string messages from log entries,
    * with newline cleanup.
    */
-  std::string 
-  parse_message(const uint8_t* data_ptr, 
-                size_t msg_offset, 
-                size_t buf_size) const;
+  std::string
+  parse_message(const uint8_t* data_ptr,
+                size_t buf_size,
+                size_t msg_offset) const;
 
   /**
    * @brief Parse a complete log entry (header + message)
@@ -329,9 +330,10 @@ private:
    * 2. Parsing the message payload
    * 3. Returning organized field data for table display
    */
-  std::vector<std::string> 
-  parse_entry(const uint8_t* data_ptr, size_t offset, 
-                  size_t buf_size) const;
+  std::vector<std::string>
+  parse_entry(const uint8_t* data_ptr,
+              size_t buf_size,
+              size_t offset) const;
 
 
 

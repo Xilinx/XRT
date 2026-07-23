@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_API_SOURCE
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_COMMON_SOURCE
@@ -26,10 +26,6 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
-
-#ifdef _WIN32
-# pragma warning ( disable : 4996 )
-#endif
 
 namespace bpt = boost::property_tree;
 
@@ -170,8 +166,15 @@ print_json(const bpt::ptree& pt)
   auto current_time = std::chrono::system_clock::now();
   std::time_t time = std::chrono::system_clock::to_time_t(current_time);
 
+  std::tm tm{};
+#if defined(_WIN32) || defined(_MSC_VER)
+  localtime_s(&tm, &time);
+#else
+  localtime_r(&time, &tm);
+#endif
+
   std::stringstream time_stamp;
-  time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
+  time_stamp << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
 
   // create json in pwd
   // file name format - XRT_usage_metrics_##pid_YY-MM-DD_H-M-S.json
@@ -474,9 +477,9 @@ log_kernel_run_info(const xrt::kernel_impl* krnl_impl, const xrt::run_impl* run_
   auto ts_now = std::chrono::high_resolution_clock::now();
   try {
     auto kernel =
-        xrt_core::kernel_int::create_kernel_from_implementation(krnl_impl);
+        xrt_core::kernel_int::get_kernel_from_impl(krnl_impl);
 
-    auto hw_ctx = xrt_core::kernel_int::get_hw_ctx(kernel);
+    auto hw_ctx = xrt_core::kernel_int::get_hwctx(kernel);
     auto hwctx_handle = static_cast<xrt_core::hwctx_handle*>(hw_ctx);
 
     auto dev_id = xrt_core::hw_context_int::get_core_device(hw_ctx)->get_device_id();

@@ -1,38 +1,8 @@
-/*
- *  Copyright (C) 2019-2022, Xilinx Inc
- *
- *  This file is dual licensed.  It may be redistributed and/or modified
- *  under the terms of the Apache 2.0 License OR version 2 of the GNU
- *  General Public License.
- *
- *  Apache License Verbiage
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- *  GPL license Verbiage:
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License as
- *  published by the Free Software Foundation; either version 2 of the
- *  License, or (at your option) any later version.  This program is
- *  distributed in the hope that it will be useful, but WITHOUT ANY
- *  WARRANTY; without even the implied warranty of MERCHANTABILITY or
- *  FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
- *  License for more details.  You should have received a copy of the
- *  GNU General Public License along with this program; if not, write
- *  to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
- *  Boston, MA 02111-1307 USA
- *
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: GPL-2.0
+ * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
  */
 
 /**
@@ -263,18 +233,23 @@ struct ert_cmd_chain_data {
 };
 
 #ifndef U30_DEBUG
+/* Guard against malformed packet where count <= extra_cu_masks (SWSPLAT-30733 / CWE-787).
+ * Both fields are uint32_t; cast to int before arithmetic to prevent unsigned
+ * wraparound producing a large positive value that becomes a negative index. */
 #define ert_write_return_code(cmd, value) \
 do { \
   struct ert_start_kernel_cmd *skcmd = (struct ert_start_kernel_cmd *)cmd; \
-  int end_idx = skcmd->count - 1 - skcmd->extra_cu_masks; \
-  skcmd->data[end_idx] = value; \
+  int end_idx = (int)skcmd->count - 1 - (int)skcmd->extra_cu_masks; \
+  if (end_idx >= 0) \
+    skcmd->data[end_idx] = value; \
 } while (0)
 
 #define ert_read_return_code(cmd, ret) \
 do { \
   struct ert_start_kernel_cmd *skcmd = (struct ert_start_kernel_cmd *)cmd; \
-  int end_idx = skcmd->count - 1 - skcmd->extra_cu_masks; \
-  ret = skcmd->data[end_idx]; \
+  int end_idx = (int)skcmd->count - 1 - (int)skcmd->extra_cu_masks; \
+  if (end_idx >= 0) \
+    ret = skcmd->data[end_idx]; \
 } while (0)
 #else
 /* These are for debug legacy U30 firmware */

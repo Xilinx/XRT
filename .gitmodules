@@ -11,10 +11,10 @@
 	path = src/runtime_src/core/common/aiebu
 	url = https://github.com/Xilinx/aiebu.git
         branch = main-ge
-[submodule "src/runtime_src/aie-rt"]
-	path = src/runtime_src/aie-rt
-	url = https://github.com/Xilinx/aie-rt.git
-	branch = release/main_aig
+[submodule "src/runtime_src/aie-codegen"]
+	path = src/runtime_src/aie-codegen
+	url = https://github.com/Xilinx/aie-codegen.git
+	branch = main
 [submodule "src/runtime_src/core/tools/xbtracer/Detours"]
 	path = src/runtime_src/core/tools/xbtracer/Detours
 	url = https://github.com/microsoft/Detours.git

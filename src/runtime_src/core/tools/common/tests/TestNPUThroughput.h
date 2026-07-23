@@ -5,15 +5,19 @@
 #define TestNPUThroughput_h_
 
 #include "tools/common/TestRunner.h"
+#include "core/common/json/nlohmann/json.hpp"
 #include "xrt/xrt_device.h"
 
 class TestNPUThroughput : public TestRunner {
   public:
-    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
-    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*) override;
+    boost::property_tree::ptree 
+    run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*) override;
 
-  public:
     TestNPUThroughput();
+
+  private:
+    double 
+    get_throughput_from_report(const nlohmann::json& report) const;
 };
 
 #endif

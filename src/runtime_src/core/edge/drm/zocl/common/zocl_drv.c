@@ -224,7 +224,6 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 
 		zocl_slot->partial_overlay_id = -1;
 		zocl_slot->slot_idx = i;
-		zocl_slot->slot_type = ZOCL_SLOT_TYPE_PHY;
 		zocl_slot->hwctx_ref_cnt = 0;
 
 		zdev->pr_slot[i] = zocl_slot;
@@ -245,7 +244,6 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		mutex_init(&zocl_slot->aie_lock);
 
 		zocl_slot->slot_idx = i;
-		zocl_slot->slot_type = ZOCL_SLOT_TYPE_VIRT;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -410,6 +408,31 @@ int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr)
 	/* Haven't consider search efficiency yet. */
 	for (i = 0; i < zdev->cu_subdev.num_apts; ++i)
 		if (apts[i].addr == addr)
+			break;
+	mutex_unlock(&zdev->cu_subdev.lock);
+
+	return (i == zdev->cu_subdev.num_apts) ? -EINVAL : i;
+}
+
+/**
+ * Get the aperture index matching both a physical address and slot index.
+ * Used when multiple slots may contain IPs at the same address.
+ *
+ * @param	zdev:     zocl device struct
+ * @param	addr:     physical address of the aperture
+ * @param	slot_idx: slot index to match
+ *
+ * Returns the index if aperture was found, -EINVAL if not found.
+ */
+int get_apt_index_by_addr_and_slot(struct drm_zocl_dev *zdev,
+				   phys_addr_t addr, int slot_idx)
+{
+	struct addr_aperture *apts = zdev->cu_subdev.apertures;
+	int i;
+
+	mutex_lock(&zdev->cu_subdev.lock);
+	for (i = 0; i < zdev->cu_subdev.num_apts; ++i)
+		if (apts[i].addr == addr && apts[i].slot_idx == slot_idx)
 			break;
 	mutex_unlock(&zdev->cu_subdev.lock);
 

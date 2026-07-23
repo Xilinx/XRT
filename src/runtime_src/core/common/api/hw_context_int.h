@@ -1,4 +1,4 @@
-// PDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_COMMON_API_HW_CONTEXT_INT_H
 #define XRT_COMMON_API_HW_CONTEXT_INT_H
@@ -14,7 +14,7 @@
 // Provide access to xrt::xclbin data that is not directly exposed
 // to end users via xrt::xclbin.   These functions are used by
 // XRT core implementation.
-namespace xrt_core { namespace hw_context_int {
+namespace xrt_core::hw_context_int {
 
 // Get the core_device from this context
 // Exported for xdp access
@@ -50,6 +50,11 @@ create_hw_context_from_implementation(void* hwctx_impl);
 // throws if no ELF is found with given kernel name
 xrt::elf
 get_elf(const xrt::hw_context& hwctx, const std::string& kname);
+
+// get_config_elfs() - Return list of configuration elfs for hwctx
+// In non-elf flow, this function return empty set.
+std::vector<xrt::elf>
+get_config_elfs(const xrt::hw_context& hwctx);
 
 // Get the partition size (number of columns).  May not be available
 // in xclbin mode.
@@ -89,6 +94,25 @@ XRT_CORE_COMMON_EXPORT
 std::map<std::string, xrt::elf>
 get_elf_map(const xrt::hw_context& hwctx);
 
-}} // hw_context_int, xrt_core
+// Get the configuration parameter / QoS map from the hw context.
+// The returned map contains key-value pairs
+// key: string, value: uint32_t for both QoS-related settings and
+// other hw context configuration parameters.
+// Throws std::runtime_error if the context currently does not store cfg_param_type
+XRT_CORE_COMMON_EXPORT
+xrt::hw_context::qos_type
+get_qos_map(const xrt::hw_context& hwctx);
+
+// get_cfg_map() - Get the configuration parameters
+//
+// The returned map contains string to string key-value pairs both
+// QoS-related settings and other hw context configuration parameters.
+// If hwctx was configured with string to integral key-value pairs,
+// then the integral values are converted to strings.
+XRT_CORE_COMMON_EXPORT
+xrt::hw_context::cfg_type
+get_cfg_map(const xrt::hw_context& hwctx);
+
+} // xrt_core::hw_context_int
 
 #endif

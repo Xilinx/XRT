@@ -35,8 +35,8 @@ PROGRAM=`basename $0`
 
 # XRT Version variables
 XRT_MAJOR_VERSION=2
-XRT_MINOR_VERSION=18
-RELEASE_VERSION=202420
+XRT_MINOR_VERSION=23
+RELEASE_VERSION=202610
 
 # Default distribution
 DIST=jammy
@@ -113,7 +113,7 @@ GIT_MODULES=$XRT_DIR/.gitmodules
 if [ -f "$GIT_MODULES" ]; then
     cd $XRT_DIR
     echo "Updating Git XRT submodules"
-    git submodule update --init
+    git submodule update --init --recursive
     cd -
 fi
 

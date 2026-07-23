@@ -1,36 +1,62 @@
-/**
- * Copyright (C) 2016-2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrtcore_message_h_
 #define xrtcore_message_h_
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
 #include "core/include/xrt.h"
 #include "core/include/xrt/experimental/xrt_message.h"
+#include <memory>
 #include <string>
 #include <cstdio>
 #include <vector>
 
-namespace xrt_core { namespace message {
+namespace xrt_core::message {
 
 using severity_level = xrt::message::level;
+
+class message_dispatch
+{
+public:
+  message_dispatch() = default;
+  message_dispatch(const message_dispatch&) = delete;
+  message_dispatch& operator=(const message_dispatch&) = delete;
+  message_dispatch(message_dispatch&&) = delete;
+  message_dispatch& operator=(message_dispatch&&) = delete;
+  virtual ~message_dispatch() = default;
+
+  static std::unique_ptr<message_dispatch>
+  make_dispatcher(const std::string& choice);
+
+  virtual void
+  send(severity_level l, const char* tag, const char* msg) = 0;
+};
 
 XRT_CORE_COMMON_EXPORT
 void
 send(severity_level l, const char* tag, const char* msg);
+
+// Send a uC log line directly to the given sink ("syslog" or "console"),
+// bypassing runtime_log and verbosity filtering.
+// Used by buffer_dumper for uc_log_dump routing.
+// TODO: severity_level is currently always info; in future it can be decoded
+// from the uC log entry and passed by buffer_dumper for finer event classification.
+XRT_CORE_COMMON_EXPORT
+void
+send_uc_log(const std::string& sink, severity_level l, const char* tag, const char* msg);
+
+// Send a log message directly to syslog bypassing runtime_log and
+// verbosity filtering
+XRT_CORE_COMMON_EXPORT
+void
+send_syslog(severity_level l, const char* tag, const char* msg);
+
+inline void
+send_syslog(severity_level l, const std::string& tag, const std::string& msg)
+{
+  send_syslog(l, tag.c_str(), msg.c_str());
+}
 
 void
 sendv(severity_level l, const char* tag, const char* format, va_list args);
@@ -61,6 +87,6 @@ send(severity_level l, const char* tag, const char* format, Args ... args)
   }
 }
 
-}} // message,xrt_core
+} // xrt_core::message
 
 #endif

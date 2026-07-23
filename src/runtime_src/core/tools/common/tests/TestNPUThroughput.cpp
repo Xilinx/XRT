@@ -13,18 +13,26 @@
 
 using json = nlohmann::json;
 #include <filesystem>
-
+#include <stdexcept>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestNPUThroughput::TestNPUThroughput()
   : TestRunner("throughput", "Run end-to-end throughput test")
 {}
 
-boost::property_tree::ptree
-TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>&)
+double
+TestNPUThroughput::
+get_throughput_from_report(const json& report) const
 {
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
+  if (report.contains("executions")) {
+    const auto& execs = report.at("executions");
+    if (!execs.is_array() || execs.size() != 1)
+      throw std::runtime_error("profile_throughput.json must define exactly one execution");
+
+    return execs.at(0).at("cpu").at("throughput").get<double>();
+  }
+
+  return report.at("cpu").at("throughput").get<double>();
 }
 
 boost::property_tree::ptree
@@ -52,8 +60,9 @@ TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_c
     runner.execute();
     runner.wait();
 
-    auto report = json::parse(runner.get_report());
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f op/s") % report["cpu"]["throughput"].get<double>()));
+    const auto report = json::parse(runner.get_report());
+    const double throughput = get_throughput_from_report(report);
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f op/s") % throughput));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {

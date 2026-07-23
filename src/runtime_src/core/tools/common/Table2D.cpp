@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -15,6 +15,154 @@ Table2D::Table2D(const std::vector<HeaderData>& headers) : m_inter_entry_padding
 {
   for (auto& header : headers)
       addHeader(header);
+}
+
+Table2D::Table2D(size_t column_count, Justification justification)
+  : m_inter_entry_padding(2)
+  , m_stacked_mode(true)
+{
+  for (size_t i = 0; i < column_count; ++i) {
+    HeaderData header;
+    header.name = "";
+    header.justification = justification;
+    addHeader(header);
+  }
+}
+
+void
+Table2D::update_stacked_column_width(size_t column_index, const std::string& data)
+{
+  auto& column = m_table[column_index];
+  column.max_element_size = std::max(column.max_element_size, data.size());
+}
+
+void
+Table2D::validate_stacked_row(const std::vector<std::string>& row, const char* context) const
+{
+  if (!m_stacked_mode)
+    throw std::runtime_error(boost::str(boost::format("Table2D - %s requires a stacked table.\n") % context));
+
+  if (row.size() < m_table.size())
+    throw std::runtime_error(boost::str(boost::format("Table2D - %s row is smaller than table. Row size: %d Table Size: %d\n")
+      % context % row.size() % m_table.size()));
+  if (row.size() > m_table.size())
+    throw std::runtime_error(boost::str(boost::format("Table2D - %s row is larger than table. Row size: %d Table Size: %d\n")
+      % context % row.size() % m_table.size()));
+}
+
+void
+Table2D::set_stacked_headers(const std::vector<std::vector<std::string>>& header_rows)
+{
+  if (!m_stacked_mode)
+    throw std::runtime_error("Table2D - set_stacked_headers requires a stacked table.\n");
+
+  if (header_rows.empty())
+    throw std::runtime_error("Table2D - set_stacked_headers requires at least one header row.\n");
+
+  m_stacked_header_rows.clear();
+  for (const auto& row : header_rows) {
+    validate_stacked_row(row, "set_stacked_headers");
+    m_stacked_header_rows.push_back(row);
+    for (size_t col = 0; col < row.size(); ++col)
+      update_stacked_column_width(col, row[col]);
+  }
+}
+
+void
+Table2D::add_stacked_entry(const std::vector<std::vector<std::string>>& entry_rows)
+{
+  if (entry_rows.empty())
+    throw std::runtime_error("Table2D - add_stacked_entry requires at least one entry row.\n");
+
+  for (const auto& row : entry_rows) {
+    validate_stacked_row(row, "add_stacked_entry");
+    for (size_t col = 0; col < row.size(); ++col)
+      update_stacked_column_width(col, row[col]);
+  }
+
+  StackedBlock block;
+  block.kind = StackedBlockKind::entry;
+  block.rows = entry_rows;
+  m_stacked_blocks.push_back(std::move(block));
+}
+
+void
+Table2D::add_stacked_separator()
+{
+  if (!m_stacked_mode)
+    throw std::runtime_error("Table2D - add_stacked_separator requires a stacked table.\n");
+
+  StackedBlock block;
+  block.kind = StackedBlockKind::separator;
+  m_stacked_blocks.push_back(std::move(block));
+}
+
+void
+Table2D::format_data_row(std::string& output_line, const std::string& prefix, const std::vector<std::string>& row) const
+{
+  const auto space_suffix = std::string(m_inter_entry_padding, ' ');
+  for (size_t col = 0; col < m_table.size(); ++col) {
+    std::string column_prefix;
+    if (col == 0)
+      column_prefix = prefix + '|';
+    appendToOutput(output_line, column_prefix, space_suffix, m_table[col], row[col]);
+  }
+  output_line.append("\n");
+}
+
+void
+Table2D::format_separator_row(std::string& output_line, const std::string& prefix) const
+{
+  const auto dash_suffix = std::string(m_inter_entry_padding, '-');
+  for (size_t col = 0; col < m_table.size(); ++col) {
+    std::string column_prefix;
+    if (col == 0)
+      column_prefix = prefix + '|';
+    const auto& column = m_table[col];
+    appendToOutput(output_line, column_prefix, dash_suffix, column, std::string(column.max_element_size, '-'));
+  }
+  output_line.append("\n");
+}
+
+std::string
+Table2D::stacked_to_string(const std::string& prefix) const
+{
+  if (!m_stacked_mode)
+    throw std::runtime_error("Table2D - stacked_to_string requires a stacked table.\n");
+
+  std::stringstream os;
+  for (const auto& header_row : m_stacked_header_rows) {
+    std::string output_line;
+    format_data_row(output_line, prefix, header_row);
+    os << output_line;
+  }
+
+  if (!m_stacked_header_rows.empty()) {
+    std::string separator_line;
+    format_separator_row(separator_line, prefix);
+    os << separator_line;
+  }
+
+  for (const auto& block : m_stacked_blocks) {
+    switch (block.kind) {
+      case StackedBlockKind::entry:
+        for (const auto& row : block.rows) {
+          std::string output_line;
+          format_data_row(output_line, prefix, row);
+          os << output_line;
+        }
+        break;
+      case StackedBlockKind::separator:
+        {
+          std::string separator_line;
+          format_separator_row(separator_line, prefix);
+          os << separator_line;
+        }
+        break;
+    }
+  }
+
+  return os.str();
 }
 
 void

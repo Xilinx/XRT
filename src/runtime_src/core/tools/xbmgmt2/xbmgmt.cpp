@@ -86,7 +86,7 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_( argc, argv, executable, description, subCommands, configTree);
+    main_( argc, argv, executable, description, subCommands);
     return 0;
   } catch (const xrt_core::error& e) {
     // Clean exception exit

@@ -16,7 +16,6 @@ add_library(core_pcielinux_objects OBJECT
   pcidev.cpp
   pcidrv.cpp
   shim.cpp
-  smi_pcie.cpp
   system_linux.cpp
   )
 
@@ -36,6 +35,7 @@ target_include_directories(core_pcielinux_objects
 add_library(xrt_core SHARED
   $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
+  $<TARGET_OBJECTS:core_smi_alveo_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
@@ -43,6 +43,7 @@ add_library(xrt_core SHARED
 add_library(xrt_core_static STATIC
   $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
+  $<TARGET_OBJECTS:core_smi_alveo_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
@@ -82,9 +83,16 @@ endif()
 
 # Shim for Linux is installed in the base component as it is
 # used by both Alveo and NPU components.   
-install(TARGETS xrt_core xrt_core_static
+install(TARGETS xrt_core
   EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT} NAMELINK_COMPONENT ${XRT_BASE_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
+
+# Enable install of static library iff requested
+if(XRT_INSTALL_STATIC_LIBRARY)
+  install(TARGETS xrt_core_static
+    EXPORT xrt-targets
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+endif()

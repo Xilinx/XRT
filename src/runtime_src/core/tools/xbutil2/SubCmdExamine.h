@@ -8,13 +8,14 @@
 #include "tools/common/SubCmd.h"
 #include "tools/common/Report.h"
 #include "tools/common/OptionOptions.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 
 // System - Include Files
 #include <memory>
+#include <optional>
 
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
@@ -26,6 +27,7 @@ struct SubCmdExamineOptions {
   std::string               m_format;
   std::string               m_output;
   bool                      m_help;
+  std::optional<unsigned>   m_watchIntervalSec;
 };
 class SubCmdExamine : public SubCmd {
   ReportCollection uniqueReportCollection;
@@ -34,7 +36,6 @@ class SubCmdExamine : public SubCmd {
   void fill_option_values(const boost::program_options::variables_map& vm, SubCmdExamineOptions& options) const;
   std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;
   std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm) const;
-  std::vector<std::shared_ptr<OptionOptions>> getOptionOptions(const xrt_core::smi::tuple_vector& options) const;
 
  public:
   SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);

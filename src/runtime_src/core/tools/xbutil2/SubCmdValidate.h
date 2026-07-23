@@ -11,7 +11,7 @@
 #include "tools/common/SubCmd.h"
 #include "tools/common/XBHelpMenus.h"
 #include "tools/common/TestRunner.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 
 struct SubCmdValidateOptions {
   std::string m_device;
@@ -21,7 +21,7 @@ struct SubCmdValidateOptions {
   std::string m_xclbin_path;
   std::string m_pmode;
   std::vector<std::string> m_tests_to_run;
-  unsigned int m_iter; 
+  unsigned int m_loop; 
   bool m_elf;
   bool m_help;
 };

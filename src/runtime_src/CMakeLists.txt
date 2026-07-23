@@ -12,6 +12,7 @@ endif()
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
+option(XRT_ENABLE_USDT "Enable SystemTap USDT tracepoints" ON)
 
 if (XOCL_VERBOSE)
   add_compile_options("-DXOCL_VERBOSE")
@@ -19,6 +20,18 @@ endif()
 
 if(XRT_VERBOSE)
   add_compile_options("-DXRT_VERBOSE")
+endif()
+
+if (XRT_ENABLE_USDT)
+  include(CheckIncludeFileCXX)
+  check_include_file_cxx("sys/sdt.h" XRT_HAVE_SYS_SDT_H)
+  if (NOT XRT_HAVE_SYS_SDT_H)
+    message(FATAL_ERROR
+      "sys/sdt.h not found. Install systemtap-sdt-dev "
+      "(or systemtap-sdt-devel), or configure with "
+      "-DXRT_ENABLE_USDT=OFF.")
+  endif()
+  add_compile_definitions(XRT_ENABLE_USDT)
 endif()
 
 add_compile_options("-fPIC")
@@ -30,7 +43,6 @@ endif(XRT_ENABLE_WERROR)
 if (NOT XRT_EDGE)
   add_compile_options( ${XRT_WARN_OPTS} )
 endif()
-xrt_add_subdirectory(xdp)
 
 xrt_add_subdirectory(tools/xclbinutil)
 xrt_add_subdirectory(xocl)
@@ -53,12 +65,22 @@ if (NOT XRT_EDGE)
   xrt_add_subdirectory(tools/scripts)
   if (XRT_NPU)
     # Used by xdp for include search path
-    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/driver/src)
-    set(XAIENGINE_BUILD_SHARED OFF)
-    xrt_add_subdirectory_disable_install_target(aie-rt/driver/src)
+    set(AIE_CODEGEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
+    set(AIE_CODEGEN_BUILD_SHARED OFF)
+    xrt_add_subdirectory_disable_install_target(aie-codegen/src)
   endif()
-
 endif()
+
+if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+  set(AIE_CODEGEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
+  set(AIEBU_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/core/common/aiebu)
+  set(AIE_CODEGEN_BUILD_SHARED OFF)
+  xrt_add_subdirectory_disable_install_target(aie-codegen/src)
+  xrt_add_subdirectory_disable_install_target(aie-codegen/fal)
+  set(AIEFAL_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/fal/src/include)
+endif()
+
+xrt_add_subdirectory(xdp)
 
 # Attach to the user's linker flags
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
@@ -83,11 +105,17 @@ else()
     add_compile_options( ${XRT_WARN_OPTS} )
   endif()
 
-  if (XRT_NPU)
+  if (XRT_NPU OR (XDP_VE2_BUILD_CMAKE STREQUAL "yes"))
     # Used by xdp for include search path
-    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/driver/src)
-    set(XAIENGINE_BUILD_SHARED OFF)
-    xrt_add_subdirectory_disable_install_target(aie-rt/driver/src)
+    set(AIE_CODEGEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
+    set(AIE_CODEGEN_BUILD_SHARED OFF)
+    xrt_add_subdirectory_disable_install_target(aie-codegen/src)
+  endif()
+
+  if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+    set(AIEBU_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/core/common/aiebu)
+    xrt_add_subdirectory_disable_install_target(aie-codegen/fal)
+    set(AIEFAL_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/fal/src/include)
   endif()
 
   # Build Subdirectories

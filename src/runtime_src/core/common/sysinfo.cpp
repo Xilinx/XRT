@@ -3,9 +3,13 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "sysinfo.h"
 #include "detail/sysinfo.h"
+
 #include "system.h"
+#include "utils.h"
 
 #include "xrt/detail/version-git.h"
+
+#include <cstdlib>
 
 namespace xrt_core::sysinfo {
 
@@ -45,6 +49,9 @@ get_os_info()
 bool
 is_advanced()
 {
+  if (xrt_core::utils::is_env("XRTSMIAdvanced"))
+    return true;
+
   return xrt_core::sysinfo::detail::is_advanced();
 }
 

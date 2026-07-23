@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #define XRT_API_SOURCE         // in same dll as coreutil
@@ -28,10 +28,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#ifdef _WIN32
-#pragma warning ( disable : 4996 )
-#endif
 
 namespace xrt_core {
 
@@ -353,7 +349,7 @@ device::
 get_memory_type(size_t memidx) const
 {
   auto mem_topology = get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
-  if (!mem_topology || mem_topology->m_count < static_cast<int32_t>(memidx))
+  if (!mem_topology || static_cast<int32_t>(memidx) >= mem_topology->m_count)
     throw error(EINVAL, "invalid memory bank index");
 
   const auto& mem = mem_topology->m_mem_data[memidx];

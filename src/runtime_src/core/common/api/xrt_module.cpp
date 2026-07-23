@@ -5,7 +5,8 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
-#include "core/common/time.h"
+#include "core/common/trace.h"
+
 #include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
@@ -46,6 +47,7 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 
 #ifdef _WIN32
 #include <dbghelp.h>
@@ -75,11 +77,18 @@ class module_impl
 {
 protected:
   std::shared_ptr<xrt::elf_impl> m_elf_impl; // NOLINT
+  // Name of the module (optional)
+  std::string m_name; // NOLINT
 
 public:
   explicit
   module_impl(const xrt::elf& elf)
     : m_elf_impl(elf.get_handle())
+  {}
+
+  module_impl(const xrt::elf& elf, std::string name)
+    : m_elf_impl(elf.get_handle())
+    , m_name(std::move(name))
   {}
 
   virtual ~module_impl() = default;
@@ -89,6 +98,12 @@ public:
   module_impl(module_impl&&) = delete;
   module_impl& operator=(const module_impl&) = delete;
   module_impl& operator=(module_impl&&) = delete;
+
+  std::string
+  get_name() const
+  {
+    return m_name;
+  }
 
   virtual xrt::hw_context
   get_hw_context() const
@@ -133,11 +148,18 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  // Check if dtrace is enabled
+  virtual bool
+  is_dtrace_enabled() const
+  {
+    return false;
+  }
+
   // Dump dynamic trace buffer (optional)
   virtual void
-  dump_dtrace_buffer(uint32_t)
+  dump_dtrace_buffer(const std::string&)
   {
-  //Placeholder has no dtrace
+    throw std::runtime_error("Not supported");
   }
 
   // Get control scratchpad buffer object
@@ -179,6 +201,9 @@ protected:
   // Alias for patcher types
   using patcher_config = xrt_core::elf_patcher::patcher_config;
   using symbol_patcher = xrt_core::elf_patcher::symbol_patcher;
+
+  // scratchpad memory symbol name
+  static constexpr const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
 
   // Pointer to shared patcher configs
   // This is created during ELF parsing and shared across module_run instances
@@ -242,14 +267,15 @@ protected:
 
   // Helper function for patching buffer with argument name or index
   bool
-  patch_helper(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t patch,
-               xrt_core::elf_patcher::buf_type type)
+  patch_helper(xrt::bo& bo, uint64_t patch, xrt_core::elf_patcher::buf_type type,
+               const std::string& arg_string, const std::string& index_string,
+               bool is_arg = true)
   {
     // Check if patcher configs exist
     if (!m_patcher_configs || m_patcher_configs->empty())
         return false;
 
-    const auto key_string = xrt_core::elf_patcher::generate_key_string(argnm, type);
+    const auto key_string = xrt_core::elf_patcher::generate_key_string(arg_string, type);
 
     auto config_it = m_patcher_configs->find(key_string);
     auto not_found_use_argument_name = (config_it == m_patcher_configs->end());
@@ -257,7 +283,6 @@ protected:
 
     if (not_found_use_argument_name) {
       // Search using index
-      auto index_string = std::to_string(index);
       const auto key_index_string = xrt_core::elf_patcher::generate_key_string(index_string, type);
       config_it = m_patcher_configs->find(key_index_string);
       if (config_it == m_patcher_configs->end())
@@ -273,20 +298,20 @@ protected:
     }
 
     // Call patch - symbol_patcher owns its state internally
-    patcher_it->second.patch_symbol(bo, patch, m_first_patch);
+    patcher_it->second.patch_symbol(bo, patch, m_first_patch, is_arg);
 
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
         ss << "Patched " << xrt_core::elf_patcher::get_section_name(type)
-           << " using argument index " << index
+           << " using argument index " << index_string
            << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
       else {
         std::stringstream ss;
         ss << "Patched " << xrt_core::elf_patcher::get_section_name(type)
-           << " using argument name " << argnm
+           << " using argument name " << arg_string
            << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
@@ -343,8 +368,7 @@ class module_run_aie_gen2 : public module_run
   // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
   std::map<std::string, xrt::bo> m_pdi_bo_map;
 
-  // Symbol names for patching
-  static constexpr const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+  // Symbol names for patching specific to aie_gen2 platform
   static constexpr const char* Control_Packet_Symbol = "control-packet";
   static constexpr const char* Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 
@@ -437,10 +461,10 @@ class module_run_aie_gen2 : public module_run
       if (!scratchpad_mem)
         throw std::runtime_error("Failed to get scratchpad buffer from context\n");
 
-      patch_helper(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, scratchpad_mem.address(),
-                   xrt_core::elf_patcher::buf_type::preempt_save);
-      patch_helper(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, scratchpad_mem.address(),
-                   xrt_core::elf_patcher::buf_type::preempt_restore);
+      patch_helper(m_preempt_save_bo, scratchpad_mem.address(),
+                   xrt_core::elf_patcher::buf_type::preempt_save, Scratch_Pad_Mem_Symbol, {}, false);
+      patch_helper(m_preempt_restore_bo, scratchpad_mem.address(),
+                   xrt_core::elf_patcher::buf_type::preempt_restore, Scratch_Pad_Mem_Symbol, {}, false);
 
       if (is_dump_preemption_codes()) {
         std::stringstream ss;
@@ -455,8 +479,8 @@ class module_run_aie_gen2 : public module_run
     // Create control scratchpad buffer and patch if symbol is present
     if (m_config.ctrl_scratch_pad_mem_size > 0) {
       m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, m_config.ctrl_scratch_pad_mem_size, xbi::use_type::ctrl_scratch_pad);
-      patch_helper(m_instr_bo, Control_ScratchPad_Symbol, 0, m_ctrl_scratch_pad_mem.address(),
-                   xrt_core::elf_patcher::buf_type::ctrltext);
+      patch_helper(m_instr_bo, m_ctrl_scratch_pad_mem.address(),
+                   xrt_core::elf_patcher::buf_type::ctrltext, Control_ScratchPad_Symbol, {}, false);
     }
 
     // Patch all PDI addresses using config's pdi symbols
@@ -468,13 +492,13 @@ class module_run_aie_gen2 : public module_run
       auto [it, inserted] = m_pdi_bo_map.emplace(symbol, std::move(pdi_bo));
 
       // Patch instr buffer with PDI address
-      patch_helper(m_instr_bo, symbol, 0, it->second.address(), xrt_core::elf_patcher::buf_type::ctrltext);
+      patch_helper(m_instr_bo, it->second.address(), xrt_core::elf_patcher::buf_type::ctrltext, symbol, {}, false);
     }
 
     // Patch control packet address if present
     if (m_ctrlpkt_bo) {
-      patch_helper(m_instr_bo, Control_Packet_Symbol, 0, m_ctrlpkt_bo.address(),
-                   xrt_core::elf_patcher::buf_type::ctrltext);
+      patch_helper(m_instr_bo, m_ctrlpkt_bo.address(),
+                   xrt_core::elf_patcher::buf_type::ctrltext, Control_Packet_Symbol, {}, false);
     }
 
     // Patch ctrlpkt preemption buffers using config's dynsyms
@@ -487,8 +511,8 @@ class module_run_aie_gen2 : public module_run
       if (bo_itr == m_ctrlpkt_pm_bos.end())
         throw std::runtime_error("Unable to find ctrlpkt pm buffer for symbol " + dynsym);
 
-      patch_helper(m_instr_bo, dynsym, 0, bo_itr->second.address(),
-                   xrt_core::elf_patcher::buf_type::ctrltext);
+      patch_helper(m_instr_bo, bo_itr->second.address(),
+                   xrt_core::elf_patcher::buf_type::ctrltext, dynsym, {}, false);
     }
 
     XRT_DEBUGF("<- module_run_aie_gen2::create_instruction_buf()\n");
@@ -533,6 +557,7 @@ public:
     : module_run(elf, hw_context, id)
     , m_config(std::get<xrt::module_config_aie_gen2>(m_elf_impl->get_module_config(id)))
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_aie_gen2);
     create_ctrlpkt_buf(ctrlpkt_bo);
     create_ctrlpkt_pm_bufs();
     create_instruction_buf();
@@ -553,22 +578,21 @@ public:
   void
   patch(const std::string& argnm, size_t index, uint64_t value) override
   {
-    bool patched = false;
-
     // patch control-packet buffer
     if (m_ctrlpkt_bo) {
-      if (patch_helper(m_ctrlpkt_bo, argnm, index, value, xrt_core::elf_patcher::buf_type::ctrldata))
-        patched = true;
+      auto type = xrt_core::elf_patcher::buf_type::ctrldata;
+      if (patch_helper(m_ctrlpkt_bo, value, type, argnm, std::to_string(index)))
+        m_patched_args.insert(
+            xrt_core::elf_patcher::generate_key_string(argnm, type));
     }
 
     // patch instruction buffer
     if (m_instr_bo) {
-      if (patch_helper(m_instr_bo, argnm, index, value, xrt_core::elf_patcher::buf_type::ctrltext))
-        patched = true;
+      auto type = xrt_core::elf_patcher::buf_type::ctrltext;
+      if (patch_helper(m_instr_bo, value, type, argnm, std::to_string(index)))
+        m_patched_args.insert(
+            xrt_core::elf_patcher::generate_key_string(argnm, type));
     }
-
-    if (patched) // if patched, add to patched args set
-      m_patched_args.insert(argnm);
   }
 
   // Sync buffers to device if patching was done
@@ -698,8 +722,8 @@ class module_run_aie_gen2_plus : public module_run
     dtrace_util() : dtrace_handle(nullptr, destroy_dtrace_handle) {}
 
     dtrace_util(const std::string& ctrl_file_path, const std::string& map_data,
-                uint32_t log_level)
-      : dtrace_handle(create_dtrace_handle(ctrl_file_path.c_str(), map_data.c_str(), log_level),
+                uint32_t log_level, uint32_t output_fmt)
+      : dtrace_handle(create_dtrace_handle(ctrl_file_path.c_str(), map_data.c_str(), log_level, output_fmt),
                       destroy_dtrace_handle) {}
   };
   dtrace_util m_dtrace;
@@ -728,10 +752,14 @@ class module_run_aie_gen2_plus : public module_run
       return false;
     }
 
+    // log level 0: error, 1: warning, 2: info
     auto log_level = static_cast<uint32_t>(xrt_core::config::get_dtrace_log_level());
-    log_level = (log_level > 3) ? 3U : (log_level < 1) ? 1U : log_level;
+    log_level = (log_level > 2) ? 2U : log_level;
 
-    m_dtrace = dtrace_util(path, m_config.dump_buf.to_string(), log_level);
+    // output format 0: python, 1: json
+    uint32_t output_fmt = xrt_core::config::get_dtrace_output_json_format() ? 1U : 0U;
+
+    m_dtrace = dtrace_util(path, m_config.dump_buf.to_string(), log_level, output_fmt);
     if (!m_dtrace.dtrace_handle.get()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
         "[dtrace] : Failed to get dtrace handle");
@@ -752,6 +780,7 @@ class module_run_aie_gen2_plus : public module_run
     if (!buffers_length) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
         "[dtrace] : Control buffer size is zero, no dtrace o/p");
+      m_dtrace = dtrace_util{};  // destroy handle; no usable dtrace without buffers
       return;
     }
 
@@ -776,9 +805,9 @@ class module_run_aie_gen2_plus : public module_run
                               "[dtrace] : dtrace buffers initialized successfully");
     }
     catch (const std::exception &e) {
-      m_dtrace.ctrl_bo = {};
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               std::string{"[dtrace] : dtrace buffers initialization failed, "} + e.what());
+      m_dtrace = dtrace_util{};  // destroy handle and clear partial state
     }
   }
 
@@ -860,26 +889,49 @@ class module_run_aie_gen2_plus : public module_run
     for (size_t i = 0; i < col_data.size(); ++i) {
       // Find the control-code-* sym-name and patch it in instruction buffer
       auto sym_name = std::string(Control_Code_Symbol) + "-" + std::to_string(i);
-      if (patch_helper(m_buffer, sym_name, std::numeric_limits<size_t>::max(),
-                       m_buffer.address() + offset,
-                       xrt_core::elf_patcher::buf_type::ctrltext))
-        m_patched_args.insert(sym_name);
+      auto type = xrt_core::elf_patcher::buf_type::ctrltext;
+      if (patch_helper(m_buffer, m_buffer.address() + offset, type, sym_name, {}, false))
+        m_patched_args.insert(
+            xrt_core::elf_patcher::generate_key_string(sym_name, type));
       offset += col_data[i].size();
     }
 
-    // Patch control packet addresses in instruction buffer
-    for (const auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
-      // Symbol name is section name without the grp idx
-      // if sec name is .ctrlpkt-57.grp_idx then sym name is .ctrlpkt-57
-      auto dot_pos = name.rfind('.');
-      auto sym_name = (dot_pos != std::string::npos && dot_pos > 0)
-                    ? name.substr(0, dot_pos)
-                    : name;
+    // create scratchpad memory buffer and patch it in ctrlpkt buffers and
+    // instruction buffer if symbol is present in ELF
+    xrt::bo scratchpad_mem;
+    if (m_config.scratch_pad_mem_size > 0) {
+      scratchpad_mem = xrt_core::hw_context_int::get_scratchpad_mem_buf(m_hwctx, m_config.scratch_pad_mem_size);
+      if (!scratchpad_mem)
+        throw std::runtime_error("Failed to get scratchpad buffer from context\n");
+    }
 
-      if (patch_helper(m_buffer, sym_name, std::numeric_limits<size_t>::max(),
-                       ctrlpktbo.address(),
-                       xrt_core::elf_patcher::buf_type::ctrltext))
-        m_patched_args.insert(sym_name);
+    // Patch control packet addresses in instruction buffer
+    auto type = xrt_core::elf_patcher::buf_type::buf_type_count;
+    for (auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
+      auto sym_name =
+          xrt_core::elf_patcher::get_symbol_name_from_section_name(name);
+
+      // Patch scratchpad memory address in ctrlpkt buffer if present
+      if (scratchpad_mem) {
+        type = xrt_core::elf_patcher::buf_type::ctrlpkt;
+        auto symbol = std::string{Scratch_Pad_Mem_Symbol} + sym_name;
+        if (patch_helper(ctrlpktbo, scratchpad_mem.address(), type, symbol, {}, false))
+          m_patched_args.insert(
+              xrt_core::elf_patcher::generate_key_string(symbol, type));
+      }
+
+      type = xrt_core::elf_patcher::buf_type::ctrltext;
+      if (patch_helper(m_buffer, ctrlpktbo.address(), type, sym_name, {}, false))
+        m_patched_args.insert(
+            xrt_core::elf_patcher::generate_key_string(sym_name, type));
+    }
+
+    // Patch scratchpad memory address in instruction buffer if present
+    if (scratchpad_mem) {
+      type = xrt_core::elf_patcher::buf_type::ctrltext;
+      if (patch_helper(m_buffer, scratchpad_mem.address(), type, Scratch_Pad_Mem_Symbol, {}, false))
+        m_patched_args.insert(
+            xrt_core::elf_patcher::generate_key_string(Scratch_Pad_Mem_Symbol, type));
     }
   }
 
@@ -977,6 +1029,7 @@ public:
     : module_run(elf, hw_context, id)
     , m_config(std::get<xrt::module_config_aie_gen2_plus>(m_elf_impl->get_module_config(id)))
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_aie_gen2_plus);
     initialize_dtrace_buf("");  // use config path by default
     create_ctrlpkt_bufs();
     create_instruction_buffer();
@@ -994,25 +1047,30 @@ public:
   void
   patch(const std::string& argnm, size_t index, uint64_t value) override
   {
-    bool patched = false;
-
+    auto type = xrt_core::elf_patcher::buf_type::ctrltext;
     // patch instruction buffer
-    if (patch_helper(m_buffer, argnm, index, value, xrt_core::elf_patcher::buf_type::ctrltext))
-      patched = true;
+    if (patch_helper(m_buffer, value, type, argnm, std::to_string(index)))
+      m_patched_args.insert(
+          xrt_core::elf_patcher::generate_key_string(argnm, type));
 
     // patch argument in pad section
-    if (patch_helper(m_buffer, argnm, index, value, xrt_core::elf_patcher::buf_type::pad))
-      patched = true;
+    type = xrt_core::elf_patcher::buf_type::pad;
+    if (patch_helper(m_buffer, value, type, argnm, std::to_string(index)))
+      m_patched_args.insert(
+          xrt_core::elf_patcher::generate_key_string(argnm, type));
 
     // New Elfs have multiple ctrlpkt sections
     // Iterate over all ctrlpkt buffers and patch them
-    for (auto& ctrlpkt : m_ctrlpkt_bos) {
-      if (patch_helper(ctrlpkt.second, argnm, index, value, xrt_core::elf_patcher::buf_type::ctrlpkt))
-        patched = true;
-    }
+    type = xrt_core::elf_patcher::buf_type::ctrlpkt;
+    for (auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
+      auto sym_name =
+          xrt_core::elf_patcher::get_symbol_name_from_section_name(name);
 
-    if (patched) // if patched, add to patched args set
-      m_patched_args.insert(argnm);
+      if (patch_helper(ctrlpktbo, value, type, argnm + sym_name,
+                       std::to_string(index) + sym_name))
+        m_patched_args.insert(
+            xrt_core::elf_patcher::generate_key_string(argnm, type));
+    }
   }
 
   // Sync buffers to device if patching was done
@@ -1070,25 +1128,26 @@ public:
     m_first_patch = false;
   }
 
+  bool
+  is_dtrace_enabled() const override
+  {
+    return m_dtrace.dtrace_handle && m_dtrace.ctrl_bo;
+  }
+
   // Dump dynamic trace buffer
   void
-  dump_dtrace_buffer(uint32_t run_id) override
+  dump_dtrace_buffer(const std::string& postfix) override
   {
-    if (!m_dtrace.ctrl_bo || !m_dtrace.dtrace_handle.get())
-      return;
-
     // sync dtrace buffers output from device
     m_dtrace.ctrl_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     try {
       // dtrace output is dumped into current working directory
-      // output is a python file
+      // output is a python/json file
       std::string result_file_path = std::filesystem::current_path().string()
-                                   + "/dtrace_dump_"
-                                   + xrt_core::get_timestamp_for_filename()
-                                   + "_" + std::to_string(get_id())
-                                   + "_run" + std::to_string(run_id)
-                                   + ".py";
+                                   + "/dtrace_dump"
+                                   + postfix
+                                   + (xrt_core::config::get_dtrace_output_json_format() ? ".json" : ".py");
 
       get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_path.c_str());
 
@@ -1107,14 +1166,31 @@ module(const xrt::elf& elf)
 : detail::pimpl<module_impl>(std::make_shared<module_impl>(elf))
 {}
 
+module::
+module(const xrt::elf& elf, const std::string& name)
+: detail::pimpl<module_impl>(std::make_shared<module_impl>(elf, name))
+{}
+
 xrt::hw_context
 module::
 get_hw_context() const
 {
+  // No null check at API level, application error if null
   return get_handle()->get_hw_context();
 }
 
 } // namespace xrt
+
+namespace {
+
+static void
+valid_or_error(const xrt::module& module)
+{
+  if (!module)
+    throw std::runtime_error("xrt::module object is not initialized");
+}
+
+} // namespace
 
 ////////////////////////////////////////////////////////////////
 // XRT implmentation access to internal module APIs
@@ -1131,7 +1207,7 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
     // pre created ctrlpkt bo is used only in aie2p platform
     return xrt::module{std::make_shared<xrt::module_run_aie_gen2>(elf, hwctx, ctrl_code_id, ctrlpkt_bo)};
   case xrt::elf::platform::aie2ps:
-  case xrt::elf::platform::aie2ps_group:
+  case xrt::elf::platform::aie2ps_legacy:
   case xrt::elf::platform::aie4:
   case xrt::elf::platform::aie4a:
   case xrt::elf::platform::aie4z:
@@ -1141,21 +1217,31 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
   }
 }
 
+std::string
+get_name(const xrt::module& module)
+{
+  valid_or_error(module);
+  return module.get_handle()->get_name();
+}
+
 std::shared_ptr<xrt::elf_impl>
 get_elf_handle(const xrt::module& module)
 {
+  valid_or_error(module);
   return module.get_handle()->get_elf_handle();
 }
 
 uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t* payload)
 {
+  valid_or_error(module);
   return module.get_handle()->fill_ert_dpu_data(payload);
 }
 
 void
 patch(const xrt::module& module, const std::string& argnm, size_t index, const xrt::bo& bo)
 {
+  valid_or_error(module);
   module.get_handle()->patch(argnm, index, bo.address());
 }
 
@@ -1165,6 +1251,7 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const v
   if (size > 8) // NOLINT
   throw std::runtime_error{ "Patching scalar values only supports 64-bit values or less" };
 
+  valid_or_error(module);
   auto arg_value = *static_cast<const uint64_t*>(value);
   module.get_handle()->patch(argnm, index, arg_value);
 }
@@ -1172,24 +1259,36 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const v
 void
 sync(const xrt::module& module)
 {
+  valid_or_error(module);
   module.get_handle()->sync_if_dirty();
 }
 
-void
-dump_dtrace_buffer(const xrt::module& module, uint32_t run_id)
+bool
+is_dtrace_enabled(const xrt::module& module)
 {
-  module.get_handle()->dump_dtrace_buffer(run_id);
+  valid_or_error(module);
+  return module.get_handle()->is_dtrace_enabled();
+}
+
+void
+dump_dtrace_buffer(const xrt::module& module, const std::string& postfix)
+{
+  if (!is_dtrace_enabled(module))
+    return;
+  module.get_handle()->dump_dtrace_buffer(postfix);
 }
 
 void
 set_dtrace_control_file(const xrt::module& module, const std::string& path)
 {
+  valid_or_error(module);
   module.get_handle()->set_dtrace_control_file(path);
 }
 
 xrt::bo
 get_ctrl_scratchpad_bo(const xrt::module& module)
 {
+  valid_or_error(module);
   return module.get_handle()->get_ctrl_scratchpad_bo();
 }
 
@@ -1197,6 +1296,7 @@ size_t
 get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type type,
                    uint32_t ctrl_code_id)
 {
+  valid_or_error(module);
   auto elf_hdl = module.get_handle()->get_elf_handle();
   auto platform = elf_hdl->get_platform();
 
@@ -1217,7 +1317,7 @@ get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type ty
         throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group ||
+  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_legacy ||
           platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
           platform == xrt::elf::platform::aie4z) {
     auto module_config =
@@ -1243,6 +1343,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
       const std::vector<std::pair<std::string, uint64_t>>* args,
       xrt_core::elf_patcher::buf_type type, uint32_t ctrl_code_id)
 {
+  valid_or_error(module);
   auto elf_hdl = module.get_handle()->get_elf_handle();
   const xrt::buf* inst = nullptr;
   auto platform = elf_hdl->get_platform();
@@ -1267,7 +1368,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
         throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group ||
+  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_legacy ||
            platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
            platform == xrt::elf::platform::aie4z) {
     auto module_config =
@@ -1312,7 +1413,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
     }
 
     // Use static patch method (no state needed for shim tests)
-    xrt_core::elf_patcher::symbol_patcher::patch_symbol_raw(ibuf, arg_addr, it->second);
+    xrt_core::elf_patcher::symbol_patcher::patch_symbol_raw(ibuf, sz, arg_addr, it->second);
     index++;
   }
 }

@@ -1,5 +1,6 @@
-# CMakeLists.txt in src/
-
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2018-2022 Xilinx, Inc. All rights Reserved.
+# Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights Reserved.
 if(NOT WIN32)
   add_compile_options(-Wextra -fvisibility=default)
 else()

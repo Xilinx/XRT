@@ -21,13 +21,6 @@ TestDF_bandwidth::TestDF_bandwidth()
 {}
 
 boost::property_tree::ptree
-TestDF_bandwidth::run(const std::shared_ptr<xrt_core::device>&)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
-
-boost::property_tree::ptree
 TestDF_bandwidth::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();

@@ -1,30 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "message.h"
 #include "time.h"
 #include "config_reader.h"
 #include "utils.h"
 
+#include "detail/syslog.h"  // for syslog_dispatch
+
 #include "xrt/detail/version-git.h"
 
-#include <map>
+#include <algorithm>
+#include <climits>
+#include <cstdarg>
+#include <cstring>
 #include <fstream>
 #include <iostream>
-#include <thread>
+#include <map>
 #include <mutex>
-#include <algorithm>
-#include <cstdarg>
-#include <climits>
+#include <thread>
 #ifdef __linux__
-# include <syslog.h>
 # include <linux/limits.h>
 # include <sys/stat.h>
 # include <sys/types.h>
-#endif
-#ifdef _WIN32
-# include <winsock.h>
 #endif
 
 namespace {
@@ -53,17 +52,7 @@ get_exe_path()
 
 
 using severity_level = xrt_core::message::severity_level;
-
-//--
-class message_dispatch
-{
-public:
-  message_dispatch() {}
-  virtual ~message_dispatch() {}
-  static message_dispatch* make_dispatcher(const std::string& choice);
-public:
-  virtual void send(severity_level l, const char* tag, const char* msg) = 0;
-};
+using message_dispatch = xrt_core::message::message_dispatch;
 
 //--
 class null_dispatch : public message_dispatch
@@ -81,6 +70,7 @@ public:
   console_dispatch();
   virtual ~console_dispatch() {}
   virtual void send(severity_level l, const char* tag, const char* msg) override;
+
 private:
   std::map<severity_level, const char*> severityMap = {
     { severity_level::emergency, "EMERGENCY: "},
@@ -93,34 +83,6 @@ private:
     { severity_level::debug,     "DEBUG: "}
   };
 };
-
-//--
-#ifndef _WIN32
-class syslog_dispatch : public message_dispatch
-{
-public:
-  syslog_dispatch()
-  { openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER); }
-
-  virtual ~syslog_dispatch()
-  { closelog(); }
-
-  virtual void send(severity_level l, const char* tag, const char* msg) override
-  { syslog(severityMap[l], "%s", msg); }
-
-private:
-  std::map<severity_level, int> severityMap = {
-    { severity_level::emergency, LOG_EMERG},
-    { severity_level::alert,     LOG_ALERT},
-    { severity_level::critical,  LOG_CRIT},
-    { severity_level::error,     LOG_ERR},
-    { severity_level::warning,   LOG_WARNING},
-    { severity_level::notice,    LOG_NOTICE},
-    { severity_level::info,      LOG_INFO},
-    { severity_level::debug,     LOG_DEBUG}
-  };
-};
-#endif
 
 //--
 class file_dispatch : public message_dispatch
@@ -143,34 +105,6 @@ private:
     { severity_level::debug,     "DEBUG: "}
   };
 };
-
-//-------
-message_dispatch*
-message_dispatch::
-make_dispatcher(const std::string& choice)
-{
-  if( (choice == "null") || (choice == ""))
-    return new null_dispatch;
-  else if(choice == "console")
-    return new console_dispatch;
-  else if(choice == "syslog") {
-#ifndef _WIN32
-    return new syslog_dispatch;
-#else
-    throw std::runtime_error("syslog not supported on windows");
-#endif
-  }
-  else {
-    if(choice.front() == '"') {
-      std::string file = choice;
-      file.erase(0, 1);
-      file.erase(file.size()-1);
-      return new file_dispatch(file);
-    }
-    else
-      return new file_dispatch(choice);
-  }
-}
 
 //file ops
 file_dispatch::
@@ -230,7 +164,26 @@ send(severity_level l, const char* tag, const char* msg)
 
 } //end unnamed namespace
 
-namespace xrt_core { namespace message {
+namespace xrt_core::message {
+
+std::unique_ptr<message_dispatch>
+message_dispatch::
+make_dispatcher(const std::string& choice)
+{
+  if ((choice == "null") || (choice == ""))
+    return std::make_unique<null_dispatch>();
+  if (choice == "console")
+    return std::make_unique<console_dispatch>();
+  if (choice == "syslog")
+    return std::make_unique<syslog_dispatch>();
+
+  std::string file = choice;
+  if (file.front() == '"') {
+    file.erase(0, 1);
+    file.erase(file.size()-1);
+  }
+  return std::make_unique<file_dispatch>(file);
+}
 
 void
 send(severity_level l, const char* tag, const char* msg)
@@ -240,7 +193,11 @@ send(severity_level l, const char* tag, const char* msg)
   int lev = static_cast<int>(l);
 
   if(ver >= lev) {
-    static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
+    // Intentionally leaked for process lifetime so late exit paths (~shim,
+    // XDP trace flush) can still log after static teardown begins. Do not
+    // store as unique_ptr; that reintroduces use-after-free at process exit.
+    static message_dispatch* const dispatcher =
+      message_dispatch::make_dispatcher(logger).release();
     dispatcher->send(l, tag, msg);
   }
 }
@@ -270,4 +227,20 @@ sendv(severity_level l, const char* tag, const char* format, va_list args)
   send(l, tag, buf.data());
 }
 
-}} // message,xrt
+void
+send_uc_log(const std::string& sink, severity_level l, const char* tag, const char* msg)
+{
+  // Dedicated dispatcher for uC log output, driven by Debug.uc_log_dump (not runtime_log).
+  // No verbosity filtering — all uC log lines are forwarded unconditionally.
+  static auto dispatcher = message_dispatch::make_dispatcher(sink);
+  dispatcher->send(l, tag, msg);
+}
+
+void
+send_syslog(severity_level l, const char* tag, const char* msg)
+{
+  static auto dispatcher = message_dispatch::make_dispatcher("syslog");
+  dispatcher->send(l, tag, msg);
+}
+
+} // xrt_core::message

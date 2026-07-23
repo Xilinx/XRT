@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2018, 2020-2023 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
-
+// Copyright (C) 2018-2023 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "XclBinUtilities.h"
 
 #include "Section.h"                           // TODO: REMOVE SECTION INCLUDE
@@ -15,33 +14,30 @@
 #include <future>
 #include <set>
 
-#if (BOOST_VERSION >= 106400)
+#ifdef _WIN32
+# define _WIN32_WINNT 0x0501
+# pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
+#endif
 
-# ifdef _WIN32
-#  define _WIN32_WINNT 0x0501
-#  pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
-# endif
-
-# include <boost/asio/io_context.hpp>
-# if (BOOST_VERSION < 108600)
-#  include <boost/process.hpp>
-#  include <boost/process/child.hpp>
-#  include <boost/process/env.hpp>
-#  include <boost/process/search_path.hpp>
-# else
-#  include <boost/process/v1/args.hpp>
-#  include <boost/process/v1/async.hpp>
-#  include <boost/process/v1/child.hpp>
-#  include <boost/process/v1/env.hpp>
-#  include <boost/process/v1/io.hpp>
-#  include <boost/process/v1/search_path.hpp>
-# endif
+#include <boost/asio/io_context.hpp>
+#if (BOOST_VERSION < 108600)
+# include <boost/process.hpp>
+# include <boost/process/child.hpp>
+# include <boost/process/env.hpp>
+# include <boost/process/search_path.hpp>
+#else
+# include <boost/process/v1/args.hpp>
+# include <boost/process/v1/async.hpp>
+# include <boost/process/v1/child.hpp>
+# include <boost/process/v1/env.hpp>
+# include <boost/process/v1/io.hpp>
+# include <boost/process/v1/search_path.hpp>
 #endif
 
 #ifdef _WIN32
-  #include <winsock2.h>
+# include <winsock2.h>
 #else
-  #include <arpa/inet.h>
+# include <arpa/inet.h>
 #endif
 
 namespace XUtil = XclBinUtilities;
@@ -238,6 +234,23 @@ XclBinUtilities::safeStringCopy(char* _destBuffer,
 
   // Copy the string
   memcpy(_destBuffer, _source.c_str(), bytesToCopy);
+}
+
+const char*
+XclBinUtilities::bounded_mpo_cstr(const void* pHdr, uint32_t mpo_offset, size_t bufferSize)
+{
+  // Reject offsets that lie outside the buffer entirely (SWSPLAT-30717 / CWE-125).
+  if (mpo_offset >= bufferSize)
+    throw std::runtime_error("mpo offset exceeds section buffer size");
+
+  const char* str = static_cast<const char*>(pHdr) + mpo_offset;
+  size_t remaining = bufferSize - mpo_offset;
+
+  // Verify a null terminator exists within the buffer before forming a C string.
+  if (strnlen(str, remaining) == remaining)
+    throw std::runtime_error("mpo string is not null-terminated within section buffer");
+
+  return str;
 }
 
 unsigned int

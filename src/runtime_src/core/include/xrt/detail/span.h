@@ -53,7 +53,7 @@ public:
 
   template< class U, std::size_t N >
   constexpr explicit span(const std::array<U, N>& arr ) noexcept
-    : span(arr.data(), N)
+    : span(const_cast<U*>(arr.data()), N)
   {}
 
   constexpr iterator begin() const noexcept { return m_data; }
