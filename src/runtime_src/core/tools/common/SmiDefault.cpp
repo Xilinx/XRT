@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // Local - Include Files
 
@@ -26,7 +26,7 @@ create_validate_subcommand()
   validate_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   validate_suboptions.emplace("format", std::make_shared<xrt_core::smi::option>("format", "f", "Report output format. Valid values are:\n"
                                 "\tJSON        - Latest JSON schema\n"
-                                "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"));
+                                "\tJSON-2020.2 - JSON 2020.2 schema (legacy)", "common", "JSON", "string"));
   validate_suboptions.emplace("output", std::make_shared<xrt_core::smi::option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   validate_suboptions.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   validate_suboptions.emplace("run", std::make_shared<xrt_core::smi::option>("run", "r", "Run a subset of the test suite\n",

@@ -102,6 +102,7 @@ public:
   JsonConfig() = default;
 
   void addProgramOptions(po::options_description& options, const std::string& optionsType, const std::string& subCommand);
+  bool hasOption(const std::string& subCommand, const std::string& optionName) const;
   void printConfigurations() const;
 };
 } // namespace SubCmdJsonObjects

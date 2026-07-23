@@ -109,7 +109,8 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
 void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamineOptions& options) const
 {
   options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
-  options.m_format = vm.count("format") ? vm["format"].as<std::string>() : "JSON";
+  options.m_format = vm.find("format") != vm.end() ? vm["format"].as<std::string>() : "JSON";
+  options.m_json = vm.find("json") != vm.end() ? vm["json"].as<std::string>() : "default";
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_reportNames = vm.count("report") ? vm["report"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
@@ -128,7 +129,9 @@ SubCmdExamine::setOptionConfig(const boost::property_tree::ptree &config)
   try{
     m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
     m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
-  } 
+    m_jsonAbiPlatform = m_jsonConfig.hasOption(getName(), "json")
+                     && !m_jsonConfig.hasOption(getName(), "format");
+  }
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
   }
@@ -215,7 +218,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(options.m_format).schemaVersion;
+  Report::JsonSchemaSelection jsonSchema{Report::SchemaVersion::unknown, false};
+  const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
   try{
     if (vm.count("output") && options.m_output.empty())
       throw xrt_core::error("Output file not specified");
@@ -226,20 +230,24 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     if (vm.count("element") && options.m_elementsFilter.empty())
       throw xrt_core::error("No element filter given to be produced");
 
-    if (schemaVersion == Report::SchemaVersion::unknown) 
-      throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
+    jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
+                                          vm.count("format"), options.m_format);
+    if (jsonSchema.schemaVersion == Report::SchemaVersion::unknown)
+      throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
+                             % (usesJsonAbiOption ? options.m_json : options.m_format)).str());
 
-    // DRC check
-    // When json is specified, make sure an accompanying output file is also specified
     if (vm.count("format") && options.m_output.empty())
+      throw xrt_core::error("Please specify an output file to redirect the json to");
+
+    if (vm.count("json") && options.m_output.empty())
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
       throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
     if (options.m_watchIntervalSec) {
-      if (vm.count("format"))
-        throw xrt_core::error("Watch mode cannot be used with --format; output is text only.");
+      if (vm.count("format") || vm.count("json"))
+        throw xrt_core::error("Watch mode cannot be additionally formatted; output is text only.");
       if (!options.m_output.empty())
         throw xrt_core::error("Watch mode cannot be used with --output.");
     }
@@ -251,12 +259,9 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Determine report level
   std::vector<std::string> reportsToRun(options.m_reportNames);
-  if (reportsToRun.empty()) {
-    // Default report with or without --advanced (advanced only unlocks hidden options/reports).
+  if (reportsToRun.empty())
     reportsToRun.emplace_back("host");
-  }
 
   if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
     std::cerr << "ERROR: The 'all' value for the reports to run cannot be used with any other named reports.\n";
@@ -334,13 +339,15 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       const auto examine_watch_snapshot =
           [&](const xrt_core::device*) {
             std::ostringstream console;
-            XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, console, oSchemaOutput);
+            XBU::produce_reports(device, reportsToProcess, jsonSchema.schemaVersion,
+                                 jsonSchema.useJsonVersionNaming, {}, console, oSchemaOutput);
             return console.str();
           };
       smi_watch_mode::run_watch_mode(device.get(), std::cout, examine_watch_snapshot,
           *options.m_watchIntervalSec);
     } else {
-      XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, std::cout, oSchemaOutput);
+      XBU::produce_reports(device, reportsToProcess, jsonSchema.schemaVersion,
+                           jsonSchema.useJsonVersionNaming, {}, std::cout, oSchemaOutput);
     }
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
@@ -358,7 +365,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     fOutput << oSchemaOutput.str();
 
-    std::cout << boost::format("Successfully wrote the %s file: %s") % options.m_format % options.m_output << std::endl;
+    std::cout << boost::format("Successfully wrote the JSON file: %s") % options.m_output << std::endl;
   }
 
   if (!is_report_output_valid)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __SubCmdExamine_h_
 #define __SubCmdExamine_h_
@@ -25,6 +25,7 @@ struct SubCmdExamineOptions {
   std::vector<std::string>  m_reportNames;
   std::vector<std::string>  m_elementsFilter;
   std::string               m_format;
+  std::string               m_json;
   std::string               m_output;
   bool                      m_help;
   std::optional<unsigned>   m_watchIntervalSec;
@@ -32,6 +33,7 @@ struct SubCmdExamineOptions {
 class SubCmdExamine : public SubCmd {
   ReportCollection uniqueReportCollection;
   std::vector<std::shared_ptr<OptionOptions>> m_optionOptionsCollection;
+  bool m_jsonAbiPlatform = false;
 
   void fill_option_values(const boost::program_options::variables_map& vm, SubCmdExamineOptions& options) const;
   std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;
