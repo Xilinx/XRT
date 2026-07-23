@@ -929,7 +929,8 @@ public:
         
       using run_type = std::variant<xrt::run, xrt_core::cpu::run>;
       using constant_type = std::variant<int, std::string>;
-      std::string m_name;
+      std::string m_kernel; // name of kernel from which run is created
+      std::string m_name;   // identifier for this run
       run_type m_run;
       std::map<std::string, argument> m_args;
       std::map<int, constant_type> m_constants;
@@ -944,13 +945,13 @@ public:
       };
 
       struct copy_visitor {
-        const std::string& m_name;
+        const std::string& m_kernel;
         const resources& m_res;
-        copy_visitor(const std::string& nm, const resources& res) : m_name{nm}, m_res{res} {}
+        copy_visitor(const std::string& nm, const resources& res) : m_kernel{nm}, m_res{res} {}
         run_type operator() (const xrt::run&)
-        { return xrt::run{m_res.get_xrt_kernel_or_error(m_name)}; };
+        { return xrt::run{m_res.get_xrt_kernel_or_error(m_kernel)}; };
         run_type operator() (const xrt_core::cpu::run&)
-        { return xrt_core::cpu::run{m_res.get_cpu_function_or_error(m_name)}; };
+        { return xrt_core::cpu::run{m_res.get_cpu_function_or_error(m_kernel)}; };
       };
 
       static std::map<std::string, argument>
@@ -1045,11 +1046,15 @@ public:
       static xrt::run
       create_kernel_run(const resources& resources, const json& j)
       {
-        auto name = j.contains("kernel")
+        // The recipe should specify "kernel" name for the run, but
+        // legacy was to use "name" for the kernel.  "kernel" takes
+        // precedence, but if missing, then "name" is the identifier
+        // for the kernel
+        auto kname = j.contains("kernel")
           ? j.at("kernel").get<std::string>()
-          : j.at("name").get<std::string>();  // deprecated
+          : j.at("name").get<std::string>();  // deprecated, required w/o "kernel"
 
-        return xrt::run{resources.get_xrt_kernel_or_error(name)};
+        return xrt::run{resources.get_xrt_kernel_or_error(kname)};
       }
 
       static run_type
@@ -1065,19 +1070,20 @@ public:
       static run_type
       create_run(const resources& resources, const run& other)
       {
-        return std::visit(copy_visitor{other.m_name, resources}, other.m_run);
+        return std::visit(copy_visitor{other.m_kernel, resources}, other.m_run);
       }
 
     public:
       run(const resources& resources, const json& j)
-        : m_name{j.contains("kernel")
-                 ? j.at("kernel").get<std::string>()
-                 : j.at("name").get<std::string>()} // deprecated
+        : m_kernel{j.contains("kernel")
+                   ? j.at("kernel").get<std::string>()
+                   : j.at("name").get<std::string>()} // deprecated
+        , m_name{j.value("name", m_kernel)}
         , m_run{create_run(resources, j)}
         , m_args{create_and_set_args(resources, m_run, j.at("arguments"))}
         , m_constants{create_and_set_constant_args(m_run, j.value("constants", json::object()))}
       {
-        XRT_DEBUGF("recipe::execution::run(%s)\n", m_name.c_str());
+        XRT_DEBUGF("recipe::execution::run(%s)\n", m_kernel.c_str());
       }
 
       // Create a run from another run using argument resources
@@ -1086,12 +1092,13 @@ public:
       // to the runs are copied, so this run along with the argument
       // other run are independent in regards to argument data.
       run(const resources& resources, const run& other)
-        : m_name{other.m_name}
+        : m_kernel{other.m_kernel}
+        , m_name{other.m_name}
         , m_run{create_run(resources, other)}
         , m_args{create_and_set_args(resources, m_run, other.m_args)}
         , m_constants{create_and_set_constant_args(m_run, other.m_constants)}
       {
-        XRT_DEBUGF("recipe::execution::run(other) name(%s)\n", m_name.c_str());
+        XRT_DEBUGF("recipe::execution::run(other) name(%s)\n", m_kernel.c_str());
       }
 
       bool
@@ -1140,6 +1147,19 @@ public:
         auto& arg = (*it).second;
         arg.bind(bo);
         std::visit(set_arg_visitor{arg.m_argidx, arg.get_xrt_bo()}, m_run);
+      }
+
+      const std::string&
+      get_name() const
+      {
+        return m_name;
+      }
+
+      void
+      set_dtrace(const std::string& path)
+      {
+        if (std::holds_alternative<xrt::run>(m_run))
+          std::get<xrt::run>(m_run).set_dtrace_control_file(path);
       }
     }; // class recipe::execution::run
 
@@ -1419,7 +1439,14 @@ public:
         run.bind(name, bo);
     }
 
-    
+    void
+    set_dtrace(const std::string& name, const std::string& path)
+    {
+      for (auto& run : m_runs)
+        if (run.get_name() == name)
+          run.set_dtrace(path);
+    }
+
     // execute_runlist() - execute a runlist synchronously
     // The lambda function is executed asynchronously by an
     // xrt::queue object. The wait is necessary for an NPU runlist,
@@ -1991,6 +2018,47 @@ class profile
     }
   }; // class profile::bindings
 
+  // class dtrace - dtrace script binding section of the profile
+  //
+  // "dtrace": [
+  //   { "name": "run0", "file": "run0.ct" },
+  //   { "name": "run1", "file": "run1.ct" }
+  // ]
+  //
+  // Each element binds a dtrace control script to the recipe run
+  // identified by "name".  The "file" is resolved through the
+  // artifacts repository, consistent with buffer binding files.
+  class dtrace
+  {
+    using name_t = std::string;
+    using path_t = std::filesystem::path;
+    std::map<name_t, path_t> m_scripts;  // run name → resolved script path
+
+    static std::map<name_t, path_t>
+    init_scripts(const json& j, const xartifacts::repo& repo)
+    {
+      std::map<name_t, path_t> scripts;
+      for (const auto& node : j)
+        scripts.emplace(node.at("name").get<std::string>(),
+                        repo.get_path(node.at("file").get<std::string>()));
+      return scripts;
+    }
+
+  public:
+    dtrace() = default;
+
+    dtrace(const json& j, const xartifacts::repo& repo)
+      : m_scripts{init_scripts(j, repo)}
+    {}
+
+    void
+    apply(recipe::execution& re) const
+    {
+      for (const auto& [name, path] : m_scripts)
+        re.set_dtrace(name, path.string());
+    }
+  }; // class profile::dtrace
+
   // class execution - represents the execution section of a profile json
   //
   // {
@@ -2096,13 +2164,16 @@ class profile
         }
       }
 
-      // Bind buffers to recipe and to recipe::execution copies.
+      // Bind buffers and apply dtrace scripts to recipe and copies.
       void
       bind()
       {
         m_profile->bind(*m_base);
-        for (auto& exec : m_copies)
+        m_profile->apply_dtrace(*m_base);
+        for (auto& exec : m_copies) {
           m_profile->bind(exec);
+          m_profile->apply_dtrace(exec);
+        }
       }
 
       // Re-bind buffers to recipe and to recipe::execution copies.
@@ -2320,6 +2391,7 @@ private:
   size_t m_runlist_threshold;
   recipe m_recipe;
   bindings m_bindings;
+  dtrace m_dtrace;
   execution m_execution;
   std::vector<std::unique_ptr<execution>> m_executions;
 
@@ -2327,6 +2399,12 @@ private:
   bind(recipe::execution& exec)
   {
     m_bindings.bind(exec);
+  }
+
+  void
+  apply_dtrace(recipe::execution& exec)
+  {
+    m_dtrace.apply(exec);
   }
 
   void
@@ -2414,6 +2492,7 @@ public:
     , m_runlist_threshold{init_runlist_threshold(m_profile_json)}
     , m_recipe{device, load_json(recipe), m_qos, m_runlist_threshold, m_repo}
     , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo}
+    , m_dtrace{m_profile_json.value("dtrace", json::array()), m_repo}
     , m_execution(this, &m_recipe, m_profile_json.value("execution", json::object()), true)
     , m_executions(create_executions(this, &m_recipe, m_profile_json.value("executions", json::object())))
   {}
