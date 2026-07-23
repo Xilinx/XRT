@@ -170,6 +170,25 @@ public:
   }
 };
 
+// derive memory bank on the importing device from BO physical address
+static uint32_t
+get_imported_group_id(const device_type& dev, uint64_t paddr, uint32_t fallback)
+{
+  auto* core_dev = dev.get_core_device();
+  if (!core_dev)
+    return fallback;
+
+  auto mem_topology = core_dev->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
+  if (!mem_topology)
+    return fallback;
+
+  auto memidx = xrt_core::xclbin::address_to_memidx(mem_topology, paddr);
+  if (memidx == std::numeric_limits<int32_t>::max())
+    return fallback;
+
+  return static_cast<uint32_t>(memidx);
+}
+
 } // namespace
 
 namespace xrt {
@@ -212,6 +231,11 @@ private:
     xcl_bo_flags xflags {prop.flags};
     grpid = xflags.bank;
     flags = static_cast<bo::flags>(xflags.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
+
+    // imported BOs share physical backing from another device; remap the
+    // bank index against this device's MEM_TOPOLOGY
+    if (is_imported())
+      grpid = get_imported_group_id(device, addr, grpid);
   }
 
   // Usage logger for logging buffer stats
