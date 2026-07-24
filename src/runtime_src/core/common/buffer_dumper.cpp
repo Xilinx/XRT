@@ -426,36 +426,33 @@ void
 dtrace_buffer_dumper::
 append(const std::string& key, const std::string& result_json)
 {
-  // No-op once the coalesce buffer has spilled or been disabled
-  if (m_spilled)
-    return;
-
   try {
     auto entry = nlohmann::ordered_json::parse(result_json);
-    const auto entry_size = entry.dump(4).size();
-    m_results[key] = std::move(entry);
-    m_accumulated_bytes += entry_size;
+    // No probes fired
+    if (entry.empty())
+      return;
 
-    // Cap limits in-memory coalesce size. When exceeded, discard the run that
-    // triggered overflow, spill any previously buffered runs to disk, then stop
-    // accepting further appends for this hardware context.
-    if (m_accumulated_bytes > m_config.max_bytes) {
-      m_accumulated_bytes -= entry_size;
-      m_results.erase(key);
+    // Spill to disk when the next append would exceed the in-memory cap, then
+    // continue buffering into a fresh in-memory batch.
+    const auto entry_size = entry.dump(4).size();
+    if (m_accumulated_bytes + entry_size > m_config.max_bytes) {
+      const auto max_mb = m_config.max_bytes / (1024 * 1024); // NOLINT
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
+                              std::string{"[dtrace] : coalesce result buffer limit ("} + std::to_string(max_mb) + " MB) reached, spilled to disk.");
 
       if (!m_results.empty())
         write_to_file();
 
-      m_spilled = true;
-      const auto max_mb = m_config.max_bytes / (1024 * 1024); // NOLINT
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
-                              std::string{"[dtrace] : coalesce buffer limit ("} + std::to_string(max_mb) + " MB) reached. "
-                              + "Further dtrace results will not be buffered for hardware context "
-                              + std::to_string(m_config.slot_idx));
-
-      return;
+      // If single run entry exceeds the cap, spill it immediately.
+      if (entry_size > m_config.max_bytes) {
+        m_results[key] = std::move(entry);
+        write_to_file();
+        return;
+      }
     }
 
+    m_results[key] = std::move(entry);
+    m_accumulated_bytes += entry_size;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
                             std::string{"[dtrace] : dtrace buffered successfully for key - "} + key);
   }
@@ -469,8 +466,8 @@ void
 dtrace_buffer_dumper::
 flush()
 {
-  // Skip if already spilled or nothing remains to write
-  if (m_spilled || m_results.empty())
+  // Skip if nothing remains to write
+  if (m_results.empty())
     return;
 
   try {
