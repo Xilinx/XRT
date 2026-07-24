@@ -138,9 +138,9 @@ public:
  * dtrace_buffer_dumper - Coalesces per-run dtrace JSON results for a hw context.
  *
  * Accumulates JSON in memory up to max_bytes.
- * On overflow, the run that would exceed the cap is discarded, previously
- * buffered runs are spilled to disk, a warning is logged, and further appends
- * are disabled for this instance.
+ * On overflow, buffered runs are spilled to disk, the in-memory buffer is
+ * cleared, and appends continue into a fresh buffer (multiple spill files
+ * may be created over the lifetime of the hw context).
  */
 class dtrace_buffer_dumper
 {
@@ -163,8 +163,8 @@ public:
   dtrace_buffer_dumper& operator=(const dtrace_buffer_dumper&) = delete;
   dtrace_buffer_dumper& operator=(dtrace_buffer_dumper&&) = delete;
 
-  // Append run's JSON result under the given key
-  // Spill buffered results on overflow and disable further appends
+  // Append run's JSON result under the given key.
+  // Spill buffered results to disk on overflow, then continue buffering.
   void
   append(const std::string& key, const std::string& result_json);
 
@@ -176,7 +176,6 @@ private:
   config m_config;
   nlohmann::ordered_json m_results;
   size_t m_accumulated_bytes = 0;
-  bool m_spilled = false;
 
   // Write buffered JSON to file, log success, and clear the buffer
   void
