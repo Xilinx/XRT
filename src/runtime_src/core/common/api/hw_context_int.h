@@ -10,6 +10,7 @@
 #include "core/include/xrt/experimental/xrt_module.h"
 
 #include <cstdint>
+#include <string>
 
 // Provide access to xrt::xclbin data that is not directly exposed
 // to end users via xrt::xclbin.   These functions are used by
@@ -84,6 +85,11 @@ dump_scratchpad_mem(const xrt::hw_context& hwctx);
 // Dump log buffer contents into a file when ini option is enabled
 void
 dump_uc_log_buffer(const xrt::hw_context& hwctx);
+
+// Append a per-run dtrace JSON result to the hw context coalesce buffer
+void
+append_dtrace_result(const xrt::hw_context& hwctx, 
+                     const std::string& key, const std::string& result_json);
 
 // Returns map of kernel names to their corresponding elf files
 // registered with the hardware context.

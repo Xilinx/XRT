@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as xrt_bo.h
 #define XRT_API_SOURCE         // in same dll as api
@@ -10,9 +10,11 @@
 #include "core/common/uc_log_schema.h"
 
 #include <cstring>
+#include <filesystem>
 #include <stdexcept>
 #include <sstream>
 #include <array>
+#include <utility>
 
 namespace xrt_core {
 
@@ -367,6 +369,114 @@ flush()
 {
   // process chunks to dump the remaining data
   process_chunks();
+}
+
+dtrace_buffer_dumper::
+dtrace_buffer_dumper(config cfg)
+  : m_config(std::move(cfg))
+  , m_results(nlohmann::ordered_json::object())
+{}
+
+dtrace_buffer_dumper::
+~dtrace_buffer_dumper()
+{
+  // Flush coalesced results before destruction
+  try {
+    flush();
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
+                            std::string{"Error during cleanup: "} + e.what());
+  }
+}
+
+void
+dtrace_buffer_dumper::
+write_to_file()
+{
+  // Write coalesced JSON to a timestamped file in the current working directory
+  const std::string result_file_path = std::filesystem::current_path().string()
+                                     + "/dtrace_dump"
+                                     + "_ctx_" + std::to_string(m_config.slot_idx)
+                                     + "_" + xrt_core::get_timestamp_for_filename()
+                                     + ".json";
+
+  std::ofstream json_file(result_file_path);
+  if (!json_file)
+    throw std::runtime_error("[dtrace] : failed to open file for dumping dtrace buffer result");
+
+  json_file << m_results.dump(4) << "\n";
+  if (!json_file)
+    throw std::runtime_error("[dtrace] : failed to write dtrace buffer result to file");
+
+  json_file.flush();
+  if (!json_file)
+    throw std::runtime_error("[dtrace] : failed to flush dtrace buffer result file");
+
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
+                          std::string{"[dtrace] : dtrace buffer dumped successfully to - "}
+                          + result_file_path);
+
+  // Clear after the write completes without error
+  m_results = nlohmann::ordered_json::object();
+  m_accumulated_bytes = 0;
+}
+
+void
+dtrace_buffer_dumper::
+append(const std::string& key, const std::string& result_json)
+{
+  try {
+    auto entry = nlohmann::ordered_json::parse(result_json);
+    // No probes fired
+    if (entry.empty())
+      return;
+
+    // Spill to disk when the next append would exceed the in-memory cap, then
+    // continue buffering into a fresh in-memory batch.
+    const auto entry_size = entry.dump(4).size();
+    if (m_accumulated_bytes + entry_size > m_config.max_bytes) {
+      const auto max_mb = m_config.max_bytes / (1024 * 1024); // NOLINT
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
+                              std::string{"[dtrace] : coalesce result buffer limit ("} + std::to_string(max_mb) + " MB) reached, spilled to disk.");
+
+      if (!m_results.empty())
+        write_to_file();
+
+      // If single run entry exceeds the cap, spill it immediately.
+      if (entry_size > m_config.max_bytes) {
+        m_results[key] = std::move(entry);
+        write_to_file();
+        return;
+      }
+    }
+
+    m_results[key] = std::move(entry);
+    m_accumulated_bytes += entry_size;
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
+                            std::string{"[dtrace] : dtrace buffered successfully for key - "} + key);
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
+                            std::string{"[dtrace] : failed to append coalesced result: "} + e.what());
+  }
+}
+
+void
+dtrace_buffer_dumper::
+flush()
+{
+  // Skip if nothing remains to write
+  if (m_results.empty())
+    return;
+
+  try {
+    write_to_file();
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "dtrace_buffer_dumper",
+                            std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what());
+  }
 }
 
 } // xrt_core
