@@ -23,7 +23,17 @@
 #include "core/common/trace.h"
 #include <memory>
 #include <windows.h>
-#include <TraceLoggingProvider.h>
+#ifdef __MINGW32__
+// MinGW has no TraceLoggingProvider.h (Windows ETW); stub the API to no-ops.
+# define TRACELOGGING_DECLARE_PROVIDER(...)
+# define TRACELOGGING_DEFINE_PROVIDER(...)
+# define TraceLoggingRegister(...)
+# define TraceLoggingUnregister(...)
+# define TraceLoggingWrite(...)
+# define TraceLoggingValue(...)
+#else
+# include <TraceLoggingProvider.h>
+#endif
 
 // Forward declare the logging provider object.  The provider
 // is defined in a single compilation unit (core/common/trace.cpp).

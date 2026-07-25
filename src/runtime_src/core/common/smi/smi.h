@@ -30,7 +30,7 @@ struct basic_option {
   std::string m_type;
 };
 
-class option : public basic_option {
+class XRT_CORE_COMMON_EXPORT option : public basic_option {
   std::string m_alias;
   std::string m_default_value;
   std::string m_value_type;
@@ -76,7 +76,7 @@ public:
 // This class is used to represent an option with a multiline description.
 // For example, --run can have multiple test names as its description.
 // These subnames are also queried using the generic API get_list
-class listable_description_option : public option {
+class XRT_CORE_COMMON_EXPORT listable_description_option : public option {
   std::vector<basic_option> m_description_array;
 public:
   listable_description_option(std::string name, 
