@@ -21,7 +21,21 @@ else()
   # AIEBU should use XRT's version of ELFIO
   set(AIEBU_ELFIO_SRC_DIR ${XRT_SOURCE_DIR}/runtime_src/core/common/elf)
 
+  # link.exe overflows its stack when aiebu-asm inherits IPO. Disable IPO only
+  # while AIEBU targets are created.
+  if(MSVC)
+    set(_xrt_interprocedural_optimization
+      "${CMAKE_INTERPROCEDURAL_OPTIMIZATION}")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+  endif()
+
   xrt_add_subdirectory(aiebu)
+
+  if(MSVC)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION
+      "${_xrt_interprocedural_optimization}")
+    unset(_xrt_interprocedural_optimization)
+  endif()
 endif()
 
 add_library(core_common_library_objects OBJECT

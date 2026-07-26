@@ -36,6 +36,16 @@ if (MSVC)
   # Static linking with the CRT
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+  # Use target-initialized IPO so compiler and linker settings stay paired
+  # when a subdirectory overrides the policy.
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
+
+  # CastGuard requires /GL; key it to each target's IPO property rather than
+  # the build configuration alone.
+  set(_xrt_msvc_cast_guard_enabled
+    "$<AND:$<NOT:$<CONFIG:Debug>>,$<BOOL:$<TARGET_PROPERTY:INTERPROCEDURAL_OPTIMIZATION>>>")
+
   add_compile_options(
     /MT$<$<CONFIG:Debug>:d>  # static linking with the CRT
     /Zc:__cplusplus
@@ -46,17 +56,14 @@ if (MSVC)
     /ZH:SHA_256   # enable secure source code hashing
     /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
     /GF           # eliminate duplicate strings
-    $<$<NOT:$<CONFIG:Debug>>:/guard:cast> # enable cast guard to prevent type confusion
-    $<$<NOT:$<CONFIG:Debug>>:/d2CastGuardFailureMode:fastfail> # fastfail mode for cast guard
-    $<$<NOT:$<CONFIG:Debug>>:/GL>  # enable whole program optimization
+    "$<${_xrt_msvc_cast_guard_enabled}:/guard:cast>" # enable cast guard to prevent type confusion
+    "$<${_xrt_msvc_cast_guard_enabled}:/d2CastGuardFailureMode:fastfail>" # fastfail mode for cast guard
     )
   add_link_options(
     /NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib  # Hybrid CRT
     /DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib       # Hybrid CRT
     $<$<CONFIG:Debug>:/INCREMENTAL>            # enable incremental linking for debug builds
-    $<$<CONFIG:Debug>:/LTCG:OFF>               # disable link time code generation for debug builds
     $<$<NOT:$<CONFIG:Debug>>:/INCREMENTAL:NO>  # disable incremental linking for release builds
-    $<$<NOT:$<CONFIG:Debug>>:/LTCG>            # enable link time code generation for release builds
     $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>         # enable COMDAT folding
     $<$<NOT:$<CONFIG:Debug>>:/OPT:REF>         # eliminates functions and data that are never referenced
     /DEBUG           # instruct linker to create debugging info
@@ -66,6 +73,7 @@ if (MSVC)
     /LARGEADDRESSAWARE # enable large address awareness
     /experimental:deterministic # deterministic build
     )
+  unset(_xrt_msvc_cast_guard_enabled)
   if (NOT ${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
     add_link_options(
       /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
