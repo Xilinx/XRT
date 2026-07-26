@@ -68,8 +68,16 @@ else()
   set(XRT_HELPER_SCRIPTS "xrt-smi")
 endif()
 
+
 xrt_configure_version_file(${XBUTIL2_NAME} APP)
 add_executable(${XBUTIL2_NAME} ${XBUTIL2_NAME}-version.rc ${XBUTIL_V2_SRCS})
+
+if (ENABLE_ASAN)
+  # xrt-smi links static Boost (/MT). Override the global MultiThreadedDLL
+  # set by ASAN so the object files match the Boost libraries' CRT metadata.
+  set_target_properties(${XBUTIL2_NAME} PROPERTIES
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 # Determine what functionality should be added
 if (NOT XRT_EDGE OR DEFINED XDNA_VE2)

@@ -32,12 +32,24 @@ add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 # the warning is bogus.  Remove defintion when fixed
 add_compile_definitions("_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
+option(ENABLE_ASAN "Build with AddressSanitizer (/fsanitize=address). Requires MSVC v145 (VS 2026) for ARM64." OFF)
+
 if (MSVC)
-  # Static linking with the CRT
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  if (ENABLE_ASAN)
+    # Always use /MD (not /MDd): ASAN has its own heap tracking and does not
+    # integrate with the debug CRT. Avoids CMake 4.x try_compile rejection of
+    # MultiThreadedDLLDebug for the ARM64 cross-compiler.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+  else()
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
 
   add_compile_options(
-    /MT$<$<CONFIG:Debug>:d>  # static linking with the CRT
+    # Explicit /MT only on the non-ASAN path. On the ASAN path CRT selection is
+    # driven by CMAKE_MSVC_RUNTIME_LIBRARY / the per-target MSVC_RUNTIME_LIBRARY
+    # property: an explicit /MD here would be mapped into <RuntimeLibrary> by the
+    # VS generator and override the per-target /MT that xclbinutil/xrt-smi need.
+    $<$<NOT:$<BOOL:${ENABLE_ASAN}>>:/MT$<$<CONFIG:Debug>:d>>
     /Zc:__cplusplus
     /Zi           # generate pdb files even in release mode
     /sdl          # enable security checks
@@ -50,9 +62,18 @@ if (MSVC)
     $<$<NOT:$<CONFIG:Debug>>:/d2CastGuardFailureMode:fastfail> # fastfail mode for cast guard
     $<$<NOT:$<CONFIG:Debug>>:/GL>  # enable whole program optimization
     )
+  if (NOT ENABLE_ASAN)
+    # Hybrid CRT is skipped under ASAN. On x64 the static ASan malloc thunk
+    # (asan_malloc_win_thunk) defines malloc/free; forcing the dynamic ucrt.lib
+    # import re-defines them -> LNK2005/LNK1169 in the /MT tool targets
+    # (xclbinutil, xrt-smi). Keeping the standard static ucrt default for /MT lets
+    # ASan intercept the allocator cleanly. No-op for /MD targets and ARM64.
+    add_link_options(
+      /NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib  # Hybrid CRT
+      /DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib       # Hybrid CRT
+      )
+  endif()
   add_link_options(
-    /NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib  # Hybrid CRT
-    /DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib       # Hybrid CRT
     $<$<CONFIG:Debug>:/INCREMENTAL>            # enable incremental linking for debug builds
     $<$<CONFIG:Debug>:/LTCG:OFF>               # disable link time code generation for debug builds
     $<$<NOT:$<CONFIG:Debug>>:/INCREMENTAL:NO>  # disable incremental linking for release builds
@@ -70,6 +91,22 @@ if (MSVC)
     add_link_options(
       /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
       )
+  endif()
+  if (ENABLE_ASAN)
+    # Derive ASAN lib dir from compiler path:
+    # .../MSVC/<ver>/bin/Hostx64/<arch>/cl.exe -> .../MSVC/<ver>/lib/<arch>/
+    get_filename_component(_asan_lib_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    get_filename_component(_asan_lib_dir "${_asan_lib_dir}" DIRECTORY)
+    get_filename_component(_asan_lib_dir "${_asan_lib_dir}" DIRECTORY)
+    get_filename_component(_asan_lib_dir "${_asan_lib_dir}" DIRECTORY)
+    if (${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
+      set(_asan_lib_dir "${_asan_lib_dir}/lib/arm64")
+    else()
+      set(_asan_lib_dir "${_asan_lib_dir}/lib/x64")
+    endif()
+    link_directories("${_asan_lib_dir}")
+    add_compile_options(/fsanitize=address)
+    add_link_options(/INCREMENTAL:NO)
   endif()
 endif()
 
