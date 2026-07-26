@@ -25,7 +25,8 @@ There are two sections of profile json:
 
 1. [qos](#qos)
 2. [bindings](#bindings)
-3. [executions](#executions)
+3. [dtrace](#dtrace)
+4. [executions](#executions)
 
 The `bindings` section defines how external resources are created,
 initialized, and bound to a run-recipe.
@@ -244,6 +245,31 @@ instead of a file:
 
 The validate element will be enhanced to cover other validation
 specifics as needed.
+
+## Dtrace
+
+The `dtrace` section is optional.  It specifies dtrace control scripts to
+associate with specific run objects in the recipe.  Each element binds a
+script file to the recipe run identified by `"name"`.
+
+```
+  "dtrace": [
+    { "name": "run0", "file": "run0.ct" },
+    { "name": "run1", "file": "run1.ct" }
+  ],
+```
+
+- `name` identifies the run object in the recipe by its
+  `recipe.execution.runs[].name` field.
+- `file` is the path to the dtrace control script, resolved through the
+  artifacts repository in the same way as buffer initialization files.
+
+The script is applied by calling `xrt::run::set_dtrace_control_file()` before
+the first execution of the recipe.  Scripts are also applied to any cloned
+run objects created in `throughput` mode.
+
+Only NPU runs support dtrace; entries that match a CPU run are silently
+ignored.
 
 ## Executions
 

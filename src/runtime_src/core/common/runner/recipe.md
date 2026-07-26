@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved. -->
+<!-- Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved. -->
 # Run recipe for XRT
 
 A run recipe defines a graph model that can be executed by XRT.
@@ -339,7 +339,17 @@ The `size` is currently specified in bytes.
 ## Execution
 
 The execution section is an ordered list of kernel or cpu instances
-with arguments from the resources section. 
+with arguments from the resources section.
+
+Each run entry has two identifying fields:
+
+- `kernel` — required, names the kernel or cpu resource (from the
+  `resources` section) from which the run object is created.
+- `name` — optional unique identifier for the run object itself.
+  Defaults to the value of `kernel` when not specified.  Use `name`
+  to distinguish between multiple runs that execute the same kernel
+  resource, and to reference the run from a [profile](profile.md)
+  (e.g. to bind a dtrace script to a specific run).
 
 Before the runner can execute the recipe in the execution section, all
 graph inputs and outputs must be bound to the recipe. As mentioned

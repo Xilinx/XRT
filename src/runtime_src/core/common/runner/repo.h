@@ -173,6 +173,21 @@ public:
   XRT_API_EXPORT
   span<char>
   get(const std::string& key, file_mode hint) const;
+
+  /**
+   * get_path() - Resolve a key to its filesystem path
+   *
+   * @param key
+   *   Key identifying the artifact (filename, relative or absolute)
+   *
+   * Returns the resolved filesystem path for @a key.  For a
+   * file-based repository this is base_dir/key; for an in-memory
+   * repository the key is returned as-is.  Throws if the resolved
+   * path would escape the base directory.
+   */
+  XRT_API_EXPORT
+  std::filesystem::path
+  get_path(const std::string& key) const;
 };
 
 } // namespace xrt_core::artifacts
