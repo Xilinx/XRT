@@ -22,7 +22,6 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/reports/*.cpp"
   "../common/reports/aie/*.cpp"
   "../common/Report.cpp"
-  "../common/ReportSchemaProjector.cpp"
   "../common/SmiWatchMode.cpp"
   "../common/PsKernelUtilities.cpp"
   "../common/Table2D.cpp"

@@ -129,8 +129,8 @@ SubCmdExamine::setOptionConfig(const boost::property_tree::ptree &config)
   try{
     m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
     m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
-    m_jsonAbiPlatform = m_jsonConfig.hasOption(getName(), "json")
-                     && !m_jsonConfig.hasOption(getName(), "format");
+    m_json_abi_platform = m_jsonConfig.has_option(getName(), "json")
+                     && !m_jsonConfig.has_option(getName(), "format");
   }
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
@@ -218,8 +218,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  Report::JsonSchemaSelection jsonSchema{Report::SchemaVersion::unknown, false};
-  const bool usesJsonAbiOption = vm.count("json") || m_jsonAbiPlatform;
+  Report::JsonAbiChoice json_abi{Report::SchemaVersion::unknown, false};
+  const bool json_platform = vm.count("json") || m_json_abi_platform;
   try{
     if (vm.count("output") && options.m_output.empty())
       throw xrt_core::error("Output file not specified");
@@ -230,16 +230,14 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     if (vm.count("element") && options.m_elementsFilter.empty())
       throw xrt_core::error("No element filter given to be produced");
 
-    jsonSchema = Report::selectJsonSchema(usesJsonAbiOption, options.m_json,
-                                          vm.count("format"), options.m_format);
-    if (jsonSchema.schemaVersion == Report::SchemaVersion::unknown)
+    json_abi = Report::resolve_json_abi(json_platform, json_platform || vm.count("format"),
+                                        json_platform ? options.m_json : options.m_format);
+    if (json_abi.schema_version == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
-                             % (usesJsonAbiOption ? options.m_json : options.m_format)).str());
+                             % (json_platform ? options.m_json : options.m_format)).str());
 
-    if (vm.count("format") && options.m_output.empty())
-      throw xrt_core::error("Please specify an output file to redirect the json to");
-
-    if (vm.count("json") && options.m_output.empty())
+    // Either JSON output selector requires an accompanying output file
+    if ((vm.count("format") || vm.count("json")) && options.m_output.empty())
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
@@ -339,15 +337,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       const auto examine_watch_snapshot =
           [&](const xrt_core::device*) {
             std::ostringstream console;
-            XBU::produce_reports(device, reportsToProcess, jsonSchema.schemaVersion,
-                                 jsonSchema.useJsonVersionNaming, {}, console, oSchemaOutput);
+            XBU::produce_reports(device, reportsToProcess, json_abi, {}, console, oSchemaOutput);
             return console.str();
           };
       smi_watch_mode::run_watch_mode(device.get(), std::cout, examine_watch_snapshot,
           *options.m_watchIntervalSec, true);
     } else {
-      XBU::produce_reports(device, reportsToProcess, jsonSchema.schemaVersion,
-                           jsonSchema.useJsonVersionNaming, {}, std::cout, oSchemaOutput);
+      XBU::produce_reports(device, reportsToProcess, json_abi, {}, std::cout, oSchemaOutput);
     }
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing

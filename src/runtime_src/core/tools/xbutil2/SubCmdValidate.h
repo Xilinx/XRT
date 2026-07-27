@@ -36,7 +36,7 @@ class SubCmdValidate : public SubCmd {
   SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
  private:
-  bool m_jsonAbiPlatform = false;
+  bool m_json_abi_platform = false;
 
   void fill_option_values(const boost::program_options::variables_map& vm, SubCmdValidateOptions& options) const;
   void handle_errors_and_validate_tests(const boost::program_options::variables_map&, 

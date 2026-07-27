@@ -224,7 +224,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(device, reportsToProcess, schemaVersion, false, m_elementsFilter, std::cout, oSchemaOutput);
+    XBU::produce_reports(device, reportsToProcess, {schemaVersion, false}, m_elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;

@@ -193,7 +193,7 @@ JsonConfig::addProgramOptions(po::options_description& options
 }
 
 bool
-JsonConfig::hasOption(const std::string& subCommand, const std::string& optionName) const
+JsonConfig::has_option(const std::string& subCommand, const std::string& optionName) const
 {
   const auto subCommandIter = m_subCommandMap.find(subCommand);
   if (subCommandIter == m_subCommandMap.end())

@@ -15,22 +15,20 @@
 
 class Report : public JSONConfigurable {
  public:
-  // Supported JSON schemas.
-  // Numbered ABIs are introduced only for parser-breaking ptree
-  // changes. Alveo / AIE2 use --format (optionName). Following devices use --json
-  // (jsonVersionName). "JSON" / "default" always track the newest ABI.
+  // Numbered ABIs are for parser-breaking ptree changes.
+  // Alveo / AIE2 use --format (optionName); NPU3 uses --json (json_version_name).
   enum class SchemaVersion  {
     unknown,
     json_internal,
     json_latest,
     json_20202,      // Legacy ABI (--format JSON-2020.2 only, identical to JSON)
   };
- 
+
   struct SchemaDescription {
     SchemaVersion schemaVersion;
-    bool isVisable;              // Listed in --format help when optionName is set
-    std::string optionName;      // --format value (e.g. JSON, JSON-2020.2)
-    std::string jsonVersionName; // --json value (e.g. default)
+    bool isVisable;                // Listed in --format help when optionName is set
+    std::string optionName;        // --format value (e.g. JSON, JSON-2020.2)
+    std::string json_version_name; // --json value (e.g. default)
     std::string shortDescription;
   };
 
@@ -41,19 +39,30 @@ class Report : public JSONConfigurable {
   static const Report::SchemaDescription & getSchemaDescription(SchemaVersion _schemaVersion);
   static const SchemaDescriptionVector & getSchemaDescriptionVector() { return m_schemaVersionVector; };
 
-  static SchemaVersion resolveSchemaFromJsonVersion(const std::string& jsonVersion);
-  static SchemaVersion resolveSchemaFromFormatName(const std::string& formatName);
-  static std::string getSchemaOutputLabel(SchemaVersion schemaVersion, bool useJsonVersionNaming);
-
-  struct JsonSchemaSelection {
-    SchemaVersion schemaVersion;
-    bool useJsonVersionNaming;
+  /** Resolved ABI and if the --json registry name is used. */
+  struct JsonAbiChoice {
+    SchemaVersion schema_version;
+    bool use_json_name;
   };
 
-  static JsonSchemaSelection selectJsonSchema(bool usesJsonAbiOption,
-                                              const std::string& jsonVersion,
-                                              bool hasFormatOption,
-                                              const std::string& formatName);
+  /**
+   * Resolves the JSON ABI from CLI state.
+   * @param json_platform     true when --json is active (explicit or platform default)
+   * @param explicit_selector true when the user passed --json or --format
+   * @param version           --json or --format value depending on json_platform
+   */
+  static JsonAbiChoice resolve_json_abi(bool json_platform,
+                                        bool explicit_selector,
+                                        const std::string& version);
+
+  /** Helpers for JSON file output (header node, ABI-specific tree shaping). */
+  struct JsonAbi {
+    /** True for ABIs that write user-facing JSON to -o (excludes internal/unknown). */
+    static bool valid_user_abi(SchemaVersion version);
+    static boost::property_tree::ptree make_json_header(SchemaVersion version, bool use_json_name);
+    static boost::property_tree::ptree fit_abi_tree(SchemaVersion version,
+                                                    const boost::property_tree::ptree& tree);
+  };
 
   // Supporting APIs
  public:
@@ -98,4 +107,3 @@ class Report : public JSONConfigurable {
 using ReportCollection = std::vector<std::shared_ptr<Report>>;
 
 #endif
-

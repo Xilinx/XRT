@@ -9,7 +9,6 @@
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenus.h"
-#include "ReportSchemaProjector.h"
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -243,8 +242,7 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 void 
 XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                               const ReportCollection & reportsToProcess, 
-                              const Report::SchemaVersion schemaVersion, 
-                              bool useJsonVersionNaming,
+                              const Report::JsonAbiChoice& json_abi,
                               const std::vector<std::string> & elementFilter,
                               std::ostream & consoleStream,
                               std::ostream & schemaStream)
@@ -255,7 +253,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     return;
   }
 
-  if (schemaVersion == Report::SchemaVersion::unknown) {
+  if (json_abi.schema_version == Report::SchemaVersion::unknown) {
     consoleStream << "Info: No action taken, 'UNKNOWN' schema value specified.\n";
     return;
   }
@@ -263,7 +261,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
   // Working property tree
   boost::property_tree::ptree ptRoot;
 
-  ptRoot.add_child("schema_version", ReportSchemaProjector::makeSchemaVersionNode(schemaVersion, useJsonVersionNaming));
+  ptRoot.add_child("schema_version", Report::JsonAbi::make_json_header(json_abi.schema_version, json_abi.use_json_name));
 
   bool is_report_output_valid = true;
 
@@ -275,14 +273,14 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
 
     boost::property_tree::ptree ptReport;
     try {
-      report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
+      report->getFormattedReport(nullptr, json_abi.schema_version, elementFilter, consoleStream, ptReport);
     } catch (const std::exception&) {
       is_report_output_valid = false;
     }
 
     // Only support 1 node on the root
     if (ptReport.size() > 1)
-      throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schemaVersion).optionName).str());
+      throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(json_abi.schema_version).optionName).str());
 
     // We have 1 node, copy the child to the root property tree
     if (ptReport.size() == 1) {
@@ -372,14 +370,14 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
 
       boost::property_tree::ptree ptReport;
       try {
-        report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
+        report->getFormattedReport(device.get(), json_abi.schema_version, elementFilter, consoleStream, ptReport);
       } catch (const std::exception&) {
         is_report_output_valid = false;
       }
 
       // Only support 1 node on the root
       if (ptReport.size() > 1)
-        throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schemaVersion).optionName).str());
+        throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(json_abi.schema_version).optionName).str());
 
       // We have 1 node, copy the child to the root property tree
       if (ptReport.size() == 1) {
@@ -396,7 +394,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
   }
 
   // -- Write the formatted output
-  if (ReportSchemaProjector::emitsJsonDocument(schemaVersion)) {
+  if (Report::JsonAbi::valid_user_abi(json_abi.schema_version)) {
     boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
     schemaStream << std::endl;
   }
