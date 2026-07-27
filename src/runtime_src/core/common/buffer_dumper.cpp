@@ -434,7 +434,7 @@ append(const std::string& key, const std::string& result_json)
 
     // Spill to disk when the next append would exceed the in-memory cap, then
     // continue buffering into a fresh in-memory batch.
-    const auto entry_size = entry.dump(4).size();
+    const auto entry_size = result_json.size();
     if (m_accumulated_bytes + entry_size > m_config.max_bytes) {
       const auto max_mb = m_config.max_bytes / (1024 * 1024); // NOLINT
       xrt_core::message::send(xrt_core::message::severity_level::warning, "dtrace_buffer_dumper",
