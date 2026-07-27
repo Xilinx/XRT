@@ -16,7 +16,7 @@
 class Report : public JSONConfigurable {
  public:
   // Numbered ABIs are for parser-breaking ptree changes.
-  // Alveo / AIE2 use --format (optionName); NPU3 uses --json (json_version_name).
+  // Alveo / AIE2 use --format (optionName); else use --json (json_version_name).
   enum class SchemaVersion  {
     unknown,
     json_internal,

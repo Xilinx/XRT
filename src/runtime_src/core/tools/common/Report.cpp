@@ -130,17 +130,11 @@ Report::JsonAbi::make_json_header(SchemaVersion version, bool use_json_name)
 }
 
 // Shapes the internal report tree to match a frozen JSON ABI.
-// Add a case when a new ABI removes or renames nodes from the internal superset.
 boost::property_tree::ptree
-Report::JsonAbi::fit_abi_tree(SchemaVersion version, const boost::property_tree::ptree& tree)
+Report::JsonAbi::fit_abi_tree(SchemaVersion /*version*/,
+                              const boost::property_tree::ptree& tree)
 {
-  switch (version) {
-  case SchemaVersion::json_latest:
-  case SchemaVersion::json_20202:
-    return tree;
-  default:
-    return tree;
-  }
+  return tree;
 }
 
 Report::Report(const std::string & _reportName,
