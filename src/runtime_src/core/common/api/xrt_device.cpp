@@ -142,7 +142,7 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
       return raw<xrt::info::device::kdma, xrt_core::query::kds_numcdmas>(device);
     }
     catch (const std::exception&) {
-      return 0;
+      return uint32_t{0};
     }
   case xrt::info::device::max_clock_frequency_mhz: // unsigned long
     return to_value<xrt::info::device::max_clock_frequency_mhz, xrt_core::query::clock_freqs_mhz>
