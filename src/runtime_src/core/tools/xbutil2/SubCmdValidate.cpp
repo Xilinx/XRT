@@ -339,8 +339,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 }
 
 static boost::property_tree::ptree
-build_validate_json_output(Report::SchemaVersion schema_version,
-                           const std::string& schema_label,
+build_validate_json_output(const std::string& schema_label,
                            const boost::property_tree::ptree& ptDeviceTested)
 {
   boost::property_tree::ptree ptRoot;
@@ -362,7 +361,7 @@ run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
   auto has_failures = (run_test_suite_device(device, schema_version, testObjectsToRun, ptDeviceTested, iter_count) == test_status::failed);
 
   if (Report::JsonAbi::valid_user_abi(schema_version)) {
-    const auto ptRoot = build_validate_json_output(schema_version, schema_label, ptDeviceTested);
+    const auto ptRoot = build_validate_json_output(schema_label, ptDeviceTested);
     boost::property_tree::json_parser::write_json(output, ptRoot, true /*Pretty Print*/);
     output << std::endl;
   }
