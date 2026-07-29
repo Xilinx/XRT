@@ -21,6 +21,7 @@
 #include "Report.h"
 
 #include "core/common/time.h"
+#include <boost/algorithm/string/predicate.hpp>
 
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
@@ -35,7 +36,7 @@ const Report::SchemaDescription &
 Report::getSchemaDescription(const std::string & name)
 {
   for (const auto & entry : m_schemaVersionVector) {
-    if (!entry.optionName.empty() && entry.optionName == name)
+    if (!entry.optionName.empty() && boost::iequals(entry.optionName, name))
       return entry;
   }
 
@@ -74,7 +75,7 @@ Report::resolve_json_abi(bool json_platform, bool explicit_selector, const std::
   const auto lookup_name = json_platform && version.empty() ? "default" : version;
 
   for (const auto& entry : m_schemaVersionVector) {
-    if (entry.optionName.empty() || entry.optionName != lookup_name)
+    if (entry.optionName.empty() || !boost::iequals(entry.optionName, lookup_name))
       continue;
     if (entry.isVisable == !json_platform)
       return entry.schemaVersion;
