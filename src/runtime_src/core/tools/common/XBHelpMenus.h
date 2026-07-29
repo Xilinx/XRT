@@ -40,7 +40,8 @@ namespace XBUtilities {
   void
      produce_reports( const std::shared_ptr<xrt_core::device>& device,
                       const ReportCollection & reportsToProcess,
-                      const Report::JsonAbiChoice& json_abi,
+                      Report::SchemaVersion schema_version,
+                      const std::string& schema_label,
                       const std::vector<std::string> & elementFilter,
                       std::ostream & consoleStream,
                       std::ostream & schemaStream);

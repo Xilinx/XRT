@@ -16,7 +16,7 @@
 class Report : public JSONConfigurable {
  public:
   // Numbered ABIs are for parser-breaking ptree changes.
-  // Alveo / AIE2 use --format (optionName); else use --json (json_version_name).
+  // Alveo / AIE2 use --format, else use --json.
   enum class SchemaVersion  {
     unknown,
     json_internal,
@@ -26,9 +26,8 @@ class Report : public JSONConfigurable {
 
   struct SchemaDescription {
     SchemaVersion schemaVersion;
-    bool isVisable;                // Listed in --format help when optionName is set
-    std::string optionName;        // --format value (e.g. JSON, JSON-2020.2)
-    std::string json_version_name; // --json value (e.g. default)
+    bool isVisable;                // Listed in --format help
+    std::string optionName;
     std::string shortDescription;
   };
 
@@ -39,19 +38,13 @@ class Report : public JSONConfigurable {
   static const Report::SchemaDescription & getSchemaDescription(SchemaVersion _schemaVersion);
   static const SchemaDescriptionVector & getSchemaDescriptionVector() { return m_schemaVersionVector; };
 
-  /** Resolved ABI and if the --json registry name is used. */
-  struct JsonAbiChoice {
-    SchemaVersion schema_version;
-    bool use_json_name;
-  };
-
   /**
    * Resolves the JSON ABI from CLI state.
    * @param json_platform     true when --json is active (explicit or platform default)
    * @param explicit_selector true when the user passed --json or --format
    * @param version           --json or --format value depending on json_platform
    */
-  static JsonAbiChoice resolve_json_abi(bool json_platform,
+  static SchemaVersion resolve_json_abi(bool json_platform,
                                         bool explicit_selector,
                                         const std::string& version);
 
@@ -59,7 +52,7 @@ class Report : public JSONConfigurable {
   struct JsonAbi {
     /** True for ABIs that write user-facing JSON to -o (excludes internal/unknown). */
     static bool valid_user_abi(SchemaVersion version);
-    static boost::property_tree::ptree make_json_header(SchemaVersion version, bool use_json_name);
+    static boost::property_tree::ptree make_json_header(const std::string& schema_label);
     static boost::property_tree::ptree fit_abi_tree(SchemaVersion version,
                                                     const boost::property_tree::ptree& tree);
   };

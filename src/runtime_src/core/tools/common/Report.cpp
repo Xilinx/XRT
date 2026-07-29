@@ -21,59 +21,21 @@
 #include "Report.h"
 
 #include "core/common/time.h"
-#include <boost/algorithm/string/predicate.hpp>
 
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
-  { SchemaVersion::unknown,       false, "",            "",        "Unknown entry"},
-  { SchemaVersion::json_latest,   true,  "JSON",        "default", "Latest JSON schema (default)"},
-  { SchemaVersion::json_internal, false, "",            "",        "Internal JSON property tree"},
-  { SchemaVersion::json_20202,    true,  "JSON-2020.2", "",        "JSON 2020.2 schema (legacy)"},
+  { SchemaVersion::unknown,       false, "",            "Unknown entry"},
+  { SchemaVersion::json_latest,   true,  "JSON",        "Latest JSON schema (default)"},
+  { SchemaVersion::json_latest,   false, "default",     "Latest JSON schema (default)"},
+  { SchemaVersion::json_internal, false, "",            "Internal JSON property tree"},
+  { SchemaVersion::json_20202,    true,  "JSON-2020.2", "JSON 2020.2 schema (legacy)"},
 };
-
-namespace {
-
-// Maps a CLI version string to SchemaVersion.
-// for_json=true matches json_version_name (--json); false matches optionName (--format).
-// Each path rejects names that belong to the other flag.
-Report::SchemaVersion
-lookup_abi(const std::string& name, bool for_json)
-{
-  if (for_json) {
-    if (name.empty() || boost::iequals(name, "default"))
-      return Report::SchemaVersion::json_latest;
-
-    for (const auto& entry : Report::m_schemaVersionVector) {
-      if (!entry.json_version_name.empty()
-          && boost::iequals(entry.json_version_name, name))
-        return entry.schemaVersion;
-    }
-    return Report::SchemaVersion::unknown;
-  }
-
-  for (const auto& entry : Report::m_schemaVersionVector) {
-    if (!entry.optionName.empty() && boost::iequals(entry.optionName, name))
-      return entry.schemaVersion;
-  }
-
-  // Reject --json-only names on the --format path (e.g. default).
-  for (const auto& entry : Report::m_schemaVersionVector) {
-    if (!entry.json_version_name.empty() && boost::iequals(entry.json_version_name, name))
-      return Report::SchemaVersion::unknown;
-  }
-
-  return Report::SchemaVersion::unknown;
-}
-
-} // namespace
 
 const Report::SchemaDescription &
 Report::getSchemaDescription(const std::string & name)
 {
   for (const auto & entry : m_schemaVersionVector) {
-    if (!entry.optionName.empty() && boost::iequals(entry.optionName, name))
-      return entry;
-    if (!entry.json_version_name.empty() && boost::iequals(entry.json_version_name, name))
+    if (!entry.optionName.empty() && entry.optionName == name)
       return entry;
   }
 
@@ -83,24 +45,43 @@ Report::getSchemaDescription(const std::string & name)
 const Report::SchemaDescription &
 Report::getSchemaDescription(SchemaVersion version)
 {
+  // A SchemaVersion may map to multiple registry rows (e.g. json_latest has both
+  // "JSON" and "default"). Prefer the --format row for canonical naming in errors.
+  const SchemaDescription* fallback = nullptr;
   for (const auto & entry : m_schemaVersionVector) {
-    if (entry.schemaVersion == version)
+    if (entry.schemaVersion != version)
+      continue;
+    if (entry.isVisable)
       return entry;
+    fallback = &entry;
   }
+
+  // No --format row (e.g. json_internal); return the sole --json or internal row.
+  if (fallback)
+    return *fallback;
 
   return getSchemaDescription(SchemaVersion::unknown);
 }
 
-Report::JsonAbiChoice
+Report::SchemaVersion
 Report::resolve_json_abi(bool json_platform, bool explicit_selector, const std::string& version)
 {
-  if (json_platform)
-    return { lookup_abi(version.empty() ? "default" : version, true), true };
+  if (!explicit_selector)
+    return SchemaVersion::json_latest;
 
-  if (explicit_selector)
-    return { lookup_abi(version, false), false };
+  // json_platform selects isVisable=false (--json) vs isVisable=true (--format) entries.
+  // Each path rejects names that belong to the other flag.
+  const auto lookup_name = json_platform && version.empty() ? "default" : version;
 
-  return { SchemaVersion::json_latest, false };
+  for (const auto& entry : m_schemaVersionVector) {
+    if (entry.optionName.empty() || entry.optionName != lookup_name)
+      continue;
+    if (entry.isVisable == !json_platform)
+      return entry.schemaVersion;
+    return SchemaVersion::unknown;
+  }
+
+  return SchemaVersion::unknown;
 }
 
 bool
@@ -116,15 +97,10 @@ Report::JsonAbi::valid_user_abi(SchemaVersion version)
 }
 
 boost::property_tree::ptree
-Report::JsonAbi::make_json_header(SchemaVersion version, bool use_json_name)
+Report::JsonAbi::make_json_header(const std::string& schema_label)
 {
-  const auto& desc = getSchemaDescription(version);
-  const std::string& label = use_json_name && !desc.json_version_name.empty()
-                           ? desc.json_version_name
-                           : desc.optionName;
-
   boost::property_tree::ptree node;
-  node.put("schema", label.empty() ? "unknown" : label);
+  node.put("schema", schema_label.empty() ? "unknown" : schema_label);
   node.put("creation_date", xrt_core::timestamp());
   return node;
 }

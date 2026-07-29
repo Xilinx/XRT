@@ -339,28 +339,30 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 }
 
 static boost::property_tree::ptree
-build_validate_json_output(const Report::JsonAbiChoice& json_abi,
+build_validate_json_output(Report::SchemaVersion schema_version,
+                           const std::string& schema_label,
                            const boost::property_tree::ptree& ptDeviceTested)
 {
   boost::property_tree::ptree ptRoot;
-  ptRoot.add_child("schema_version", Report::JsonAbi::make_json_header(json_abi.schema_version, json_abi.use_json_name));
+  ptRoot.add_child("schema_version", Report::JsonAbi::make_json_header(schema_label));
   ptRoot.add_child("logical_devices", ptDeviceTested);
   return ptRoot;
 }
 
 static bool
 run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
-                      const Report::JsonAbiChoice& json_abi,
+                      Report::SchemaVersion schema_version,
+                      const std::string& schema_label,
                       std::vector<std::shared_ptr<TestRunner>>& testObjectsToRun,
                       std::ostream & output,
                       unsigned int iter_count)
 {
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
-  auto has_failures = (run_test_suite_device(device, json_abi.schema_version, testObjectsToRun, ptDeviceTested, iter_count) == test_status::failed);
+  auto has_failures = (run_test_suite_device(device, schema_version, testObjectsToRun, ptDeviceTested, iter_count) == test_status::failed);
 
-  if (Report::JsonAbi::valid_user_abi(json_abi.schema_version)) {
-    const auto ptRoot = build_validate_json_output(json_abi, ptDeviceTested);
+  if (Report::JsonAbi::valid_user_abi(schema_version)) {
+    const auto ptRoot = build_validate_json_output(schema_version, schema_label, ptDeviceTested);
     boost::property_tree::json_parser::write_json(output, ptRoot, true /*Pretty Print*/);
     output << std::endl;
   }
@@ -499,7 +501,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   XBU::setElf(options.m_elf);
 
   // -- Process the options --------------------------------------------
-  Report::JsonAbiChoice json_abi{Report::SchemaVersion::unknown, false};
+  Report::SchemaVersion schema_version = Report::SchemaVersion::unknown;
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = options.m_xclbin_path;
@@ -518,14 +520,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   auto tests = xrt_core::device_query<xq::xrt_smi_lists>(device, xq::xrt_smi_lists::type::validate_tests);
   auto testOptions = getTestList(tests);
 
+  const bool json_platform = vm.count("json") || m_json_abi_platform;
+  const std::string schema_label = json_platform
+    ? (options.m_json.empty() ? "default" : options.m_json)
+    : options.m_format;
   try {
-    const bool json_platform = vm.count("json") || m_json_abi_platform;
-
-    json_abi = Report::resolve_json_abi(json_platform, json_platform || vm.count("format"),
-                                        json_platform ? options.m_json : options.m_format);
-    if (json_abi.schema_version == Report::SchemaVersion::unknown)
-      throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
-                             % (json_platform ? options.m_json : options.m_format)).str());
+    schema_version = Report::resolve_json_abi(json_platform, vm.count("json") || vm.count("format"), schema_label);
+    if (schema_version == Report::SchemaVersion::unknown)
+      throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'") % schema_label).str());
 
     // All Error Handling for xrt-smi validate should go here
     handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param);
@@ -636,7 +638,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(device, json_abi, testObjectsToRun, oSchemaOutput, options.m_loop);
+  bool has_failures = run_tests_on_devices(device, schema_version, schema_label, testObjectsToRun, oSchemaOutput, options.m_loop);
 
   try {
     //reset pmode

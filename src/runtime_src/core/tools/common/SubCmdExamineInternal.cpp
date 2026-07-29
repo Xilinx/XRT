@@ -122,7 +122,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  const auto validated_format = m_format.empty() ? "json" : m_format;
+  const auto validated_format = m_format.empty() ? "JSON" : m_format;
   Report::SchemaVersion schemaVersion = Report::getSchemaDescription(validated_format).schemaVersion;
   try{
     if (vm.count("output") && m_output.empty())
@@ -224,7 +224,9 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(device, reportsToProcess, {schemaVersion, false}, m_elementsFilter, std::cout, oSchemaOutput);
+    XBU::produce_reports(device, reportsToProcess, schemaVersion,
+                         Report::getSchemaDescription(validated_format).optionName,
+                         m_elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;

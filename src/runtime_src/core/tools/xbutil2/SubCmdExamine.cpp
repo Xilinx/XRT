@@ -218,8 +218,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  Report::JsonAbiChoice json_abi{Report::SchemaVersion::unknown, false};
+  Report::SchemaVersion schema_version = Report::SchemaVersion::unknown;
   const bool json_platform = vm.count("json") || m_json_abi_platform;
+  const std::string schema_label = json_platform
+    ? (options.m_json.empty() ? "default" : options.m_json)
+    : options.m_format;
   try{
     if (vm.count("output") && options.m_output.empty())
       throw xrt_core::error("Output file not specified");
@@ -230,11 +233,9 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     if (vm.count("element") && options.m_elementsFilter.empty())
       throw xrt_core::error("No element filter given to be produced");
 
-    json_abi = Report::resolve_json_abi(json_platform, json_platform || vm.count("format"),
-                                        json_platform ? options.m_json : options.m_format);
-    if (json_abi.schema_version == Report::SchemaVersion::unknown)
-      throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'")
-                             % (json_platform ? options.m_json : options.m_format)).str());
+    schema_version = Report::resolve_json_abi(json_platform, vm.count("json") || vm.count("format"), schema_label);
+    if (schema_version == Report::SchemaVersion::unknown)
+      throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'") % schema_label).str());
 
     // Either JSON output selector requires an accompanying output file
     if ((vm.count("format") || vm.count("json")) && options.m_output.empty())
@@ -337,13 +338,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       const auto examine_watch_snapshot =
           [&](const xrt_core::device*) {
             std::ostringstream console;
-            XBU::produce_reports(device, reportsToProcess, json_abi, {}, console, oSchemaOutput);
+            XBU::produce_reports(device, reportsToProcess, schema_version, schema_label, {}, console, oSchemaOutput);
             return console.str();
           };
       smi_watch_mode::run_watch_mode(device.get(), std::cout, examine_watch_snapshot,
           *options.m_watchIntervalSec, true);
     } else {
-      XBU::produce_reports(device, reportsToProcess, json_abi, {}, std::cout, oSchemaOutput);
+      XBU::produce_reports(device, reportsToProcess, schema_version, schema_label, {}, std::cout, oSchemaOutput);
     }
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
