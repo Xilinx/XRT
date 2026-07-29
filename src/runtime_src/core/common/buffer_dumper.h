@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrtcore_util_buffer_dumper_h_
 #define xrtcore_util_buffer_dumper_h_
+#include "core/common/json/nlohmann/json.hpp"
 #include "core/common/uc_log.h"
 #include "core/include/xrt/xrt_bo.h"
 
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <future>
 #include <mutex>
@@ -130,6 +132,54 @@ public:
   // Synchronously flush all pending data
   void
   flush();
+};
+
+/**
+ * dtrace_buffer_dumper - Coalesces per-run dtrace JSON results for a hw context.
+ *
+ * Accumulates JSON in memory up to max_bytes.
+ * On overflow, buffered runs are spilled to disk, the in-memory buffer is
+ * cleared, and appends continue into a fresh buffer (multiple spill files
+ * may be created over the lifetime of the hw context).
+ */
+class dtrace_buffer_dumper
+{
+public:
+  struct config
+  {
+    uint32_t slot_idx = 0;
+    size_t max_bytes = 0;
+  };
+
+  explicit
+  dtrace_buffer_dumper(config cfg);
+
+  // Flush result on destruction
+  ~dtrace_buffer_dumper();
+
+  // Delete copy and move operations
+  dtrace_buffer_dumper(const dtrace_buffer_dumper&) = delete;
+  dtrace_buffer_dumper(dtrace_buffer_dumper&&) = delete;
+  dtrace_buffer_dumper& operator=(const dtrace_buffer_dumper&) = delete;
+  dtrace_buffer_dumper& operator=(dtrace_buffer_dumper&&) = delete;
+
+  // Append run's JSON result under the given key.
+  // Spill buffered results to disk on overflow, then continue buffering.
+  void
+  append(const std::string& key, const std::string& result_json);
+
+  // Write buffered results to file at end of hw context lifetime
+  void
+  flush();
+
+private:
+  config m_config;
+  nlohmann::ordered_json m_results;
+  size_t m_accumulated_bytes = 0;
+
+  // Write buffered JSON to file, log success, and clear the buffer
+  void
+  write_to_file();
 };
 
 } // xrt_core
