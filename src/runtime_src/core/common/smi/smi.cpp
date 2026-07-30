@@ -173,7 +173,11 @@ smi_hardware_config()
     {{0x17f1, 0x13}, hardware_type::npu3_f5},
     {{0x17f1, 0x15}, hardware_type::npu3_f6},
     {{0x17f1, 0x11}, hardware_type::npu3_f7},
+    {{0x17f3, 0x11}, hardware_type::npu3_f8},
+    {{0x17f3, 0x12}, hardware_type::npu3_f9},
     {{0x17f1, 0x14}, hardware_type::npu3_f10},
+    {{0x17f3, 0x13}, hardware_type::npu3_f11},
+    {{0x17f3, 0x14}, hardware_type::npu3_f12},
     {{0x1B0A, 0x00}, hardware_type::npu3_B01},
     {{0x1B0B, 0x00}, hardware_type::npu3_B02},
     {{0x1B0C, 0x00}, hardware_type::npu3_B03},
@@ -212,7 +216,11 @@ get_family(hardware_type hw)
   case hardware_type::npu3_f5:
   case hardware_type::npu3_f6:
   case hardware_type::npu3_f7:
+  case hardware_type::npu3_f8:
+  case hardware_type::npu3_f9:
   case hardware_type::npu3_f10:
+  case hardware_type::npu3_f11:
+  case hardware_type::npu3_f12:
   case hardware_type::npu3_B01:
   case hardware_type::npu3_B02:
   case hardware_type::npu3_B03:

@@ -66,7 +66,7 @@ uc_log_schema = {
     {11, "Exception!!\n\tESR: 0x%x EAR: 0x%x\n"},
     {12, "Error %d initializing XIOModule!"},
     {13, "Page-in to slot %u length 0x%x cur_save_level 0x%x\n"},
-    {14, "[preemption] job: %u\n"},
+    {14, "[yield] job: %u\n"},
     {15, "[block] job: %u\n"},
     {16, "[start] job: %u\n"},
     {17, "[launch] job: %u (%u)\n"},
@@ -181,7 +181,18 @@ uc_log_schema = {
     {126, "Skip %d cmds in runlist\n"},
     {127, "Leaving barrier: conditional job\n"},
     {128, "break early same page same job\n"},
-    {129, "\n"}
+    {129, "load pdi id %d at page index %d\n"},
+    {130, "load axi-mm elf id %d at page index %d\n"},
+    {131, "load cp elf id %d in page %d\n"},
+    {132, "out of order page-in page %d\n"},
+    {133, "in order page-in page %d\n"},
+    {134, "save level page-in page %d\n"},
+    {135, "load last pdi id %d at page index %d\n"},
+    {136, "host queue version read, major: %d minor: %d\n"},
+    {137, "npi error caught\n"},
+    {138, "restore L2 done & load_last_pdi start\n"},
+    {139, "restore done\n"},
+    {140, "\n"}
   }
 };
 

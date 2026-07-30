@@ -41,13 +41,16 @@
 
 namespace {
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, bugprone-implicit-widening-of-multiplication-result)
 constexpr std::size_t
 operator""_kb(unsigned long long v) { return 1024U * v; }
 
+constexpr std::size_t
+operator""_mb(unsigned long long v) { return 1024U * 1024U * v; }
+
 constexpr double
 operator""_mhz(long double v) { return static_cast<double>(v) * 1'000'000.0; }
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, bugprone-implicit-widening-of-multiplication-result)
 
 template <typename T>
 using span = xrt::detail::span<T>;
@@ -235,6 +238,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
+  std::unique_ptr<xrt_core::dtrace_buffer_dumper> m_dtrace_result_buf;
 
   // During preemption, when a hardware context is interrupted
   // L2 memory contents are saved to a scratchpad memory allocated
@@ -339,6 +343,29 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
   }
 
+  // Initializes dtrace coalesce buffer
+  static std::unique_ptr<xrt_core::dtrace_buffer_dumper>
+  init_dtrace_buffer_dumper(xrt_core::hwctx_handle* ctx_hdl)
+  {
+    // Coalesce dtrace result requires both buffer mode and JSON output format
+    static auto dtrace_coalesce_enabled = xrt_core::config::get_dtrace_coalesce_result()
+                                       && xrt_core::config::get_dtrace_output_json_format();
+    if (!ctx_hdl || !dtrace_coalesce_enabled)
+      return nullptr;
+
+    try {
+      xrt_core::dtrace_buffer_dumper::config config {};
+      config.slot_idx = ctx_hdl->get_slotidx();
+      config.max_bytes = static_cast<size_t>(xrt_core::config::get_dtrace_coalesce_result_memory_mb()) * 1_mb;
+      return std::make_unique<xrt_core::dtrace_buffer_dumper>(std::move(config));
+    }
+    catch (const std::exception& e) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              std::string{"Failed to create dtrace coalesce results buffer : "} + e.what());
+      return nullptr;
+    }
+  }
+
   // Gets partition size from xclbin if AIE partition section is present
   static uint32_t
   get_partition_size_from_xclbin(const xrt::xclbin& xclbin)
@@ -406,10 +433,30 @@ public:
     return shared_from_this();
   }
 
+  void
+  append_dtrace_result(const std::string& key, const std::string& result_json)
+  {
+    // Concurrent run clones can dump dtrace on the same hw context;
+    // protect lazy init and append with m_mutex
+    std::lock_guard lk(m_mutex);
+
+    // Lazily create the coalesce buffer on first append for this hw context
+    if (!m_hdl)
+      return;
+
+    if (!m_dtrace_result_buf)
+      m_dtrace_result_buf = init_dtrace_buffer_dumper(m_hdl.get());
+
+    m_dtrace_result_buf->append(key, result_json);
+  }
+
   ~hw_context_impl()
   {
     // This trace point measures the time to tear down a hw context on the device
     XRT_TRACE_POINT_SCOPE(xrt_hw_context_dtor);
+
+    // dump dtrace buffered results before shim hwctx handle is destroyed
+    m_dtrace_result_buf.reset();
 
     // dump uC log buffer before shim hwctx handle is destroyed
     m_uc_log_buf.reset();
@@ -801,6 +848,14 @@ xrt::hw_context::cfg_type
 get_cfg_map(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_cfg_map();
+}
+
+void
+append_dtrace_result(const xrt::hw_context& hwctx,
+                     const std::string& key, const std::string& result_json)
+{
+  // Append a per-run dtrace JSON result to the hw context coalesce buffer
+  hwctx.get_handle()->append_dtrace_result(key, result_json);
 }
 
 } // xrt_core::hw_context_int
