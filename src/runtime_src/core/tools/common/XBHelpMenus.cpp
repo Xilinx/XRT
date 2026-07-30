@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -242,7 +242,8 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 void 
 XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                               const ReportCollection & reportsToProcess, 
-                              const Report::SchemaVersion schemaVersion, 
+                              Report::SchemaVersion schema_version,
+                              const std::string& schema_label,
                               const std::vector<std::string> & elementFilter,
                               std::ostream & consoleStream,
                               std::ostream & schemaStream)
@@ -253,7 +254,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     return;
   }
 
-  if (schemaVersion == Report::SchemaVersion::unknown) {
+  if (schema_version == Report::SchemaVersion::unknown) {
     consoleStream << "Info: No action taken, 'UNKNOWN' schema value specified.\n";
     return;
   }
@@ -261,14 +262,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
   // Working property tree
   boost::property_tree::ptree ptRoot;
 
-  // Add schema version
-  {
-    boost::property_tree::ptree ptSchemaVersion;
-    ptSchemaVersion.put("schema", Report::getSchemaDescription(schemaVersion).optionName.c_str());
-    ptSchemaVersion.put("creation_date", xrt_core::timestamp());
-
-    ptRoot.add_child("schema_version", ptSchemaVersion);
-  }
+  ptRoot.add_child("schema_version", Report::JsonAbi::make_json_header(schema_label));
 
   bool is_report_output_valid = true;
 
@@ -280,14 +274,14 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
 
     boost::property_tree::ptree ptReport;
     try {
-      report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
+      report->getFormattedReport(nullptr, schema_version, elementFilter, consoleStream, ptReport);
     } catch (const std::exception&) {
       is_report_output_valid = false;
     }
 
     // Only support 1 node on the root
     if (ptReport.size() > 1)
-      throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schemaVersion).optionName).str());
+      throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schema_version).optionName).str());
 
     // We have 1 node, copy the child to the root property tree
     if (ptReport.size() == 1) {
@@ -377,14 +371,14 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
 
       boost::property_tree::ptree ptReport;
       try {
-        report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
+        report->getFormattedReport(device.get(), schema_version, elementFilter, consoleStream, ptReport);
       } catch (const std::exception&) {
         is_report_output_valid = false;
       }
 
       // Only support 1 node on the root
       if (ptReport.size() > 1)
-        throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schemaVersion).optionName).str());
+        throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schema_version).optionName).str());
 
       // We have 1 node, copy the child to the root property tree
       if (ptReport.size() == 1) {
@@ -400,16 +394,10 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     }
   }
 
-  // -- Write the formatted output 
-  switch (schemaVersion) {
-    case Report::SchemaVersion::json_20202:
-      boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
-      schemaStream << std::endl;  
-      break;
-
-    default:
-      // Do nothing
-      break;
+  // -- Write the formatted output
+  if (Report::JsonAbi::valid_user_abi(schema_version)) {
+    boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
+    schemaStream << std::endl;
   }
 
   // If any the data reports failed to generate with an exception throw an operation cancelled but output everything

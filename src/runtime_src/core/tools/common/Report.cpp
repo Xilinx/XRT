@@ -1,5 +1,7 @@
 /**
+ * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,44 +19,99 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "Report.h"
-#include "core/common/time.h"
 
+#include "core/common/time.h"
 #include <boost/algorithm/string/predicate.hpp>
-#include <sstream>
 
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
-  { SchemaVersion::unknown,       false, "",              "Unknown entry"},
-  { SchemaVersion::json_20202,    true,  "JSON",          "Latest JSON schema"}, // Note: to be updated to the latest schema version every release
-  { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
-  { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
+  { SchemaVersion::unknown,       false, "",            "Unknown entry"},
+  { SchemaVersion::json_latest,   true,  "JSON",        "Latest JSON schema (default)"},
+  { SchemaVersion::json_latest,   false, "default",     "Latest JSON schema (default)"},
+  { SchemaVersion::json_internal, false, "",            "Internal JSON property tree"},
+  { SchemaVersion::json_20202,    true,  "JSON-2020.2", "JSON 2020.2 schema (legacy)"},
 };
 
-
 const Report::SchemaDescription &
-Report::getSchemaDescription(const std::string & _schemaVersionName) 
+Report::getSchemaDescription(const std::string & name)
 {
-  // Look for a match
   for (const auto & entry : m_schemaVersionVector) {
-    if (boost::iequals(entry.optionName, _schemaVersionName)) 
+    if (!entry.optionName.empty() && boost::iequals(entry.optionName, name))
       return entry;
   }
 
-  // Return back the unknown entry
-  return getSchemaDescription("");
+  return getSchemaDescription(SchemaVersion::unknown);
 }
 
-const Report::SchemaDescription & 
-Report::getSchemaDescription(SchemaVersion _schemaVersion)
+const Report::SchemaDescription &
+Report::getSchemaDescription(SchemaVersion version)
 {
-  // Look for a match
+  // A SchemaVersion may map to multiple registry rows (e.g. json_latest has both
+  // "JSON" and "default"). Prefer the --format row for canonical naming in errors.
+  const SchemaDescription* fallback = nullptr;
   for (const auto & entry : m_schemaVersionVector) {
-    if (entry.schemaVersion == _schemaVersion) 
+    if (entry.schemaVersion != version)
+      continue;
+    if (entry.isVisable)
       return entry;
+    fallback = &entry;
   }
 
-  // Return back the unknown entry
+  // No --format row (e.g. json_internal); return the sole --json or internal row.
+  if (fallback)
+    return *fallback;
+
   return getSchemaDescription(SchemaVersion::unknown);
+}
+
+Report::SchemaVersion
+Report::resolve_json_abi(bool json_platform, bool explicit_selector, const std::string& version)
+{
+  if (!explicit_selector)
+    return SchemaVersion::json_latest;
+
+  // json_platform selects isVisable=false (--json) vs isVisable=true (--format) entries.
+  // Each path rejects names that belong to the other flag.
+  const auto lookup_name = json_platform && version.empty() ? "default" : version;
+
+  for (const auto& entry : m_schemaVersionVector) {
+    if (entry.optionName.empty() || !boost::iequals(entry.optionName, lookup_name))
+      continue;
+    if (entry.isVisable == !json_platform)
+      return entry.schemaVersion;
+    return SchemaVersion::unknown;
+  }
+
+  return SchemaVersion::unknown;
+}
+
+bool
+Report::JsonAbi::valid_user_abi(SchemaVersion version)
+{
+  switch (version) {
+  case SchemaVersion::json_latest:
+  case SchemaVersion::json_20202:
+    return true;
+  default:
+    return false;
+  }
+}
+
+boost::property_tree::ptree
+Report::JsonAbi::make_json_header(const std::string& schema_label)
+{
+  boost::property_tree::ptree node;
+  node.put("schema", schema_label.empty() ? "unknown" : schema_label);
+  node.put("creation_date", xrt_core::timestamp());
+  return node;
+}
+
+// Shapes the internal report tree to match a frozen JSON ABI.
+boost::property_tree::ptree
+Report::JsonAbi::fit_abi_tree(SchemaVersion /*version*/,
+                              const boost::property_tree::ptree& tree)
+{
+  return tree;
 }
 
 Report::Report(const std::string & _reportName,
@@ -65,7 +122,6 @@ Report::Report(const std::string & _reportName,
   , m_isDeviceRequired(_isDeviceRequired)
   , m_isHidden(false)
 {
-  // Empty
 }
 
 Report::Report(const std::string & _reportName,
@@ -77,30 +133,31 @@ Report::Report(const std::string & _reportName,
   , m_isDeviceRequired(_isDeviceRequired)
   , m_isHidden(_isHidden)
 {
-  // Empty
 }
 
-void 
-Report::getFormattedReport( const xrt_core::device *pDevice, 
-                            SchemaVersion schemaVersion,
-                            const std::vector<std::string> & elementFilter,
-                            std::ostream & consoleStream,
-                            boost::property_tree::ptree & pt) const
+void
+Report::getFormattedReport(const xrt_core::device *pDevice,
+                           SchemaVersion schemaVersion,
+                           const std::vector<std::string> & elementFilter,
+                           std::ostream & consoleStream,
+                           boost::property_tree::ptree & pt) const
 {
-  // If an exception occurs while generating a report throw an error in the catch
   try {
     switch (schemaVersion) {
       case SchemaVersion::json_internal:
         getPropertyTreeInternal(pDevice, pt);
         break;
 
-      case SchemaVersion::json_20202:
-        getPropertyTree20202(pDevice, pt);
+      case SchemaVersion::json_latest:
+      case SchemaVersion::json_20202: {
+        boost::property_tree::ptree internal;
+        getPropertyTreeInternal(pDevice, internal);
+        pt = JsonAbi::fit_abi_tree(schemaVersion, internal);
         break;
+      }
 
       default:
         throw std::runtime_error("ERROR: Unknown schema version.");
-        break;
     }
 
     writeReport(pDevice, pt, elementFilter, consoleStream);

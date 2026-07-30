@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "core/common/smi/smi_alveo.h"
 
@@ -41,7 +41,7 @@ create_validate_subcommand()
   validate_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   validate_suboptions.emplace("format", std::make_shared<xrt_core::smi::option>("format", "f", "Report output format. Valid values are:\n"
                                 "\tJSON        - Latest JSON schema\n"
-                                "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"));
+                                "\tJSON-2020.2 - JSON 2020.2 schema (legacy)", "common", "JSON", "string"));
   validate_suboptions.emplace("output", std::make_shared<xrt_core::smi::option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   validate_suboptions.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   validate_suboptions.emplace("run", std::make_shared<xrt_core::smi::listable_description_option>("run", "r", "Run a subset of the test suite. Valid options are:\n",
@@ -79,7 +79,7 @@ create_examine_subcommand()
   examine_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   examine_suboptions.emplace("format", std::make_shared<xrt_core::smi::option>("format", "f", "Report output format. Valid values are:\n"
                                 "\tJSON        - Latest JSON schema\n"
-                                "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"));
+                                "\tJSON-2020.2 - JSON 2020.2 schema (legacy)", "common", "JSON", "string"));
   examine_suboptions.emplace("output", std::make_shared<xrt_core::smi::option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   examine_suboptions.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   examine_suboptions.emplace("report", std::make_shared<xrt_core::smi::listable_description_option>("report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", examine_report_desc));

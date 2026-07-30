@@ -338,31 +338,34 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   return status;
 }
 
+static boost::property_tree::ptree
+build_validate_json_output(Report::SchemaVersion schema_version,
+                           const std::string& schema_label,
+                           const boost::property_tree::ptree& ptDeviceTested)
+{
+  boost::property_tree::ptree ptRoot;
+  ptRoot.add_child("schema_version", Report::JsonAbi::make_json_header(schema_label));
+  ptRoot.add_child("logical_devices",
+                   Report::JsonAbi::fit_abi_tree(schema_version, ptDeviceTested));
+  return ptRoot;
+}
+
 static bool
 run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
-                      Report::SchemaVersion schemaVersion,
+                      Report::SchemaVersion schema_version,
+                      const std::string& schema_label,
                       std::vector<std::shared_ptr<TestRunner>>& testObjectsToRun,
                       std::ostream & output,
                       unsigned int iter_count)
 {
-  // -- Root property tree
-  boost::property_tree::ptree ptDevCollectionTestSuite;
-
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
-  auto has_failures = (run_test_suite_device(device, schemaVersion, testObjectsToRun, ptDeviceTested, iter_count) == test_status::failed);
+  auto has_failures = (run_test_suite_device(device, schema_version, testObjectsToRun, ptDeviceTested, iter_count) == test_status::failed);
 
-  ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
-
-  // -- Write the formatted output
-  switch (schemaVersion) {
-    case Report::SchemaVersion::json_20202:
-      boost::property_tree::json_parser::write_json(output, ptDevCollectionTestSuite, true /*Pretty Print*/);
-      output << std::endl;
-      break;
-    default:
-      // Do nothing
-      break;
+  if (Report::JsonAbi::valid_user_abi(schema_version)) {
+    const auto ptRoot = build_validate_json_output(schema_version, schema_label, ptDeviceTested);
+    boost::property_tree::json_parser::write_json(output, ptRoot, true /*Pretty Print*/);
+    output << std::endl;
   }
 
   return has_failures;
@@ -417,8 +420,8 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
   if (vm.count("pmode") && options.m_pmode.empty())
     throw xrt_core::error("Power mode not specified");
 
-  // When json is specified, make sure an accompanying output file is also specified
-   if (vm.count("format") && options.m_output.empty())
+  // Either JSON output selector requires an accompanying output file
+  if ((vm.count("format") || vm.count("json")) && options.m_output.empty())
     throw xrt_core::error("Please specify an output file to redirect the json to");
 
   if (!options.m_output.empty() && !XBU::getForce() && std::filesystem::exists(options.m_output))
@@ -499,7 +502,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   XBU::setElf(options.m_elf);
 
   // -- Process the options --------------------------------------------
-  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
+  Report::SchemaVersion schema_version = Report::SchemaVersion::unknown;
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = options.m_xclbin_path;
@@ -518,11 +521,15 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   auto tests = xrt_core::device_query<xq::xrt_smi_lists>(device, xq::xrt_smi_lists::type::validate_tests);
   auto testOptions = getTestList(tests);
 
+  const bool json_platform = vm.count("json") || m_json_abi_platform;
+  const std::string schema_label = json_platform
+    ? (options.m_json.empty() ? "default" : options.m_json)
+    : options.m_format;
   try {
-    // Output Format
-    schemaVersion = Report::getSchemaDescription(options.m_format).schemaVersion;
-    if (schemaVersion == Report::SchemaVersion::unknown)
-      throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
+    schema_version = Report::resolve_json_abi(json_platform, vm.count("json") || vm.count("format"), schema_label);
+    if (schema_version == Report::SchemaVersion::unknown)
+      throw xrt_core::error((boost::format("Unknown JSON ABI version: '%s'") % schema_label).str());
+
     // All Error Handling for xrt-smi validate should go here
     handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param);
 
@@ -632,7 +639,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput, options.m_loop);
+  bool has_failures = run_tests_on_devices(device, schema_version, schema_label, testObjectsToRun, oSchemaOutput, options.m_loop);
 
   try {
     //reset pmode
@@ -655,7 +662,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
     fOutput << oSchemaOutput.str();
 
-    std::cout << boost::format("Successfully wrote the %s file: %s") % options.m_format % options.m_output << std::endl;
+    std::cout << boost::format("Successfully wrote the JSON file: %s") % options.m_output << std::endl;
   }
 
   if (has_failures == true)
@@ -665,7 +672,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValidateOptions& options) const
 {
   options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
-  options.m_format = vm.count("format") ? vm["format"].as<std::string>() : "JSON";
+  options.m_format = vm.find("format") != vm.end() ? vm["format"].as<std::string>() : "JSON";
+  options.m_json = vm.find("json") != vm.end() ? vm["json"].as<std::string>() : "default";
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_param = vm.count("param") ? vm["param"].as<std::string>() : "";
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";
@@ -683,6 +691,8 @@ SubCmdValidate::setOptionConfig(const boost::property_tree::ptree &config)
   try{
     m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
     m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
+    m_json_abi_platform = m_jsonConfig.has_option(getName(), "json")
+                     && !m_jsonConfig.has_option(getName(), "format");
   } 
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
