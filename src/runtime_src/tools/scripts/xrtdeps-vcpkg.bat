@@ -12,8 +12,8 @@ set "EXTRA_PORTS="
 set "CREATE_PACKAGE=0"
 REM Pin vcpkg registry baseline for determinism.
 REM Dependency versioning can be done here.
-REM Current vcpkg release: 2026.01.16
-set "VCPKG_BASELINE_SHA=66c0373dc7fca549e5803087b9487edfe3aca0a1"
+REM Current vcpkg release: 2026.06.24
+set "VCPKG_BASELINE_SHA=cd61e1e26a038e82d6550a3ebbe0fbbfe7da78e3"
 
 for %%I in ("%SRC_ROOT%") do set "SRC_ROOT=%%~fI"
 
