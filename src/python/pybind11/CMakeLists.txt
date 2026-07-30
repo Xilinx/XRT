@@ -78,10 +78,7 @@ if (Python3_FOUND)
   message("-- Python libs version: ${Python3_VERSION}")
   message("-- PYTHON_INCLUDE_PATH ${Python3_INCLUDE_DIRS}")
   set(PYTHON_INCLUDE_PATH ${Python3_INCLUDE_DIRS})
-  execute_process(COMMAND ${Python3_EXECUTABLE} -c "import sys, pathlib; print((pathlib.Path(sys.base_prefix)/'libs').as_posix())"
-    OUTPUT_VARIABLE PYTHON_LIBDIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+  set(PYTHON_LIBDIR ${Python3_LIBRARY_DIRS})
   set(PYTHONLIBS_VERSION_MAJOR ${Python3_VERSION_MAJOR})
   set(PYTHONLIBS_VERSION_MINOR ${Python3_VERSION_MINOR})
 endif(Python3_FOUND)
@@ -89,16 +86,16 @@ endif(Python3_FOUND)
 set(HAS_PYTHON ${Python3_FOUND})
 
 if (HAS_PYTHON)
-    execute_process(COMMAND ${Python3_EXECUTABLE} -c "import os, pathlib, pybind11; print(pathlib.Path(os.path.dirname(pybind11.__file__)).as_posix())"
+    execute_process(COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
       RESULT_VARIABLE pybind_found
-      OUTPUT_VARIABLE PKGDIR
+      OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
       ERROR_VARIABLE pybind_error
       OUTPUT_STRIP_TRAILING_WHITESPACE
       )
 
   if(pybind_found EQUAL 0)
-    message("-- pybind11 location: ${PKGDIR}")
-    find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}")
+    message("-- pybind11 location: ${PYBIND11_CMAKE_DIR}")
+    find_package(pybind11 2.10.4 REQUIRED CONFIG PATHS "${PYBIND11_CMAKE_DIR}")
   else()
     message(WARNING "-- Failed to import pybind11. Error: ${pybind_error}")
   endif()

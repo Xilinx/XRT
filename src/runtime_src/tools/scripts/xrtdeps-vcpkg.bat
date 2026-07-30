@@ -24,7 +24,7 @@ REM --------------------------------------------------------------------------
 :parseArgs
 if "%~1"=="" goto argsParsed
 
-if /I "%~1"=="-help"     goto help
+if /I "%~1"=="-help"     ( call :help & exit /B 0 )
 if /I "%~1"=="-extroot"  goto parseExtRoot
 if /I "%~1"=="-triplet"  goto parseTriplet
 if /I "%~1"=="-port"     goto parsePort
@@ -97,6 +97,10 @@ REM --------------------------------------------------------------------------
 :argsParsed
 if "%DO_CLEAN%"=="1" goto clean
 
+where vcpkg >NUL 2>NUL || ( echo ERROR: vcpkg was not found on PATH. & exit /B 2 )
+where python >NUL 2>NUL || ( echo ERROR: python was not found on PATH. & exit /B 2 )
+call :ensurePybind11 || exit /B
+
 set "OPENCL_TRIPLET=%VCPKG_TRIPLET:-static=%"
 set "EXT_DIR=%XRT_EXT_ROOT%\vcpkg_installed\%VCPKG_TRIPLET%"
 set "OPENCL_EXT_ROOT=%XRT_EXT_ROOT%\.opencl.dynamic"
@@ -109,22 +113,13 @@ call :prepareManifestRoot "%XRT_EXT_ROOT%" || exit /B
 copy /Y "%SRC_ROOT%\src\vcpkg.json" "%XRT_EXT_ROOT%\vcpkg.json" >NUL || exit /B
 python -c "import json, os, pathlib; p=pathlib.Path(os.environ['XRT_EXT_ROOT'])/'vcpkg.json'; d=json.loads(p.read_text(encoding='utf-8')); d['dependencies']=[dep for dep in d.get('dependencies', []) if dep != 'opencl']; p.write_text(json.dumps(d, indent=2) + chr(10), encoding='utf-8')" || exit /B
 
-pushd "%XRT_EXT_ROOT%" || exit /B
-if not "%EXTRA_PORTS%"=="" vcpkg add port %EXTRA_PORTS% || exit /B
-vcpkg install --triplet %VCPKG_TRIPLET% --clean-after-build || exit /B
-popd
+call :runVcpkgInstall "%XRT_EXT_ROOT%" "%VCPKG_TRIPLET%" "%EXTRA_PORTS%" || exit /B
 
 call :prepareManifestRoot "%OPENCL_EXT_ROOT%" || exit /B
-pushd "%OPENCL_EXT_ROOT%" || exit /B
-vcpkg add port opencl || exit /B
-vcpkg install --triplet %OPENCL_TRIPLET% --clean-after-build || exit /B
-popd
+call :runVcpkgInstall "%OPENCL_EXT_ROOT%" "%OPENCL_TRIPLET%" "opencl" || exit /B
 
 call :copyOpenCLIntoPrefix || exit /B
 call :writeBaselineMarker || exit /B
-
-REM Needed for pyxrt.
-python -m pip install pybind11 || exit /B
 
 if "%CREATE_PACKAGE%"=="1" call :packageDeps || exit /B
 
@@ -156,26 +151,70 @@ echo [-port ^<port^>]       - Extra vcpkg port to install (may be repeated)
 echo [-pkg]               - Create build\pkg\ext.vcpkg.^<baseline^>.^<triplet^>.zip for publishing
 echo.
 echo Note: Uses first vcpkg on PATH.
+echo       pybind11 is installed into the active Python environment when missing.
 echo       OpenCL is always installed separately as a dynamic dependency and copied into the main prefix.
 
 exit /B 2
+
+REM --------------------------------------------------------------------------
+:ensurePybind11
+python -m pybind11 --cmakedir >NUL 2>NUL
+if not errorlevel 1 exit /B 0
+echo Installing pybind11 for pyxrt...
+python -m pip install pybind11
+exit /B
 
 REM --------------------------------------------------------------------------
 :prepareManifestRoot
 set "MANIFEST_ROOT=%~1"
 mkdir "%MANIFEST_ROOT%" >NUL 2>NUL
 pushd "%MANIFEST_ROOT%" || exit /B
+
 del /F /Q vcpkg.json vcpkg-configuration.json vcpkg-lock.json >NUL 2>NUL
-vcpkg new --application || exit /B
+vcpkg new --application
+if errorlevel 1 goto prepareManifestRootFailed
 if "%VCPKG_BASELINE_SHA%"=="" goto prepareManifestRootDone
-python -c "import json, pathlib; p=pathlib.Path('vcpkg-configuration.json'); d=json.loads(p.read_text(encoding='utf-8')); dr=d.get('default-registry') or {}; dr['baseline']=r'%VCPKG_BASELINE_SHA%'; d['default-registry']=dr; p.write_text(json.dumps(d, indent=2) + chr(10), encoding='utf-8')" || exit /B
+python -c "import json, pathlib; p=pathlib.Path('vcpkg-configuration.json'); d=json.loads(p.read_text(encoding='utf-8')); dr=d.get('default-registry') or {}; dr['baseline']=r'%VCPKG_BASELINE_SHA%'; d['default-registry']=dr; p.write_text(json.dumps(d, indent=2) + chr(10), encoding='utf-8')"
+if errorlevel 1 goto prepareManifestRootFailed
+
 :prepareManifestRootDone
 popd
 exit /B 0
 
+:prepareManifestRootFailed
+set "COMMAND_RESULT=%ERRORLEVEL%"
+popd
+exit /B %COMMAND_RESULT%
+
+REM --------------------------------------------------------------------------
+:runVcpkgInstall
+set "RUN_ROOT=%~1"
+set "RUN_TRIPLET=%~2"
+set "RUN_PORTS=%~3"
+pushd "%RUN_ROOT%" || exit /B
+if "%RUN_PORTS%"=="" goto runVcpkgInstallNow
+vcpkg add port %RUN_PORTS%
+if errorlevel 1 goto runVcpkgFailed
+
+:runVcpkgInstallNow
+vcpkg install --triplet %RUN_TRIPLET% --clean-after-build
+if errorlevel 1 goto runVcpkgFailed
+popd
+exit /B 0
+
+:runVcpkgFailed
+set "COMMAND_RESULT=%ERRORLEVEL%"
+popd
+exit /B %COMMAND_RESULT%
+
 REM --------------------------------------------------------------------------
 :copyOpenCLIntoPrefix
-python -c "import os, pathlib, shutil; src=pathlib.Path(os.environ['OPENCL_EXT_DIR']); dst=pathlib.Path(os.environ['EXT_DIR']); (dst/'bin').mkdir(parents=True, exist_ok=True); (dst/'lib').mkdir(parents=True, exist_ok=True); (dst/'include').mkdir(parents=True, exist_ok=True); shutil.copy2(src/'bin'/'OpenCL.dll', dst/'bin'/'OpenCL.dll'); shutil.copy2(src/'lib'/'OpenCL.lib', dst/'lib'/'OpenCL.lib'); shutil.copytree(src/'include'/'CL', dst/'include'/'CL', dirs_exist_ok=True)" || exit /B
+if not exist "%EXT_DIR%\bin" mkdir "%EXT_DIR%\bin" >NUL 2>NUL
+if not exist "%EXT_DIR%\lib" mkdir "%EXT_DIR%\lib" >NUL 2>NUL
+if not exist "%EXT_DIR%\include" mkdir "%EXT_DIR%\include" >NUL 2>NUL
+copy /Y "%OPENCL_EXT_DIR%\bin\OpenCL.dll" "%EXT_DIR%\bin\OpenCL.dll" >NUL || exit /B
+copy /Y "%OPENCL_EXT_DIR%\lib\OpenCL.lib" "%EXT_DIR%\lib\OpenCL.lib" >NUL || exit /B
+xcopy /E /I /Y /Q "%OPENCL_EXT_DIR%\include\CL" "%EXT_DIR%\include\CL" >NUL || exit /B
 exit /B 0
 
 REM --------------------------------------------------------------------------
@@ -190,8 +229,12 @@ REM --------------------------------------------------------------------------
 :packageDeps
 set "PKG_NAME=ext.vcpkg.%PKG_BASELINE_ID%.%VCPKG_TRIPLET%.zip"
 set "PKG_PATH=%PKG_OUT_DIR%\%PKG_NAME%"
-python -c "import os, pathlib, zipfile; root=pathlib.Path(os.environ['XRT_EXT_ROOT']); src=root/'vcpkg_installed'/os.environ['VCPKG_TRIPLET']; out=pathlib.Path(os.environ['PKG_PATH']); out.parent.mkdir(parents=True, exist_ok=True); z=zipfile.ZipFile(out, 'w', compression=zipfile.ZIP_DEFLATED); [z.write(p, p.relative_to(root)) for p in src.rglob('*') if p.is_file()]; z.close()" || exit /B
-exit /B 0
+cmake -E make_directory "%PKG_OUT_DIR%" || exit /B
+pushd "%XRT_EXT_ROOT%" || exit /B
+cmake -E tar cf "%PKG_PATH%" --format=zip "vcpkg_installed\%VCPKG_TRIPLET%"
+set "COMMAND_RESULT=%ERRORLEVEL%"
+popd
+exit /B %COMMAND_RESULT%
 
 REM --------------------------------------------------------------------------
 :clean

@@ -9,6 +9,7 @@ build/deb_arm32
 build/deb_arm64
 build/boost
 build/ext.vcpkg/
+build/pkg/
 docs/.buildinfo
 docs/.doctrees
 tests/xrt/build/Debug*
