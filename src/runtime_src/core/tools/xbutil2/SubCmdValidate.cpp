@@ -587,9 +587,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     }
   }
 
-  //get current performance mode
+  //get current performance mode so it can be restored after the run
   const auto og_pmode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
-  const auto parsed_og_pmode = xq::performance_mode::parse_status(og_pmode);
   // Tracks whether we successfully changed the pmode; only then should we reset it.
   bool pmode_changed = false;
   //--pmode
@@ -615,14 +614,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       else {
         throw xrt_core::error(boost::str(boost::format("Invalid pmode value: '%s'\n") % options.m_pmode));
       }
-      pmode_changed = true;
       XBU::verbose(boost::str(boost::format("Setting power mode to `%s` \n") % options.m_pmode));
     }
     else if(!boost::iequals(parsed_og_pmode, "PERFORMANCE")) {
       xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::performance);
-      pmode_changed = true;
       XBU::verbose("Setting power mode to `performance`\n");
-    } 
+    }
+    pmode_changed = true;
   } catch (const xq::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
   } catch(const xrt_core::error& e) {
@@ -630,8 +628,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   } catch (const std::exception&) {
-    std::cout << boost::format("WARNING: User doesn't have admin permissions to set performance mode. Running validate in %s mode") 
-                                    % parsed_og_pmode << std::endl;
+    // Setting performance mode may require privileges the user does not have.
+    // Silently continue running in the current mode.
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
@@ -644,8 +642,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (const xq::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
   } catch (const std::exception & ex) {
-    std::cerr << boost::format("\nERROR: %s\n") % ex.what();
-    throw xrt_core::error(std::errc::operation_canceled);
+    std::cerr << boost::format("\nWARNING: %s\n") % ex.what();
   }
 
   // -- Write output file ----------------------------------------------
