@@ -32,7 +32,7 @@ public:
   template <typename CommandType>
   using cmd_bo = std::pair<std::unique_ptr<buffer_handle>, CommandType *const>;
   // Expose bo size in bytes to clients who use default bo_cache type
-  static constexpr size_t bo_size = BoSize * 1024u; // NOLINT
+  static constexpr size_t bo_size = BoSize;
 
 private:
   std::shared_ptr<device> m_device;
