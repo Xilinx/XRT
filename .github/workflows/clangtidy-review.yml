@@ -77,6 +77,11 @@ jobs:
     # Review uses external combined database
     - name: Create clang-tidy review
       id: review
+      # continue-on-error allows the job to pass when the GitHub PR diff API
+      # returns HTTP 406 (diff exceeds the 300-file limit).  The upload step
+      # is guarded by `steps.review.outcome == 'success'` so it only runs
+      # when the review was actually generated.
+      continue-on-error: true
       uses: stsoe/clang-tidy-review@patches
       with:
         apt_packages: |
@@ -98,5 +103,6 @@ jobs:
         split_workflow: true
 
     - name: Upload clang-tidy review
+      if: steps.review.outcome == 'success'
       uses: stsoe/clang-tidy-review/upload@patches
       id: upload-review
