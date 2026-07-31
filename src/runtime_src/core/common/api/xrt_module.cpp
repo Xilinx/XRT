@@ -755,11 +755,10 @@ class module_run_aie_gen2_plus : public module_run
     }
 
     // Get dump buffer data from config
-    if (m_config.dump_buf.size() == 0) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
-                              "Dump section is empty in ELF");
-      return false;
-    }
+    // Dump map is required only for jprobe; pass empty string when ELF has no .dump section.
+    const std::string map_data = (m_config.dump_buf.size() == 0)
+      ? std::string{}
+      : m_config.dump_buf.to_string();
 
     // log level 0: error, 1: warning, 2: info
     auto log_level = static_cast<uint32_t>(xrt_core::config::get_dtrace_log_level());
@@ -768,7 +767,7 @@ class module_run_aie_gen2_plus : public module_run
     // output format 0: python, 1: json
     uint32_t output_fmt = xrt_core::config::get_dtrace_output_json_format() ? 1U : 0U;
 
-    m_dtrace = dtrace_util(path, m_config.dump_buf.to_string(), log_level, output_fmt);
+    m_dtrace = dtrace_util(path, map_data, log_level, output_fmt);
     if (!m_dtrace.dtrace_handle.get()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
         "[dtrace] : Failed to get dtrace handle");
@@ -1175,8 +1174,11 @@ public:
 
         get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_name);
 
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
-                                std::string{"[dtrace] : dtrace buffer dumped successfully to - "} + result_file_name);
+        // Check if file exists/created/probes fired and log the message
+        if (std::filesystem::exists((std::filesystem::current_path() / result_file_name).string()))
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                                  std::string{"[dtrace] : dtrace buffer dumped successfully to - "}
+                                  + (std::filesystem::current_path() / result_file_name).string());
       }
     }
     catch (const std::exception& e) {

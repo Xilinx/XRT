@@ -192,7 +192,8 @@ uc_log_schema = {
     {137, "npi error caught\n"},
     {138, "restore L2 done & load_last_pdi start\n"},
     {139, "restore done\n"},
-    {140, "\n"}
+    {140, "assert\n"},
+    {141, "\n"}
   }
 };
 
