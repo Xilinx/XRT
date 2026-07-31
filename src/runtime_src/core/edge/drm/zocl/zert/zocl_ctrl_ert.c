@@ -158,7 +158,12 @@ static inline u32 reg_read(void __iomem *base, u64 off)
 
 static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *info)
 {
-	char *kname_p = conf->name;
+	char name[sizeof(conf->name) + 1];
+	char *kname_p = name;
+	char *token;
+
+	memcpy(name, conf->name, sizeof(conf->name));
+	name[sizeof(conf->name)] = 0;
 
 	memset(info, 0, sizeof(*info));
 	info->num_res = 1;
@@ -176,8 +181,10 @@ static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *inf
 		info->model = XCU_HLS;
 	info->cu_domain = conf->cu_domain;
 	info->cu_idx = conf->cu_idx;
-	strcpy(info->kname, strsep(&kname_p, ":"));
-	strcpy(info->iname, strsep(&kname_p, ":"));
+	token = strsep(&kname_p, ":");
+	strscpy(info->kname, token ? token : "", sizeof(info->kname));
+	token = strsep(&kname_p, ":");
+	strscpy(info->iname, token ? token : "", sizeof(info->iname));
 	memcpy(info->uuid, conf->uuid, sizeof(info->uuid));
 }
 
