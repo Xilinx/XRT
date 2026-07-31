@@ -493,47 +493,48 @@ static void ert_ctrl_submit_exit_cmd(struct ert_ctrl *ec)
 
 static bool ert_ctrl_abort_sync(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
-	return true;
-}
+	struct kds_client_hw_ctx *hw_ctx;
+	unsigned long submitted = 0, completed = 0;
+	int timeout_ms = 5000;
 
-static inline int ert_ctrl_alloc_ert_xgq(struct ert_ctrl *ec, int num)
-{
-	void *tmp;
+	/* Sum submitted and completed counts across all hw contexts */
+	list_for_each_entry(hw_ctx, &client->hw_ctx_list, link) {
+		int i;
 
-	if (num <= ec->ec_exgq_capacity)
-		return 0;
-
-	if (num > MAX_CU_XGQ)
-		return -EINVAL;
-
-	tmp = kzalloc(sizeof(ec->ec_exgq[0]) * num, GFP_KERNEL);
-	if (!tmp)
-		return -ENOMEM;
-
-	if (!ec->ec_exgq_capacity) {
-		ec->ec_exgq = tmp;
-		ec->ec_exgq_capacity = num;
-		return 0;
+		for (i = 0; i < MAX_CUS; i++) {
+			submitted += stat_read(hw_ctx->stats, s_cnt[i]);
+			submitted += stat_read(hw_ctx->stats, scu_s_cnt[i]);
+			completed += stat_read(hw_ctx->stats, c_cnt[i]);
+			completed += stat_read(hw_ctx->stats, scu_c_cnt[i]);
+		}
 	}
 
-	memcpy(tmp, ec->ec_exgq, sizeof(void *) * ec->ec_exgq_capacity);
-	kfree(ec->ec_exgq);
-	ec->ec_exgq = tmp;
-	ec->ec_exgq_capacity = num;
+	if (submitted == completed)
+		return false;
 
-	return 0;
+	/* Wait for in-flight commands to drain before client is freed */
+	do {
+		msleep(500);
+		timeout_ms -= 500;
+		submitted = 0;
+		completed = 0;
+		list_for_each_entry(hw_ctx, &client->hw_ctx_list, link) {
+			int i;
+
+			for (i = 0; i < MAX_CUS; i++) {
+				submitted += stat_read(hw_ctx->stats, s_cnt[i]);
+				submitted += stat_read(hw_ctx->stats, scu_s_cnt[i]);
+				completed += stat_read(hw_ctx->stats, c_cnt[i]);
+				completed += stat_read(hw_ctx->stats, scu_c_cnt[i]);
+			}
+		}
+		if (submitted == completed)
+			return false;
+	} while (timeout_ms > 0);
+
+	return true;
 }
-
-static int ert_ctrl_legacy_init(struct ert_ctrl *ec)
-{
-	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_COMMAND_QUEUE;
-	xdev_handle_t xdev = xocl_get_xdev(ec->ec_pdev);
-	struct xocl_ert_cq_privdata priv = {0};
-	int err = 0;
-
-	priv.cq_base = ec->ec_cq_base;
-	priv.cq_range = ec->ec_cq_range;
-
+537
 	subdev_info.priv_data = &priv;
 	subdev_info.data_len = sizeof(priv);
 	err = xocl_subdev_create(xdev, &subdev_info);
