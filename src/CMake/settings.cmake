@@ -24,6 +24,9 @@ endif()
 # Option to enable/disable emulation libraries
 option(XRT_ENABLE_EMULATION "Enable Alveo emulation" ON)
 
+# Option to enable HIP bindings
+option(XRT_ENABLE_HIP "Enable hip bindings" ON)
+
 # Indicate that we are building XRT
 add_compile_definitions("XRT_BUILD")
 
