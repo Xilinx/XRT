@@ -1175,10 +1175,11 @@ public:
         get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_name);
 
         // Check if file exists/created/probes fired and log the message
-        if (std::filesystem::exists((std::filesystem::current_path() / result_file_name).string()))
+        const auto result_file_path = std::filesystem::current_path() / result_file_name;
+        if (std::filesystem::exists(result_file_path))
           xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                                   std::string{"[dtrace] : dtrace buffer dumped successfully to - "}
-                                  + (std::filesystem::current_path() / result_file_name).string());
+                                  + result_file_path.string());
       }
     }
     catch (const std::exception& e) {
