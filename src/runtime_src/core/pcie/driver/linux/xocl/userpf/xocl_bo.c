@@ -1470,7 +1470,7 @@ static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 #endif
 
 int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
-			    struct drm_file *filp)
+		    struct drm_file *filp)
 {
 	const struct drm_xocl_pwrite_unmgd *args = data;
 	struct xocl_drm *drm_p = dev->dev_private;
@@ -1482,19 +1482,11 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 		return -EFAULT;
 	}
 
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
 	if (args->size == 0)
 		return 0;
-
-	/* currently we are not able to return error because
-	 * it is unclear that what addresses are valid other than
-	 * ddr area. we should revisit this sometime.
-	 * if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
-	 *	userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
-	 *		args->paddr, args->size);
-	 *	return -EINVAL;
-	 * }
-	 */
-
 
 	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 1);
 
@@ -1502,7 +1494,7 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 }
 
 int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
-			   struct drm_file *filp)
+		   struct drm_file *filp)
 {
 	const struct drm_xocl_pwrite_unmgd *args = data;
 	struct xocl_drm *drm_p = dev->dev_private;
@@ -1514,8 +1506,16 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 		return -EFAULT;
 	}
 
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
 	if (args->size == 0)
 		return 0;
+
+	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 0);
+
+	return ret;
+}
 
 	/* currently we are not able to return error because
 	 * it is unclear that what addresses are valid other than
