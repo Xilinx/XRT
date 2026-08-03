@@ -1003,6 +1003,14 @@ get_aie_dtrace_settings_tile_based_interface_tile_metrics()
   return value;
 }
 
+inline std::string
+get_aie_dtrace_settings_tile_based_aie_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.tile_based_aie_metrics", "");
+  return value;
+}
+
 // AIE_trace_settings
 
 inline std::string
