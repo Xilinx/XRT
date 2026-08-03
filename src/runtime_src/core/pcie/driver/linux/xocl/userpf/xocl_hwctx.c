@@ -129,6 +129,12 @@ xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
                 xcu = kds->cu_mgmt.xcus[i];
                 if (!xcu)
                         continue;
+
+                if ((xcu->info.slot_idx == slot_hndl) &&
+                                (!strcmp(xcu->info.kname, kname)) &&
+                                (!strcmp(xcu->info.iname, iname))) {
+                        cu_info->cu_domain = DOMAIN_PL;
+                        cu_info->cu_idx = i;
                         goto done;
                 }
         }
