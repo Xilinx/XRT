@@ -1483,7 +1483,7 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (!capable(CAP_SYS_ADMIN))
-		return -EACCES;
+		return -EPERM;
 
 	if (args->size == 0)
 		return 0;
@@ -1507,25 +1507,10 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (!capable(CAP_SYS_ADMIN))
-		return -EACCES;
+		return -EPERM;
 
 	if (args->size == 0)
 		return 0;
-
-	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 0);
-
-	return ret;
-}
-
-	/* currently we are not able to return error because
-	 * it is unclear that what addresses are valid other than
-	 * ddr area. we should revisit this sometime.
-	 * if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
-	 *	userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
-	 *		args->paddr, args->size);
-	 *	return -EINVAL;
-	 * }
-	 */
 
 	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 0);
 
