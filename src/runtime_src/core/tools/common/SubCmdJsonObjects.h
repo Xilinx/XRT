@@ -102,6 +102,12 @@ public:
   JsonConfig() = default;
 
   void addProgramOptions(po::options_description& options, const std::string& optionsType, const std::string& subCommand);
+
+  /**
+   * Returns true when subCommand defines optionName in its SMI configuration.
+   * Used to distinguish --json platforms from --format platforms at runtime.
+   */
+  bool has_option(const std::string& subCommand, const std::string& optionName) const;
   void printConfigurations() const;
 };
 } // namespace SubCmdJsonObjects

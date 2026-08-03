@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __Report_h_
 #define __Report_h_
@@ -15,20 +15,18 @@
 
 class Report : public JSONConfigurable {
  public:
-  // Supported JSON schemas.
-  // 
-  // Remember to update the initialization of Report::m_schemaVersionMapping 
-  // if new enumeration values are added
+  // Numbered ABIs are for parser-breaking ptree changes.
+  // Alveo / AIE2 use --format, else use --json.
   enum class SchemaVersion  {
     unknown,
     json_internal,
-    json_20202,
+    json_latest,
+    json_20202,      // Legacy ABI (--format JSON-2020.2 only, identical to JSON)
   };
- 
-  // Helper mapping between string and enum
+
   struct SchemaDescription {
     SchemaVersion schemaVersion;
-    bool isVisable;
+    bool isVisable;                // Listed in --format help
     std::string optionName;
     std::string shortDescription;
   };
@@ -39,6 +37,25 @@ class Report : public JSONConfigurable {
   static const Report::SchemaDescription & getSchemaDescription(const std::string & _schemaVersionName);
   static const Report::SchemaDescription & getSchemaDescription(SchemaVersion _schemaVersion);
   static const SchemaDescriptionVector & getSchemaDescriptionVector() { return m_schemaVersionVector; };
+
+  /**
+   * Resolves the JSON ABI from CLI state.
+   * @param json_platform     true when --json is active (explicit or platform default)
+   * @param explicit_selector true when the user passed --json or --format
+   * @param version           --json or --format value depending on json_platform
+   */
+  static SchemaVersion resolve_json_abi(bool json_platform,
+                                        bool explicit_selector,
+                                        const std::string& version);
+
+  /** Helpers for JSON file output (header node, ABI-specific tree shaping). */
+  struct JsonAbi {
+    /** True for ABIs that write user-facing JSON to -o (excludes internal/unknown). */
+    static bool valid_user_abi(SchemaVersion version);
+    static boost::property_tree::ptree make_json_header(const std::string& schema_label);
+    static boost::property_tree::ptree fit_abi_tree(SchemaVersion version,
+                                                    const boost::property_tree::ptree& tree);
+  };
 
   // Supporting APIs
  public:
@@ -83,5 +100,3 @@ class Report : public JSONConfigurable {
 using ReportCollection = std::vector<std::shared_ptr<Report>>;
 
 #endif
-
-
