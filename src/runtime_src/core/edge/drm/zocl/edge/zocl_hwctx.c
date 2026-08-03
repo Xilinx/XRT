@@ -118,6 +118,12 @@ static int zocl_cu_ctx_to_info(struct drm_zocl_dev *zdev, struct drm_zocl_open_c
         xcu = kds->cu_mgmt.xcus[i];
         if (!xcu)
             continue;
+
+        if ((xcu->info.slot_idx == slot_hndl) && (!strcmp(xcu->info.kname, kname)) && (!strcmp(xcu->info.iname, iname))) {
+            kds_cu_info->cu_domain = DOMAIN_PL;
+            kds_cu_info->cu_idx = i;
+            goto done;
+        }
     }
 
     /* Retrive the SCU index from the given slot */
