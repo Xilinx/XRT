@@ -1,42 +1,78 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 name: clang-tidy-review
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    branches: master
+    
+  workflow_dispatch:
 
 jobs:
-  review:
-    runs-on: [self-hosted, Linux, X64, clang-tidy-review]
-    permissions:
-      checks: write
-      contents: read
-      pull-requests: write
-    env:
-      # Review database created here by build step
-      CLANG_TIDY_REVIEW_DB: /tmp/xrt-clang-tidy-review-db
-
+  clangtidy:
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout XRT
+    - name: Checkout
       uses: actions/checkout@v4
       with:
-        fetch-depth: 1
+        submodules: recursive
+        fetch-depth: 0
 
-    # We need to build XRT to obtain a compilation database before clang-tidy
-    # can analyze XRT source files. The build step is not a full XRT build,
-    # just enough to generate the compilation database.
-    - name: Build XRT
-      shell: bash
+    # Dependencies needed for external cmake configuration
+    - name: Install dependencies
       run: |
-        mkdir -p $CLANG_TIDY_REVIEW_DB
-        cmake \
-          -B $CLANG_TIDY_REVIEW_DB \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-          -DXRT_CLANG_TIDY_REVIEW=ON \
-          src
-        cmake \
-          --build $CLANG_TIDY_REVIEW_DB \
-          --target xrt++
+        sudo apt update
+        sudo src/runtime_src/tools/scripts/xrtdeps.sh
+
+    - name: Configure legacy XRT build
+      run: |
+        cmake -B build/legacy \
+        -DXRT_ENABLE_HIP=ON \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Configure edge XRT
+      run: |
+        env XRT_NATIVE_BUILD=no cmake -B build/edge \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Configure NPU XRT
+      run: |
+        cmake -B build/npu \
+        -DXRT_NPU=1 \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Merge databases into one compile_commands.json
+      run: |
+        python <<EOF
+        import json, os
+
+        # Last entry is preserved
+        build_dirs = ["build/npu", "build/edge", "build/legacy"]
+        merged_commands = {}
+
+        for build_dir in build_dirs:
+            json_path = os.path.join(build_dir, "compile_commands.json")
+            if os.path.exists(json_path):
+                with open(json_path, "r") as f:
+                    commands = json.load(f)
+                    for entry in commands:
+                        merged_commands[entry["file"]] = entry
+
+        with open("compile_commands.json", "w") as f:
+            json.dump(list(merged_commands.values()), f, indent=2)
+
+        print("Merged compile_commands.json created.")
+        EOF
+
+    - name: Upload merged database
+      uses: actions/upload-artifact@v4
+      with:
+        name: compile_commands
+        path: compile_commands.json
 
     # Review uses external combined database
     - name: Create clang-tidy review
@@ -44,47 +80,21 @@ jobs:
       uses: stsoe/clang-tidy-review@patches
       with:
         apt_packages: |
-          libboost-all-dev, libssl-dev, libpython3-dev, libudev-dev
-        clang_tidy_version: 15
-        clang_tidy_checks: >
-          -*, abseil-*, boost-*, bugprone-*, cert-*,
-          clang-analyzer-*, cppcoreguidelines-*, google-*,
-          hicpp-*, linuxkernel-*, llvm-*, misc-*, modernize-*,
-          objc-*, performance-*, portability-*, readability-*,
-          -abseil-duration-division, -abseil-string-find-str-contains,
-          -bugprone-easily-swappable-parameters,
-          -cert-dcl50-cpp, -cert-err58-cpp,
-          -cppcoreguidelines-avoid-do-while,
-          -cppcoreguidelines-avoid-magic-numbers,
-          -cppcoreguidelines-macro-usage,
-          -cppcoreguidelines-non-private-member-variables-in-classes,
-          -cppcoreguidelines-owning-memory,
-          -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-          -cppcoreguidelines-pro-bounds-constant-array-index,
-          -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-          -cppcoreguidelines-pro-type-reinterpret-cast,
-          -cppcoreguidelines-pro-type-union-access,
-          -cppcoreguidelines-pro-type-vararg,
-          -google-build-using-namespace, -google-readability-todo,
-          -hicpp-avoid-do-while, -hicpp-no-array-decay,
-          -hicpp-signed-bitwise, -hicpp-vararg,
-          -misc-include-cleaner, -misc-no-recursion,
-          -misc-non-private-member-variables-in-classes,
-          -misc-use-anonymous-namespace,
-          -modernize-use-trailing-return-type,
-          -performance-avoid-endl,
-          -readability-avoid-return-with-void-value,
-          -readability-braces-around-statements,
-          -readability-else-after-return,
-          -readability-function-cognitive-complexity,
-          -readability-identifier-length,
-          -readability-magic-numbers,
-          -readability-qualified-auto,
-          -readability-redundant-access-specifiers,
-          -readability-simplify-boolean-expr,
-          -readability-use-anyofallof
-        build_dir: ${{ env.CLANG_TIDY_REVIEW_DB }}
-        cmake_command: none
+         cmake, g++, pkg-config, libdrm-dev,
+         ocl-icd-dev, ocl-icd-libopencl1, ocl-icd-opencl-dev,
+         libamdhip64-dev,
+         libboost-dev, libboost-filesystem-dev, libboost-program-options-dev,
+         libncurses5-dev,
+         libssl-dev,
+         rapidjson-dev,
+         libelf-dev,
+         libprotoc-dev, protobuf-compiler,
+         uuid-dev,
+         systemtap-sdt-dev,
+         curl, libcurl4-openssl-dev,
+         libudev-dev
+        # disable default checks and rely on closest .clangtidy
+        clang_tidy_checks: ''
         split_workflow: true
 
     - name: Upload clang-tidy review
