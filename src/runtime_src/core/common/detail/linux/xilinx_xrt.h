@@ -24,9 +24,21 @@
 # error "XRT_VERSION_STRING is undefined"
 #endif
 
+// XRT_LIB_DIR (CMAKE_INSTALL_LIBDIR) is supplied as a compile definition on
+// module_loader.cpp, the only translation unit that includes this header.
+// This header is not meant to be compiled stand-alone, so error out if it is
+// missing rather than guessing a default.
+#ifndef XRT_LIB_DIR
+# error "XRT_LIB_DIR is undefined"
+#endif
+
 namespace xrt_core::detail {
 
 namespace sfs = std::filesystem;
+
+// The code below also tolerates an empty value (coreutil then sits directly in
+// the XRT root).
+constexpr const char* xrt_lib_dir = XRT_LIB_DIR;
 
 // Get XRT install path from DSO location or compile time constant.
 //
@@ -58,9 +70,22 @@ xilinx_xrt()
   if (::dladdr(reinterpret_cast<const void*>(&xilinx_xrt), &info) != 0
       && info.dli_fname && *info.dli_fname) {
     // info.dli_fname is the full path to libxrt_coreutil.so, e.g.
-    // /opt/xilinx/xrt/lib/libxrt_coreutil.so.2 — go up two levels to
-    // get the XRT root that callers expect (e.g. /opt/xilinx/xrt).
-    sfs::path xrt_root = sfs::path(info.dli_fname).parent_path().parent_path();
+    // /opt/xilinx/xrt/lib/libxrt_coreutil.so.2 or, on a Debian
+    // multiarch install, /opt/amdgpu/lib/x86_64-linux-gnu/libxrt_coreutil.so.2.
+    // The library lives in <xrt_root>/<XRT_LIB_DIR>, so strip the
+    // XRT_LIB_DIR suffix from the directory dladdr() reported to recover
+    // the XRT root that callers expect (e.g. /opt/xilinx/xrt). XRT_LIB_DIR
+    // may be one or more path components ("lib", "lib64", or
+    // "lib/x86_64-linux-gnu"), so remove one component per component in it
+    // rather than hardcoding a fixed number of levels. Skip empty and root
+    // components so an absolute XRT_LIB_DIR (e.g. "/usr/lib") does not
+    // over-strip past the XRT root.
+    sfs::path xrt_root = sfs::path(info.dli_fname).parent_path();
+    for (const auto& comp : sfs::path(xrt_lib_dir)) {
+      if (comp.empty() || comp == comp.root_directory())
+        continue;
+      xrt_root = xrt_root.parent_path();
+    }
     if (!xrt_root.empty())
       return xrt_root;
   }
