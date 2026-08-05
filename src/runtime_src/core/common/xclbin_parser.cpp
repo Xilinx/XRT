@@ -81,9 +81,11 @@ validate_pointer_offset(uint64_t offset, uint64_t element_size, uint64_t count,
 static void
 validate_string_offset(uint32_t offset, uint64_t section_size, const char* field_name)
 {
-  if (static_cast<uint64_t>(offset) >= section_size)
-    throw xrt_core::error(-EINVAL,
-       boost::str(boost::format("%s string offset out of bounds "
+  if (static_cast<uint64_t>(offset) < section_size)
+    return;
+  
+  throw xrt_core::error(-EINVAL,
+          boost::str(boost::format("%s string offset out of bounds "
           "(offset=%u, section_size=%llu)")
           % field_name % offset % section_size));
 }
