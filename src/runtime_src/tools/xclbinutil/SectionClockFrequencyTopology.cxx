@@ -125,14 +125,14 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
                  % index
                  % (unsigned int)pHdr->m_clock_freq[index].m_freq_Mhz
                  % getClockTypeStr((CLOCK_TYPE)pHdr->m_clock_freq[index].m_type)
-                 % pHdr->m_clock_freq[index].m_name);
+                 % XUtil::bounded_fixed_cstr(pHdr->m_clock_freq[index].m_name));
 
     // Write out the entire structure
     XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&pHdr->m_clock_freq[index]), sizeof(clock_freq));
 
     clock_freq.put("m_freq_Mhz", (boost::format("%d") % (unsigned int)pHdr->m_clock_freq[index].m_freq_Mhz).str());
     clock_freq.put("m_type", getClockTypeStr((CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str());
-    clock_freq.put("m_name", (boost::format("%s") % pHdr->m_clock_freq[index].m_name).str());
+    clock_freq.put("m_name", XUtil::bounded_fixed_cstr(pHdr->m_clock_freq[index].m_name));
 
     m_clock_freq.push_back({ "", clock_freq });   // Used to make an array of objects
   }
