@@ -430,6 +430,8 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
 
   _istream.seekg(signatureOffset);
   _istream.read((char*)&signature, sizeof(XUtil::SignatureHeader));
+  if (_istream.gcount() != static_cast<std::streamsize>(sizeof(XUtil::SignatureHeader)))
+    throw std::runtime_error("ERROR: Short read of signature header");
 
   // Get signedBy — compute seek position as uint64_t to avoid unsigned int overflow (CWE-190)
   if (signature.signedBySize != 0)
