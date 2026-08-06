@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_EXT_H_
 #define XRT_EXT_H_
 
@@ -18,6 +18,19 @@
 #endif
 
 #ifdef __cplusplus
+namespace xrt_core::bo_int {
+
+/// @cond
+// Existing coreutil entry point used by the header-only experimental wrapper.
+enum class use_type : int;
+
+XRT_API_EXPORT
+xrt::bo
+create_bo(const xrt::hw_context& hwctx, size_t size, use_type type);
+/// @endcond
+
+} // namespace xrt_core::bo_int
+
 namespace xrt::ext {
 
 /*!
@@ -231,6 +244,28 @@ public:
   /// @endcond
 };
 
+/**
+ * transaction_result_bo() - Allocate controller transaction-result storage
+ *
+ * @param hwctx
+ *  The hardware context that owns the buffer.
+ * @param size
+ *  Size of the result buffer in bytes.
+ *
+ * @return
+ *  A buffer object configured for controller transaction results.
+ *
+ * The controller writes ordered register-read results into this buffer. A new
+ * buffer must be allocated for each transaction submission that returns
+ * results.
+ */
+inline xrt::bo
+transaction_result_bo(const xrt::hw_context& hwctx, size_t size)
+{
+  return xrt_core::bo_int::create_bo(
+    hwctx, size,
+    static_cast<xrt_core::bo_int::use_type>(XRT_BO_USE_DEBUG));
+}
 
 class kernel : public xrt::kernel
 {

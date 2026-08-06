@@ -703,6 +703,14 @@ PYBIND11_MODULE(pyxrt, m) {
         }),
         py::arg("hwctx"), py::arg("pid"), py::arg("export_handle"),
         "Import an extended buffer into a hardware context from another process using an exported handle.");
+
+    ext.def("transaction_result_bo",
+        [](const xrt::hw_context& hwctx, size_t size) {
+            py::gil_scoped_release release;
+            return xrt::ext::transaction_result_bo(hwctx, size);
+        },
+        py::arg("hwctx"), py::arg("size"),
+        "Allocate controller transaction-result storage for one submission.");
     
     py::class_<xrt::ext::kernel, xrt::kernel> pyextkernel(ext, "kernel", "Extended kernel object for module-backed and shared workflows.");
 

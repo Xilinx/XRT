@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 from __future__ import annotations
 import sys
 from enum import IntEnum
@@ -1171,6 +1171,11 @@ class _ext_kernel(kernel):
 
 class ext:
     """Extended XRT functionality."""
+
+    @staticmethod
+    def transaction_result_bo(hwctx: hw_context, size: SupportsInt) -> bo:
+        """Allocate controller transaction-result storage for one submission."""
+        ...
     
     # Type aliases for the ext submodule
     access_mode = _ext_access_mode
