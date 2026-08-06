@@ -341,8 +341,8 @@ Section::readXclBinBinary(std::istream& _istream, const axlf_section_header& _se
 
   m_name = (char*)&_sectionHeader.m_sectionName;
 
-  if (_sectionHeader.m_sectionSize > UINT64_MAX) {
-    std::string errMsg("FATAL ERROR: Section header size exceeds internal representation size.");
+  if (_sectionHeader.m_sectionSize > UINT32_MAX) {
+    std::string errMsg("FATAL ERROR: Section header size exceeds maximum supported section size (4 GiB).");
     throw std::runtime_error(errMsg);
   }
 
@@ -417,8 +417,8 @@ Section::readXclBinBinary(std::istream& _istream,
     XUtil::TRACE(boost::format("Reading in the section '%s' (%d) as a image.") % getSectionKindAsString() % (unsigned int)getSectionKind());
 
     uint64_t imageSize = XUtil::stringToUInt64(_ptSection.get<std::string>("Size"));
-    if (imageSize > UINT64_MAX) {
-      std::string errMsg("FATAL ERROR: Image size exceeds internal representation size.");
+    if (imageSize > UINT32_MAX) {
+      std::string errMsg("FATAL ERROR: Image size exceeds maximum supported section size (4 GiB).");
       throw std::runtime_error(errMsg);
     }
 
