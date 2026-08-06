@@ -441,6 +441,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
     _istream.read( data.get(), signature.signedBySize );
     if (_istream.gcount() != static_cast<std::streamsize>(signature.signedBySize))
       throw std::runtime_error("ERROR: Short read of signedBy field in signature");
+
     _sSignedBy = std::string(data.get(), signature.signedBySize);
   }
 
@@ -452,6 +453,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
     _istream.read( data.get(), signature.signatureSize );
     if (_istream.gcount() != static_cast<std::streamsize>(signature.signatureSize))
       throw std::runtime_error("ERROR: Short read of signature field");
+
     _sSignature = std::string(data.get(), signature.signatureSize);
   }
 

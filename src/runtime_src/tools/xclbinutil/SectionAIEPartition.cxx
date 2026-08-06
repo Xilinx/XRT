@@ -484,18 +484,17 @@ populate_partition_info(const char* pBase,
 
   // Start Columns
   boost::property_tree::ptree ptStartColumnArray;
-  {
-    const uint64_t offset = aiePartitionInfo.start_columns.offset;
-    const uint64_t count  = aiePartitionInfo.start_columns.size;
-    if (count > 0) {
-      if (offset >= bufferSize || count > (bufferSize - offset) / sizeof(uint16_t))
-        throw std::runtime_error("aie_partition_info::start_columns offset/size out of bounds");
-      const uint16_t* columnArray = reinterpret_cast<const uint16_t*>(pBase + offset);
-      for (uint32_t index = 0; index < count; index++) {
-        boost::property_tree::ptree ptElement;
-        ptElement.put("", (boost::format("%d") % columnArray[index]).str());
-        ptStartColumnArray.push_back({ "", ptElement });
-      }
+  const uint64_t scOffset = aiePartitionInfo.start_columns.offset;
+  const uint64_t scCount  = aiePartitionInfo.start_columns.size;
+  if (scCount > 0) {
+    if (scOffset >= bufferSize || scCount > (bufferSize - scOffset) / sizeof(uint16_t))
+      throw std::runtime_error("aie_partition_info::start_columns offset/size out of bounds");
+
+    const uint16_t* columnArray = reinterpret_cast<const uint16_t*>(pBase + scOffset);
+    for (uint32_t index = 0; index < scCount; index++) {
+      boost::property_tree::ptree ptElement;
+      ptElement.put("", (boost::format("%d") % columnArray[index]).str());
+      ptStartColumnArray.push_back({ "", ptElement });
     }
   }
   ptPartitionInfo.add_child("start_columns", ptStartColumnArray);
@@ -516,17 +515,15 @@ populate_pre_cdo_groups(const char* pBase,
   if (aieCDOGroup.pre_cdo_groups.size == 0)
     return;
 
-  {
-    const uint64_t offset = aieCDOGroup.pre_cdo_groups.offset;
-    const uint64_t count  = aieCDOGroup.pre_cdo_groups.size;
-    if (offset >= bufferSize || count > (bufferSize - offset) / sizeof(uint64_t))
-      throw std::runtime_error("cdo_group::pre_cdo_groups offset/size out of bounds");
-  }
+  const uint64_t offset = aieCDOGroup.pre_cdo_groups.offset;
+  const uint64_t count  = aieCDOGroup.pre_cdo_groups.size;
+  if (offset >= bufferSize || count > (bufferSize - offset) / sizeof(uint64_t))
+    throw std::runtime_error("cdo_group::pre_cdo_groups offset/size out of bounds");
 
   boost::property_tree::ptree ptPreCDOGroupArray;
 
-  const uint64_t* aiePreCDOGroupArray = reinterpret_cast<const uint64_t*>(pBase + aieCDOGroup.pre_cdo_groups.offset);
-  for (uint32_t index = 0; index < aieCDOGroup.pre_cdo_groups.size; index++) {
+  const uint64_t* aiePreCDOGroupArray = reinterpret_cast<const uint64_t*>(pBase + offset);
+  for (uint32_t index = 0; index < count; index++) {
     const uint64_t& element = aiePreCDOGroupArray[index];
     boost::property_tree::ptree ptElement;
 
@@ -548,15 +545,13 @@ populate_cdo_groups(const char* pBase,
   XUtil::TRACE("Populating CDO groups");
   boost::property_tree::ptree ptCDOGroupArray;
 
-  {
-    const uint64_t offset = aiePDI.cdo_groups.offset;
-    const uint64_t count  = aiePDI.cdo_groups.size;
-    if (count > 0 && (offset >= bufferSize || count > (bufferSize - offset) / sizeof(cdo_group)))
-      throw std::runtime_error("aie_pdi::cdo_groups offset/size out of bounds");
-  }
+  const uint64_t cdoOffset = aiePDI.cdo_groups.offset;
+  const uint64_t cdoCount  = aiePDI.cdo_groups.size;
+  if (cdoCount > 0 && (cdoOffset >= bufferSize || cdoCount > (bufferSize - cdoOffset) / sizeof(cdo_group)))
+    throw std::runtime_error("aie_pdi::cdo_groups offset/size out of bounds");
 
-  const cdo_group* aieCDOGroupArray = reinterpret_cast<const cdo_group*>(pBase + aiePDI.cdo_groups.offset);
-  for (uint32_t index = 0; index < aiePDI.cdo_groups.size; index++) {
+  const cdo_group* aieCDOGroupArray = reinterpret_cast<const cdo_group*>(pBase + cdoOffset);
+  for (uint32_t index = 0; index < cdoCount; index++) {
     const cdo_group& element = aieCDOGroupArray[index];
     boost::property_tree::ptree ptElement;
 
@@ -573,11 +568,12 @@ populate_cdo_groups(const char* pBase,
     ptElement.put("pdi_id", (boost::format("0x%x") % element.pdi_id).str());
 
     // DPU Kernel IDs
-    if (element.dpu_kernel_ids.size) {
-      const uint64_t kidOffset = element.dpu_kernel_ids.offset;
-      const uint64_t kidCount  = element.dpu_kernel_ids.size;
+    const uint64_t kidOffset = element.dpu_kernel_ids.offset;
+    const uint64_t kidCount  = element.dpu_kernel_ids.size;
+    if (kidCount > 0) {
       if (kidOffset >= bufferSize || kidCount > (bufferSize - kidOffset) / sizeof(uint64_t))
         throw std::runtime_error("cdo_group::dpu_kernel_ids offset/size out of bounds");
+
       boost::property_tree::ptree ptDPUKernelIDs;
       const uint64_t* kernelIDsArray = reinterpret_cast<const uint64_t*>(pBase + kidOffset);
       for (uint32_t kernelIDindex = 0; kernelIDindex < kidCount; kernelIDindex++) {
@@ -633,15 +629,13 @@ populate_PDIs(const char* pBase,
   XUtil::TRACE("Populating DPI Array");
   boost::property_tree::ptree ptPDIArray;
 
-  {
-    const uint64_t offset = aiePartition.aie_pdi.offset;
-    const uint64_t count  = aiePartition.aie_pdi.size;
-    if (count > 0 && (offset >= bufferSize || count > (bufferSize - offset) / sizeof(aie_pdi)))
-      throw std::runtime_error("aie_partition::aie_pdi offset/size out of bounds");
-  }
+  const uint64_t pdiOffset = aiePartition.aie_pdi.offset;
+  const uint64_t pdiCount  = aiePartition.aie_pdi.size;
+  if (pdiCount > 0 && (pdiOffset >= bufferSize || pdiCount > (bufferSize - pdiOffset) / sizeof(aie_pdi)))
+    throw std::runtime_error("aie_partition::aie_pdi offset/size out of bounds");
 
-  const aie_pdi* aiePdiArray = reinterpret_cast<const aie_pdi*>(pBase + aiePartition.aie_pdi.offset);
-  for (uint32_t index = 0; index < aiePartition.aie_pdi.size; index++) {
+  const aie_pdi* aiePdiArray = reinterpret_cast<const aie_pdi*>(pBase + pdiOffset);
+  for (uint32_t index = 0; index < pdiCount; index++) {
     const aie_pdi& element = aiePdiArray[index];
     boost::property_tree::ptree ptElement;
 
@@ -649,12 +643,10 @@ populate_PDIs(const char* pBase,
     ptElement.put("uuid", XUtil::getUUIDAsString(element.uuid));
 
     // Validate pdi_image before writing
-    {
-      const uint64_t imgOffset = element.pdi_image.offset;
-      const uint64_t imgSize   = element.pdi_image.size;
-      if (imgSize > 0 && (imgOffset >= bufferSize || imgSize > bufferSize - imgOffset))
-        throw std::runtime_error("aie_pdi::pdi_image offset/size out of bounds");
-    }
+    const uint64_t imgOffset = element.pdi_image.offset;
+    const uint64_t imgSize   = element.pdi_image.size;
+    if (imgSize > 0 && (imgOffset >= bufferSize || imgSize > bufferSize - imgOffset))
+      throw std::runtime_error("aie_pdi::pdi_image offset/size out of bounds");
 
     // Partition Image
     std::string fileName = XUtil::getUUIDAsString(element.uuid) + ".pdi";
