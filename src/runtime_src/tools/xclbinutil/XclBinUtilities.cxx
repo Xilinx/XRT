@@ -1249,6 +1249,22 @@ XclBinUtilities::exec(const fs::path &cmd,
 }
 
 #else
+// Shell-quote a single argument by wrapping in single quotes and escaping any
+// embedded single quotes as '"'"' (end-quote, literal-quote, re-open-quote).
+static std::string
+shell_quote(const std::string& s)
+{
+  std::string result = "'";
+  for (char c : s) {
+    if (c == '\'')
+      result += "'\"'\"'";
+    else
+      result += c;
+  }
+  result += "'";
+  return result;
+}
+
 int
 XclBinUtilities::exec(const fs::path &cmd,
                       const std::vector<std::string> &args,
@@ -1256,8 +1272,11 @@ XclBinUtilities::exec(const fs::path &cmd,
                       std::ostringstream & os_stdout,
                       std::ostringstream & os_stderr)
 {
-  // Build the command line
-  const std::string cmdLine = cmd.string() + " " + boost::algorithm::join(args, " ");
+  // Build the command line with each argument individually shell-quoted
+  // to prevent command injection via user-controlled paths (CWE-78).
+  std::string cmdLine = shell_quote(cmd.string());
+  for (const auto& arg : args)
+    cmdLine += " " + shell_quote(arg);
 
   std::array<char, 128> buffer;
   std::string result;
