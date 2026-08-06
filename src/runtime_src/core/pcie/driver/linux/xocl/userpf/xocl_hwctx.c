@@ -109,14 +109,20 @@ xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
 {
         uint32_t slot_hndl = hw_ctx->slot_idx;
         struct kds_sched *kds = &XDEV(xdev)->kds;
-        char *kname_p = cu_args->cu_name;
+        char name[CU_NAME_MAX_LEN + 1];
+        char *kname_p = name;
+        char *token;
         struct xrt_cu *xcu = NULL;
         char iname[CU_NAME_MAX_LEN];
         char kname[CU_NAME_MAX_LEN];
         int i = 0;
 
-        strcpy(kname, strsep(&kname_p, ":"));
-        strcpy(iname, strsep(&kname_p, ":"));
+        memcpy(name, cu_args->cu_name, CU_NAME_MAX_LEN);
+        name[CU_NAME_MAX_LEN] = '\0';
+        token = strsep(&kname_p, ":");
+        strscpy(kname, token ? token : "", sizeof(kname));
+        token = strsep(&kname_p, ":");
+        strscpy(iname, token ? token : "", sizeof(iname));
 
         /* Retrieve the CU index from the given slot */
         for (i = 0; i < MAX_CUS; i++) {
