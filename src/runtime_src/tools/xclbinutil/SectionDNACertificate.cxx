@@ -92,8 +92,8 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
     throw std::runtime_error(errMsg.str());
   }
 
-  if (((dnaEntriesBitSize / 8) > _sectionSize)) {
-    auto errMsg = boost::format("ERROR: The message DNA length (0x%x bytes) exceeds the DNA_CERTIFICATE size (0x%x bytes).") % (dnaEntriesBitSize / 8) % _sectionSize;
+  if (((dnaEntriesBitSize / 8) + signatureSizeBytes + sizeof(uint64_t)) > _sectionSize) {
+    auto errMsg = boost::format("ERROR: The message DNA length (0x%x bytes) plus overhead exceeds the DNA_CERTIFICATE size (0x%x bytes).") % (dnaEntriesBitSize / 8) % _sectionSize;
     throw std::runtime_error(errMsg.str());
   }
 
@@ -103,7 +103,12 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
   // Get padding string
   std::string sPadding;
   uint64_t paddingOffset = dnaEntryCount * dnaEntrySizeBytes;
-  uint64_t paddingSize = (_sectionSize - signatureSizeBytes) - paddingOffset;
+  uint64_t usableSize = _sectionSize - signatureSizeBytes;
+  if (paddingOffset > usableSize) {
+    auto errMsg = boost::format("ERROR: DNA entries (0x%lx bytes) exceed usable section space (0x%lx bytes).") % paddingOffset % usableSize;
+    throw std::runtime_error(errMsg.str());
+  }
+  uint64_t paddingSize = usableSize - paddingOffset;
   XUtil::binaryBufferToHexString((unsigned char*)&_pDataSection[paddingOffset], paddingSize, sPadding);
 
 

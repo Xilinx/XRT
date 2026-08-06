@@ -198,7 +198,7 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
                  % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_major)
                  % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_minor)
                  % pHdr->m_debug_ip_data[index].m_base_address
-                 % pHdr->m_debug_ip_data[index].m_name);
+                 % XUtil::bounded_fixed_cstr(pHdr->m_debug_ip_data[index].m_name));
 
     // Write out the entire structure
     XUtil::TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
@@ -209,7 +209,7 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
     debug_ip_data.put("m_major", (boost::format("%d") % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_major)).str());
     debug_ip_data.put("m_minor", (boost::format("%d") % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_minor)).str());
     debug_ip_data.put("m_base_address", (boost::format("0x%lx") %  pHdr->m_debug_ip_data[index].m_base_address).str());
-    debug_ip_data.put("m_name", (boost::format("%s") % pHdr->m_debug_ip_data[index].m_name).str());
+    debug_ip_data.put("m_name", XUtil::bounded_fixed_cstr(pHdr->m_debug_ip_data[index].m_name));
 
     m_debug_ip_data.push_back({ "", debug_ip_data });   // Used to make an array of objects
   }
