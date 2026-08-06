@@ -1186,3 +1186,198 @@ class ext:
     shared: _ext_access_mode
     process: _ext_access_mode
     hybrid: _ext_access_mode
+
+
+class graph:
+    """Represents an AIE graph execution object."""
+
+    class access_mode(IntEnum):
+        """Graph access mode."""
+        exclusive: graph.access_mode
+        primary: graph.access_mode
+        shared: graph.access_mode
+
+    # Class-level enum value aliases
+    exclusive: access_mode
+    primary: access_mode
+    shared: access_mode
+
+    @overload
+    def __init__(self, ctx: hw_context, name: str) -> None:
+        """Create a graph from a hardware context and graph name.
+
+        Args:
+            ctx: The hardware context.
+            name: Name of the graph.
+        """
+        ...
+
+    @overload
+    def __init__(self, ctx: hw_context, name: str, mode: access_mode) -> None:
+        """Create a graph with an explicit access mode.
+
+        Args:
+            ctx: The hardware context.
+            name: Name of the graph.
+            mode: Access mode (exclusive, primary, or shared).
+        """
+        ...
+
+    def reset(self) -> None:
+        """Reset the graph by disabling tiles and enabling tile reset."""
+        ...
+
+    def get_timestamp(self) -> int:
+        """Get the current graph timestamp in AIE cycles.
+
+        Returns:
+            Timestamp in AIE cycles.
+        """
+        ...
+
+    def gmio_bank_id(self, gmio_name: str) -> int:
+        """Get the memory bank index for a named GMIO port.
+
+        Args:
+            gmio_name: GMIO port name.
+
+        Returns:
+            Memory bank group ID.
+        """
+        ...
+
+    def run(self, iterations: int = 0) -> None:
+        """Start graph execution.
+
+        Args:
+            iterations: Number of iterations (0 = run forever).
+        """
+        ...
+
+    @overload
+    def wait(self, timeout_ms: SupportsInt) -> None:
+        """Wait for graph completion or until timeout.
+
+        Args:
+            timeout_ms: Timeout in milliseconds.
+        """
+        ...
+
+    @overload
+    def wait(self, cycles: SupportsInt = 0) -> None:
+        """Wait for the given AIE cycles then suspend the graph.
+
+        Args:
+            cycles: AIE cycles to wait (0 = block until done).
+        """
+        ...
+
+    def suspend(self) -> None:
+        """Suspend a running graph."""
+        ...
+
+    def resume(self) -> None:
+        """Resume a suspended graph."""
+        ...
+
+    def end(self, cycles: SupportsInt = 0) -> None:
+        """Wait for the given AIE cycles then terminate the graph.
+
+        Args:
+            cycles: AIE cycles to wait (0 = block until done).
+        """
+        ...
+
+    def update(self, port_name: str, data: ReadableBuffer) -> None:
+        """Update a runtime parameter port.
+
+        Args:
+            port_name: Hierarchical RTP port name.
+            data: Data to write (any buffer protocol object: bytes, bytearray, memoryview, numpy array, etc.).
+        """
+        ...
+
+    def read(self, port_name: str, size: SupportsInt) -> NDArrayInt8:
+        """Read a runtime parameter port.
+
+        Args:
+            port_name: Hierarchical RTP port name.
+            size: Number of bytes to read.
+
+        Returns:
+            NumPy array containing the read data.
+        """
+        ...
+
+
+class _aie_bo(bo):
+    """AIE buffer object supporting GMIO synchronous transfers."""
+
+    @overload
+    def __init__(
+        self, device: device, size: SupportsInt, flags: bo.flags, group: SupportsInt
+    ) -> None:
+        """Create a buffer object with specified properties.
+
+        Args:
+            device: The device to allocate the buffer on.
+            size: Size of the buffer in bytes.
+            flags: Buffer creation flags.
+            group: Memory bank group ID.
+        """
+        ...
+
+    @overload
+    def __init__(
+        self, ctx: hw_context, size: SupportsInt, flags: bo.flags, group: SupportsInt
+    ) -> None:
+        """Create a buffer object with specified properties in a hardware context.
+
+        Args:
+            ctx: The hardware context to allocate the buffer in.
+            size: Size of the buffer in bytes.
+            flags: Buffer creation flags.
+            group: Memory bank group ID.
+        """
+        ...
+
+    @overload
+    def __init__(self, ctx: hw_context, size: SupportsInt, group: SupportsInt) -> None:
+        """Create a buffer object with default flags in a hardware context.
+
+        Args:
+            ctx: The hardware context to allocate the buffer in.
+            size: Size of the buffer in bytes.
+            group: Memory bank group ID.
+        """
+        ...
+
+    @overload
+    def sync(
+        self, port: str, direction: xclBOSyncDirection, size: SupportsInt, offset: SupportsInt
+    ) -> None:
+        """Synchronize buffer data with a named GMIO port.
+
+        Args:
+            port: GMIO port name.
+            direction: Direction of synchronization.
+            size: Number of bytes to sync.
+            offset: Offset in the buffer.
+        """
+        ...
+
+    @overload
+    def sync(self, port: str, direction: xclBOSyncDirection) -> None:
+        """Sync entire buffer content with a named GMIO port.
+
+        Args:
+            port: GMIO port name.
+            direction: Direction of synchronization.
+        """
+        ...
+
+
+class aie:
+    """AIE-specific XRT functionality."""
+
+    bo = _aie_bo

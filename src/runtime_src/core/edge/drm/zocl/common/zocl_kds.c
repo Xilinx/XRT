@@ -15,6 +15,7 @@
 #include "zocl_util.h"
 #include "zocl_xclbin.h"
 #include "zocl_kds.h"
+#include "zocl_aie.h"
 #include "kds_core.h"
 #include "kds_ert_table.h"
 #include "xclbin.h"
@@ -286,6 +287,51 @@ out:
 }
 
 /*
+ * Release hw contexts on client exit. Legacy apps use ctx_list for
+ * bitstream unlock; hw_context API apps need unlock here.
+ */
+static void zocl_fini_client_hw_ctxs(struct drm_zocl_dev *zdev,
+				     struct kds_client *client)
+{
+	struct kds_sched *kds = &zdev->kds;
+	struct kds_client_hw_ctx *hw_ctx, *next;
+	struct zocl_hw_graph_ctx *graph_ctx;
+	struct list_head *gptr, *gnext;
+	struct drm_zocl_slot *slot;
+	uuid_t *xclbin_id;
+	u32 s_id;
+	bool unlock = list_empty(&client->ctx_list);
+
+	list_for_each_entry_safe(hw_ctx, next, &client->hw_ctx_list, link)
+		kds_fini_hw_ctx_client(kds, client, hw_ctx);
+
+	mutex_lock(&client->lock);
+	list_for_each_entry_safe(hw_ctx, next, &client->hw_ctx_list, link) {
+		list_for_each_safe(gptr, gnext, &hw_ctx->graph_ctx_list) {
+			graph_ctx = list_entry(gptr, struct zocl_hw_graph_ctx, link);
+			list_del(gptr);
+			kfree(graph_ctx);
+		}
+
+		slot = zdev->pr_slot[hw_ctx->slot_idx];
+		s_id = hw_ctx->slot_idx;
+		xclbin_id = hw_ctx->xclbin_id;
+		if (kds_free_hw_ctx(client, hw_ctx) || !unlock)
+			continue;
+
+		if (slot && xclbin_id)
+			(void)zocl_unlock_bitstream(slot, xclbin_id);
+
+		if (slot && --slot->hwctx_ref_cnt == 0) {
+			if (s_id != 0)
+				zocl_destroy_aie(slot);
+			zdev->slot_mask &= ~(1 << s_id);
+		}
+	}
+	mutex_unlock(&client->lock);
+}
+
+/*
  * Destroy the given client and delete it from the KDS.
  *
  * @param	zdev:	zocl device structure
@@ -314,6 +360,7 @@ void zocl_destroy_client(void *client_hdl)
 	 * release xclbin_id and unlock bitstream if needed.
 	 */
 	zocl_aie_kds_del_graph_context_all(client);
+	zocl_fini_client_hw_ctxs(zdev, client);
 	kds_fini_client(kds, client);
 
 	/* Delete all the existing context associated to this device for this

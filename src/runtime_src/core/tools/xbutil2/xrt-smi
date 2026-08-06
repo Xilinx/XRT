@@ -7,11 +7,13 @@
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
-if [ "$(uname | grep -E '^(windows32|CYGWIN)')" ]; then
-    trap "" INT
-    "$0.bat" "$@"
-    exit $?
-fi
+case "$(uname)" in
+    windows32*|CYGWIN*)
+        trap "" INT
+        "$0.bat" "$@"
+        exit $?
+        ;;
+esac
 
 # Working variables
 XRT_PROG=xrt-smi
