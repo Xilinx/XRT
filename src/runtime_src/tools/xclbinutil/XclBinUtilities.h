@@ -144,6 +144,24 @@ void safeStringCopy(char* _destBuffer, const std::string& _source, unsigned int 
 // Validates that the offset lies within the buffer and that a null terminator exists
 // before the buffer end.  Throws std::runtime_error on violation (SWSPLAT-30717/CWE-125).
 const char* bounded_mpo_cstr(const void* pHdr, uint32_t mpo_offset, size_t bufferSize);
+
+// bounded_fixed_cstr - Safely convert a fixed-size embedded char/uint8_t array (CWE-125).
+// Wire-format structs embed fixed-size arrays that may not be null-terminated when an
+// attacker controls the xclbin. Returns a std::string of at most N chars, stopping at NUL.
+template <size_t N>
+std::string
+bounded_fixed_cstr(const char (&field)[N])
+{
+  return std::string(field, strnlen(field, N));
+}
+
+template <size_t N>
+std::string
+bounded_fixed_cstr(const unsigned char (&field)[N])
+{
+  return std::string(reinterpret_cast<const char*>(field), strnlen(reinterpret_cast<const char*>(field), N));
+}
+
 unsigned int bytesToAlign(uint64_t _offset);
 unsigned int alignBytes(std::ostream & _buf, unsigned int _byteBoundary);
 

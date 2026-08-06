@@ -430,22 +430,30 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
 
   _istream.seekg(signatureOffset);
   _istream.read((char*)&signature, sizeof(XUtil::SignatureHeader));
+  if (_istream.gcount() != static_cast<std::streamsize>(sizeof(XUtil::SignatureHeader)))
+    throw std::runtime_error("ERROR: Short read of signature header");
 
-  // Get signedBy
+  // Get signedBy — compute seek position as uint64_t to avoid unsigned int overflow (CWE-190)
   if (signature.signedBySize != 0)
   {
-    _istream.seekg(signatureOffset + signature.signedByOffset);
+    _istream.seekg(static_cast<uint64_t>(signatureOffset) + signature.signedByOffset);
     std::unique_ptr<char[]> data( new char[ signature.signedBySize ] );
     _istream.read( data.get(), signature.signedBySize );
+    if (_istream.gcount() != static_cast<std::streamsize>(signature.signedBySize))
+      throw std::runtime_error("ERROR: Short read of signedBy field in signature");
+
     _sSignedBy = std::string(data.get(), signature.signedBySize);
   }
 
   // Get the signature
   if (signature.signatureSize != 0)
   {
-    _istream.seekg(signatureOffset + signature.signatureOffset);
+    _istream.seekg(static_cast<uint64_t>(signatureOffset) + signature.signatureOffset);
     std::unique_ptr<char[]> data( new char[ signature.signatureSize ] );
     _istream.read( data.get(), signature.signatureSize );
+    if (_istream.gcount() != static_cast<std::streamsize>(signature.signatureSize))
+      throw std::runtime_error("ERROR: Short read of signature field");
+
     _sSignature = std::string(data.get(), signature.signatureSize);
   }
 
@@ -777,7 +785,7 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
       for (unsigned int idx = 0; idx < memIndexVector.size();)
       {
         auto s_index = idx;
-        while ((memIndexVector[idx] + 1) == memIndexVector[idx + 1])
+        while ((idx + 1 < memIndexVector.size()) && ((memIndexVector[idx] + 1) == memIndexVector[idx + 1]))
           idx++;
 
         newTag += std::to_string(memIndexVector[s_index]);
@@ -1243,6 +1251,22 @@ XclBinUtilities::exec(const fs::path &cmd,
 }
 
 #else
+// Shell-quote a single argument by wrapping in single quotes and escaping any
+// embedded single quotes as '"'"' (end-quote, literal-quote, re-open-quote).
+static std::string
+shell_quote(const std::string& s)
+{
+  std::string result = "'";
+  for (char c : s) {
+    if (c == '\'')
+      result += "'\"'\"'";
+    else
+      result += c;
+  }
+  result += "'";
+  return result;
+}
+
 int
 XclBinUtilities::exec(const fs::path &cmd,
                       const std::vector<std::string> &args,
@@ -1250,8 +1274,11 @@ XclBinUtilities::exec(const fs::path &cmd,
                       std::ostringstream & os_stdout,
                       std::ostringstream & os_stderr)
 {
-  // Build the command line
-  const std::string cmdLine = cmd.string() + " " + boost::algorithm::join(args, " ");
+  // Build the command line with each argument individually shell-quoted
+  // to prevent command injection via user-controlled paths (CWE-78).
+  std::string cmdLine = shell_quote(cmd.string());
+  for (const auto& arg : args)
+    cmdLine += " " + shell_quote(arg);
 
   std::array<char, 128> buffer;
   std::string result;
