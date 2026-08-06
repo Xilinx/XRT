@@ -710,7 +710,7 @@ PYBIND11_MODULE(pyxrt, m) {
             return xrt::ext::transaction_result_bo(hwctx, size);
         },
         py::arg("hwctx"), py::arg("size"),
-        "Allocate controller transaction-result storage for one submission.");
+        "Allocate controller transaction-result storage for a hardware context.");
     
     py::class_<xrt::ext::kernel, xrt::kernel> pyextkernel(ext, "kernel", "Extended kernel object for module-backed and shared workflows.");
 

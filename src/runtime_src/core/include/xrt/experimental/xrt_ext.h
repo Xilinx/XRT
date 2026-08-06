@@ -18,19 +18,6 @@
 #endif
 
 #ifdef __cplusplus
-namespace xrt_core::bo_int {
-
-/// @cond
-// Existing coreutil entry point used by the header-only experimental wrapper.
-enum class use_type : int;
-
-XRT_API_EXPORT
-xrt::bo
-create_bo(const xrt::hw_context& hwctx, size_t size, use_type type);
-/// @endcond
-
-} // namespace xrt_core::bo_int
-
 namespace xrt::ext {
 
 /*!
@@ -255,17 +242,14 @@ public:
  * @return
  *  A buffer object configured for controller transaction results.
  *
- * The controller writes ordered register-read results into this buffer. A new
- * buffer must be allocated for each transaction submission that returns
- * results.
+ * The controller writes ordered register-read results into this buffer. The
+ * caller must keep the buffer alive until the associated submission completes
+ * and must not share it between in-flight submissions.
  */
-inline xrt::bo
-transaction_result_bo(const xrt::hw_context& hwctx, size_t size)
-{
-  return xrt_core::bo_int::create_bo(
-    hwctx, size,
-    static_cast<xrt_core::bo_int::use_type>(XRT_BO_USE_DEBUG));
-}
+XRT_API_EXPORT
+xrt::bo
+transaction_result_bo(const xrt::hw_context& hwctx, size_t size);
+
 
 class kernel : public xrt::kernel
 {

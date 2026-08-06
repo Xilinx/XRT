@@ -1731,6 +1731,12 @@ bo(const xrt::hw_context& hwctx, pid_type pid, xrt::bo::export_handle ehdl)
   : xrt::bo::bo{alloc_import_from_pid(device_type{hwctx}, pid, ehdl)}
 {}
 
+xrt::bo
+transaction_result_bo(const xrt::hw_context& hwctx, size_t size)
+{
+  return xrt_core::bo_int::create_bo(hwctx, size, xrt_core::bo_int::use_type::debug);
+}
+
 } // xrt::ext
 
 ////////////////////////////////////////////////////////////////

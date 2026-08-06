@@ -1174,7 +1174,7 @@ class ext:
 
     @staticmethod
     def transaction_result_bo(hwctx: hw_context, size: SupportsInt) -> bo:
-        """Allocate controller transaction-result storage for one submission."""
+        """Allocate controller transaction-result storage for a hardware context."""
         ...
     
     # Type aliases for the ext submodule
