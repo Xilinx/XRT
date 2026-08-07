@@ -5194,9 +5194,12 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
           << ctx_health->aie4.uc_info[i].uc_esr
           << "\n";
 
-      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary
+      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary.
+      // get_decompressed_elfio() is needed because compressed sections contain raw
+      // compressed bytes that AIEDebug cannot parse directly.
       if (elf_impl_ptr) {
-        aiebu::AIEDebug dbg(elf_impl_ptr->get_elfio());
+        auto decompressed_elfio = elf_impl_ptr->get_decompressed_elfio();
+        aiebu::AIEDebug dbg(decompressed_elfio);
         auto info = dbg.get_opcode_information(
           kernel_instance,
           ctx_health->aie4.uc_info[i].uc_idx,
