@@ -485,7 +485,7 @@ public:
    * See also ``operator()`` to set all arguments and start kernel.
    */
   template <typename ArgType>
-  std::enable_if_t<!std::is_base_of<xrt::bo, std::decay_t<ArgType>>::value>
+  std::enable_if_t<!std::is_base_of_v<xrt::bo, std::decay_t<ArgType>>>
   set_arg(int index, ArgType&& arg)
   {
     set_arg_at_index(index, &arg, sizeof(arg));
@@ -503,7 +503,7 @@ public:
    * treated as scalars by the generic template.
    */
   template <typename ArgType>
-  std::enable_if_t<std::is_base_of<xrt::bo, std::decay_t<ArgType>>::value>
+  std::enable_if_t<std::is_base_of_v<xrt::bo, std::decay_t<ArgType>>>
   set_arg(int index, ArgType&& boh)
   {
     set_arg_at_index(index, static_cast<const xrt::bo&>(boh));
