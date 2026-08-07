@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "sysinfo.h"
 #include "detail/sysinfo.h"
@@ -53,6 +53,12 @@ is_advanced()
     return true;
 
   return xrt_core::sysinfo::detail::is_advanced();
+}
+
+std::pair<unsigned int, unsigned int>
+get_terminal_size()
+{
+  return xrt_core::sysinfo::detail::get_terminal_size();
 }
 
 } //xrt_core::sysinfo

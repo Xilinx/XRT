@@ -9,6 +9,7 @@
 #include <memory>
 #include <map>
 #include <iostream>
+#include <utility>
 #include <vector>
 
 #include <boost/format.hpp>
@@ -53,6 +54,19 @@ namespace XBUtilities {
 
   void disable_escape_codes( bool _disable );
   bool is_escape_codes_disabled();  
+
+  /**
+   * Query the visible size of the current terminal window as a {rows, cols}
+   * pair (rows = height, cols = width).
+   */
+  std::pair<unsigned int, unsigned int> get_terminal_size();
+
+  /**
+   * Truncate report text to the rows that fit in the terminal, returning the
+   * (possibly shortened) string. Does not clear the screen; the caller is
+   * responsible for any screen clearing/header printing.
+   */
+  std::string truncate_to_terminal(const std::string& content, bool use_default_terminal_size = false, bool show_truncation_notice = true);
 
   void message_(MessageType _eMT, const std::string& _msg, bool _endl = true, std::ostream & _ostream = std::cout);
 

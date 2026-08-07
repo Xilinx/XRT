@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __Report_h_
 #define __Report_h_
@@ -49,6 +49,8 @@ class Report : public JSONConfigurable {
   bool isDeviceRequired() const { return m_isDeviceRequired; };
   bool isHidden() const { return m_isHidden; };
   bool getConfigHidden() const {return isHidden();};
+
+  virtual bool clearScreenBeforeReports() const { return false; }
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
