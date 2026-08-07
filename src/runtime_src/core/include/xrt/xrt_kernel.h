@@ -23,6 +23,7 @@
 # include <cstdint>
 # include <functional>
 # include <memory>
+# include <type_traits>
 # include <vector>
 #endif
 
@@ -484,10 +485,28 @@ public:
    * See also ``operator()`` to set all arguments and start kernel.
    */
   template <typename ArgType>
-  void
+  std::enable_if_t<!std::is_base_of_v<xrt::bo, std::decay_t<ArgType>>>
   set_arg(int index, ArgType&& arg)
   {
     set_arg_at_index(index, &arg, sizeof(arg));
+  }
+
+  /**
+   * set_arg() - Set a specific kernel global argument for a run
+   *
+   * @param index
+   *  Index of kernel argument to set
+   * @param boh
+   *  Any xrt::bo or subclass (e.g. xrt::ext::bo) argument value to set.
+   *
+   * This overload catches xrt::bo subclasses that would otherwise be
+   * treated as scalars by the generic template.
+   */
+  template <typename ArgType>
+  std::enable_if_t<std::is_base_of_v<xrt::bo, std::decay_t<ArgType>>>
+  set_arg(int index, ArgType&& boh)
+  {
+    set_arg_at_index(index, static_cast<const xrt::bo&>(boh));
   }
 
   /**
