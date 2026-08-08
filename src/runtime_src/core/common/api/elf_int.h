@@ -410,36 +410,13 @@ public:
   elf_impl& operator=(elf_impl&&) = delete;
 
   // Get raw ELFIO object reference.
-  // Note: if the ELF was loaded without pre-decompression, compressed sections
-  // will contain raw compressed bytes.  For code that needs decompressed section
-  // data (e.g. AIEDebug), use get_decompressed_elfio() instead.
+  // Compressed sections (.ctrltext*, .ctrldata*, .ctrlpkt*) contain raw compressed
+  // bytes with SHF_COMPRESSED set. Callers that need section data must handle
+  // decompression — e.g. buf::copy_to() uses decompress_section_into() per-section
   const ELFIO::elfio&
   get_elfio() const
   {
     return m_elfio;
-  }
-
-  // Get a fully decompressed copy of the ELFIO object.
-  // This is expensive (serialize + decompress + reload) and should only be used
-  // in rare diagnostic paths (e.g. AIEDebug on health check failure).
-  ELFIO::elfio
-  get_decompressed_elfio() const
-  {
-    // Serialize current ELFIO (may have compressed sections) back to bytes
-    std::ostringstream oss;
-    const_cast<ELFIO::elfio&>(m_elfio).save(oss);
-    std::string elf_str = oss.str();
-
-    // Decompress using existing full-ELF API
-    std::vector<char> buf(elf_str.begin(), elf_str.end());
-    buf = aiebu::aiebu_assembler::decompress_elf(std::move(buf));
-
-    // Load into fresh ELFIO
-    ELFIO::elfio decompressed;
-    boost::interprocess::ibufferstream istr(buf.data(), buf.size());
-    if (!decompressed.load(istr))
-      throw std::runtime_error("failed to load decompressed ELF");
-    return decompressed;
   }
 
   // Get the filename this ELF was loaded from (empty if loaded from buffer/stream)
