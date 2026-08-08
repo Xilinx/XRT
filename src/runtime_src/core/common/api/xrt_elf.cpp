@@ -16,14 +16,10 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/runner/capture.h"
 
-#include "core/common/aiebu/src/cpp/include/aiebu/aiebu_assembler.h"
-
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <elfio/elfio.hpp>
 
 #include <cstdint>
-#include <fstream>
-#include <iterator>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -203,66 +199,40 @@ construct_kernel_args(const std::string& signature)
 // of template to display specific error messages
 ///////////////////////////////////////////////////////////////
 
-// Load ELFIO from an owned buffer — no decompression.
-// Compressed sections (SHF_COMPRESSED) remain compressed in ELFIO; they are
-// decompressed on demand at xrt::run creation time by buf::copy_to().
-static ELFIO::elfio
-load_elfio_from_buffer(std::vector<char>& buf)
-{
-  ELFIO::elfio elfio;
-  boost::interprocess::ibufferstream istr(buf.data(), buf.size());
-  if (!elfio.load(istr))
-    throw std::runtime_error("not valid ELF data");
-  return elfio;
-}
-
 // Load ELFIO from file path
 static ELFIO::elfio
 load_elfio(const std::string& fnm)
 {
-  std::ifstream f(fnm, std::ios::binary);
-  if (!f)
+  ELFIO::elfio elfio;
+  if (!elfio.load(fnm))
     throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
-
-  // Pre-size the buffer to avoid repeated reallocations on large ELF files.
-  f.seekg(0, std::ios::end);
-  const auto file_size = f.tellg();
-  f.seekg(0, std::ios::beg);
-
-  std::vector<char> buf;
-  if (file_size > 0)
-    buf.reserve(static_cast<std::size_t>(file_size));
-  buf.assign(std::istreambuf_iterator<char>(f), {});
-
-  if (f.bad())
-    throw std::runtime_error(fnm + ": I/O error while reading ELF file");
 
   if (xrt_core::config::get_xrt_debug()) {
     std::string message = "Loaded elf file " + fnm;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_elf", message);
   }
-  return load_elfio_from_buffer(buf);
+  return elfio;
 }
 
 // Load ELFIO from stream
 static ELFIO::elfio
 load_elfio(std::istream& stream)
 {
-  std::vector<char> buf(std::istreambuf_iterator<char>(stream), {});
-  if (stream.bad())
-    throw std::runtime_error("I/O error while reading ELF stream");
-  return load_elfio_from_buffer(buf);
+  ELFIO::elfio elfio;
+  if (!elfio.load(stream))
+    throw std::runtime_error("not a valid ELF stream");
+  return elfio;
 }
 
 // Load ELFIO from buffer
 static ELFIO::elfio
 load_elfio(const void* data, size_t size)
 {
-  if (!data || size == 0)
-    throw std::runtime_error("not valid ELF data: null or empty buffer");
-  const char* bytes = static_cast<const char*>(data);
-  std::vector<char> buf(bytes, bytes + size);
-  return load_elfio_from_buffer(buf);
+  ELFIO::elfio elfio;
+  boost::interprocess::ibufferstream istr(static_cast<const char*>(data), size);
+  if (!elfio.load(istr))
+    throw std::runtime_error("not valid ELF data");
+  return elfio;
 }
 
 } // namespace
