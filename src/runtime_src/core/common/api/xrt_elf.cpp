@@ -221,7 +221,6 @@ load_elfio(std::istream& stream)
   ELFIO::elfio elfio;
   if (!elfio.load(stream))
     throw std::runtime_error("not a valid ELF stream");
-
   return elfio;
 }
 
@@ -233,7 +232,6 @@ load_elfio(const void* data, size_t size)
   boost::interprocess::ibufferstream istr(static_cast<const char*>(data), size);
   if (!elfio.load(istr))
     throw std::runtime_error("not valid ELF data");
-
   return elfio;
 }
 
@@ -766,7 +764,7 @@ class elf_aie_gen2 : public elf_impl
       if (name.find(pm_pattern) == std::string::npos)
         continue;
 
-      m_ctrlpkt_pm_bufs[name].append_section_data(sec);
+      m_ctrlpkt_pm_bufs[name].append_section_data(sec, m_elfio.get_class());
     }
   }
 
@@ -1166,23 +1164,24 @@ class elf_aie_gen2_plus : public elf_impl
       m_ctrlcodes_map[id].resize(size);
       pad_offsets[id].resize(size);
       for (auto& [ucidx, elf_sects] : uc_sec) {
+        const auto elf_class = m_elfio.get_class();
         if (merged) {
           // Merged format: the single .ctrltext.<col> section already contains all
           // pages laid out at pageNum*PAGE_SIZE offsets with header+text+data+padding
           // embedded, meaning elf_sects contains only .ctrltext section
           const auto& page_sec = elf_sects.begin()->second;
           if (page_sec.ctrltext)
-            m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
+            m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext, elf_class);
         }
         else {
           // Per-page format: each page has separate ctrltext + ctrldata sections;
           // pad each page up to page boundary.
           for (auto& [page, page_sec] : elf_sects) {
             if (page_sec.ctrltext)
-              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
+              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext, elf_class);
 
             if (page_sec.ctrldata)
-              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrldata);
+              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrldata, elf_class);
 
             auto current_size = m_ctrlcodes_map[id][ucidx].size();
             auto target_size = (page + 1) * elf_page_size;
@@ -1219,7 +1218,7 @@ class elf_aie_gen2_plus : public elf_impl
         continue;
 
       buf ctrlpkt_buf;
-      ctrlpkt_buf.append_section_data(sec);
+      ctrlpkt_buf.append_section_data(sec, m_elfio.get_class());
       auto grp_idx = m_section_to_group_map[sec->get_index()];
       m_ctrlpkt_buf_map[grp_idx][name] = std::move(ctrlpkt_buf);
     }
