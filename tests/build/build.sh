@@ -13,19 +13,23 @@ VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 MAJOR=${VERSION%.*}
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
-CMAKE=cmake
-CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
-CPU=`uname -m`
-
-if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
-    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]] || [[ $OSDIST == "almalinux" ]] || [[ $OSDIST == "rocky" ]]; then
-        CMAKE=cmake3
-        if [[ ! -x "$(command -v $CMAKE)" ]]; then
-            echo "$CMAKE is not installed, please run xrtdeps.sh"
-            exit 1
-        fi
+CMAKE=""
+if command -v cmake >/dev/null 2>&1; then
+    CMAKE_MAJOR_VERSION=$(cmake --version | head -n 1 | awk '{print $3}' | cut -d. -f1)
+    if [[ "$CMAKE_MAJOR_VERSION" -ge 3 ]]; then
+        CMAKE=cmake
     fi
 fi
+
+if [[ -z "$CMAKE" ]]; then
+    if command -v cmake3 >/dev/null 2>&1; then
+        CMAKE=cmake3
+    else
+        echo "CMake >= 3 is required, please run xrtdeps.sh"
+        exit 1
+    fi
+fi
+CPU=`uname -m`
 
 
 if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
