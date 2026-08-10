@@ -177,6 +177,89 @@ public:
 **Exit criterion:** `aiebu::elf` builds, parses an AIE ELF, and its unit tests
 cover all getter methods.
 
+#### Implementation notes (step 1.1)
+
+**Files:** `aiebu/src/cpp/include/aiebu/elf.h`,
+`aiebu/src/cpp/elf/elf_reader.cpp`, `aiebu/src/cpp/CMakeLists.txt`
+
+**Internal structure — base + subclass pattern:**  
+The implementation uses a non-public `elf_reader` abstract base with two
+concrete subclasses: `elf_reader_aie2p` (AIE2P / gen2) and
+`elf_reader_gen2plus` (AIE2PS, AIE4 family).  This mirrors XRT's
+`elf_impl` / `elf_aie_gen2` / `elf_aie_gen2_plus` hierarchy.  `aiebu::elf`
+holds a `unique_ptr<elf_reader>` and delegates all calls to it.
+
+**API additions vs. spec:**
+
+- `get_ctrl_scratch_pad_mem_size() const → size_t` — added as a public
+  getter.  The value was parsed from `.dynsym` in XRT but only surfaced
+  inside `module_config_aie_gen2`.  Exposing it here avoids re-parsing
+  in Step 1.2.
+
+- `elf::arg` has an extra `bool is_global` field beyond the spec's
+  `{name, data_type, index}`.  This mirrors the `argtype::global` flag in
+  XRT's `kernel_argument` and is needed for Step 1.2 to reconstruct the
+  XRT `xarg` without re-parsing.
+
+**API deviations vs. spec:**
+
+- `patch_schema` enumerator spelling: spec says `scaler_32` / `offset_64`;
+  implementation uses `scalar_32bit` / `offset_64bit` to match
+  `xrt_core::elf_patcher::symbol_type` names exactly.  The underlying
+  integer values are the same.
+
+- `patch_point` has an extra `uint32_t mask` field (register-value mask for
+  `scalar_32bit` patches, zero otherwise).  Needed to carry the `st_size`
+  field from the `.dynsym` entry that XRT uses when constructing
+  `patch_config`.
+
+- `buf_type` has an extra enumerator `buf_type_count` used as a
+  sentinel during gen2plus patcher init.
+
+**Internal additions not in spec:**
+
+- `detect_platform()` — validates the OS/ABI byte and throws on unknown
+  values.  XRT's factory did a bare `static_cast` without validation.
+
+- `resolve_ctrlcode_id(lambda)` on the base class — refactors the
+  duplicated `get_ctrlcode_id` body from XRT's two derived classes into one
+  parameterised helper.
+
+- `section_buf` (internal) — a stripped-down version of XRT's `buf`:
+  retains `append`, `pad_to`, `size`, `copy_to`.  The `to_bytes()`
+  materialisation helper that was present in an earlier draft was removed
+  (see memory note below).
+
+**PDI / ctrlpkt_pm API — size+copy instead of span:**  
+The spec showed `get_pdi()` / `get_ctrlpkt_pm_buf()` returning
+`span<const std::byte>`.  The implementation instead exposes size+copy
+pairs (`get_pdi_size` / `copy_pdi` and `get_ctrlpkt_pm_buf_size` /
+`copy_ctrlpkt_pm_buf`).  Every caller in `xrt_module.cpp` allocates a BO
+of the reported size and immediately copies into it; a `span` would have
+required an intermediate heap allocation to coalesce the multi-view
+`section_buf` into contiguous memory before the copy.  The size+copy API
+eliminates that allocation: `copy_to()` streams directly from ELFIO memory
+into the BO mapping.  Consequently `m_byte_cache` and `materialise()` are
+absent from the implementation entirely.
+
+**Memory footprint — identical to XRT:**  
+- All section buffer maps use zero-copy `string_view`s into ELFIO memory,
+  exactly as XRT's `buf` does.
+- Custom sections are stored as zero-copy spans into ELFIO memory (same as
+  XRT's `parse_custom_sections`).
+- `get_section()` returns a direct span into ELFIO memory; no copy is made.
+- PDI and ctrlpkt_pm data is copied once, directly into the caller-supplied
+  BO mapping via `copy_to()`; no intermediate buffer exists.
+
+**Parsing fidelity:**  
+All section-parsing logic (`init_legacy_section_maps`,
+`parse_single_group_section`, `parse_sections`, both `.rela.dyn` walkers,
+`init_column_ctrlcode`) is a direct port from XRT with no behavioural
+changes.  The addend-decode constants (`addend_shift`, `addend_mask`,
+`schema_mask`) and the key-string format for patch-point lookup are
+intentionally identical to `xrt_core::elf_patcher` so Step 1.2 can consume
+`get_patch_points()` without changing `xrt_module.cpp`.
+
 ---
 
 ### Step 1.2 — Replace `ELFIO::elfio m_elfio` in `elf_impl` with `aiebu::elf`
