@@ -303,21 +303,258 @@ call the corresponding `aiebu::elf` accessor.  For example:
 | `m_elfio.get_os_abi()` in `get_elfio()` | removed — see Step 1.3 |
 | `parse_sections()` body | replaced by calls to `m_elf.get_*_map()` |
 
+**`parse_sections()` and group/kernel maps:**  
 `parse_sections()` currently walks `m_elfio.sections` to build the group maps,
-kernel maps, custom section map, and patcher map.  After this step,
-`parse_sections()` calls the map accessors from `aiebu::elf` and populates the
-same `elf_impl` members.  This keeps `xrt_module.cpp` and other consumers of
-`elf_impl` unchanged.
+kernel maps, and custom section map.  After this step it is replaced by three
+direct assignments from `aiebu::elf`:
+
+```cpp
+m_section_to_group_map   = m_elf.get_section_to_group_map();
+m_group_to_sections_map  = m_elf.get_group_to_sections_map();
+m_kernel_name_to_id_map  = m_elf.get_kernel_name_to_id_map();
+```
+
+`m_kernels` is populated from `m_elf.get_kernels()`, translating each
+`aiebu::elf::kernel` (plain struct with `name`, `args`, `instances`) into the
+existing `xrt::elf::kernel` pimpl objects.  The `aiebu::elf::arg::is_global`
+field drives the `xrt::xarg::argtype` discriminant without re-parsing.
+
+`m_custom_section_map` is populated by iterating `m_elf.get_section()` for
+each key already known to `elf_impl`; alternatively, the map can be dropped
+from `elf_impl` entirely and `get_custom_section()` can delegate to
+`m_elf.get_section()` directly.
+
+`m_kernel_args_map`, `m_kernel_to_subkernels_map`, and all the private parsing
+helpers (`get_symbol_from_symtab`, `get_kernel_subkernel_from_symtab`,
+`init_legacy_section_maps`, `parse_single_group_section`,
+`parse_custom_sections`, `finalize_kernels`) are removed from `elf_impl` —
+this logic now lives exclusively in `aiebu::elf`.
+
+**`m_arg2patcher` — translation from `aiebu::elf::get_patch_points()`:**  
+The patcher table is the most important member to get right because
+`get_patcher_configs()` is called at `module_run` construction and
+`m_patcher_configs` is used on every `set_arg_value()` call on the hot path.
+The structure of `m_arg2patcher` is unchanged — it remains a
+`map<ctrl_code_id, map<key_string, patcher_config>>` owned by `elf_impl` with
+`module_run` holding a raw `const*` pointer into it.  Only the population
+changes: instead of the `.rela.dyn` walking loop, `initialize_arg_patchers()`
+translates from `m_elf.get_patch_points()`:
+
+```cpp
+for (const auto& [grp_idx, key_map] : m_elf.get_patch_points()) {
+  for (const auto& [key, pts] : key_map) {
+    std::vector<patch_config> configs;
+    for (const auto& pp : pts)
+      configs.push_back({pp.section_offset, pp.base_bo_offset, pp.mask});
+    m_arg2patcher[grp_idx].emplace(
+      key,
+      patcher_config{static_cast<patcher_symbol_type>(pp.schema), configs,
+                     static_cast<patcher_buf_type>(pp.target_buf)});
+  }
+}
+```
+
+The key-string format and the `patcher_config` / `patch_config` field layout
+are intentionally identical to what the old parsing code produced (verified
+during step 1.1 implementation), so `module_run`'s hot-path map lookup and
+`symbol_patcher::patch_symbol()` are completely unchanged.
+
+**Critical path — no runtime impact:**  
+`get_patcher_configs()` returns a raw `const*` into `m_arg2patcher` exactly as
+before.  `symbol_patcher` holds a raw `const patcher_config*` and writes
+directly into BO mappings.  The data layout and pointer relationships are
+identical; only the construction-time code that fills `m_arg2patcher` changes.
+Memory footprint of `m_arg2patcher` is identical — same map structure, same
+`patcher_config` objects with the same `patch_config` vectors.
+
+**Section buffer maps (`m_instr_buf_map`, `m_ctrlcodes_map`, etc.):**  
+`aiebu::elf` does not expose its internal `section_buf` maps — these remain
+owned by `elf_aie_gen2` and `elf_aie_gen2_plus` in XRT.  The buffer init
+functions (`initialize_section_buf_map`, `initialize_column_ctrlcode`, etc.)
+are rewritten to iterate the group/section maps obtained from `aiebu::elf`
+rather than walking `m_elfio.sections` directly:
+
+```cpp
+// before: iterating m_elfio.sections
+for (const auto& sec : m_elfio.sections) { ... sec->get_data() ... }
+
+// after: iterating via aiebu::elf maps + get_section()
+for (const auto& [grp_idx, sec_ids] : m_elf.get_group_to_sections_map()) {
+  for (auto sec_idx : sec_ids) {
+    // resolve section name from the index — requires a new
+    // get_section_name(uint32_t index) accessor on aiebu::elf,
+    // or alternatively the section names are stored in the
+    // group map during aiebu::elf parsing (preferred).
+  }
+}
+```
+
+This reveals a missing accessor: `aiebu::elf` must expose section names by
+index so `elf_aie_gen2` / `elf_aie_gen2_plus` can identify which buffer type
+each section belongs to without holding `m_elfio` themselves.  Add to
+`aiebu::elf`:
+
+```cpp
+// Returns the name of section at index, or empty string if not found.
+std::string get_section_name(uint32_t index) const;
+```
+
+Alternatively, the buffer maps can be built during `aiebu::elf` parsing and
+exposed through typed accessors — but that is Phase 2 scope.  For Step 1.2,
+`get_section_name(uint32_t)` is the minimal addition required.
+
+**`buf::append_section_data()` signature:**  
+Currently takes `const ELFIO::section*`.  After this step it takes
+`aiebu::detail::span<const std::byte>` (from `m_elf.get_section(name)`).
+The `unique_ptr<ELFIO::section>` overload is also removed.  `buf` itself
+(`elf_int.h`) gains no ELFIO dependency.
+
+**`get_pdi()` on `elf_impl` / `module_config_aie_gen2::elf_parent`:**  
+Currently `elf_aie_gen2::get_pdi()` returns `const buf&` — a zero-copy
+reference into its own `m_pdi_buf_map`.  After Step 1.2, PDI data lives
+inside `aiebu::elf`.  Replace the `get_pdi()` virtual with a size+copy pair
+on `elf_impl` that forwards to `m_elf`:
+
+```cpp
+size_t get_pdi_size(const std::string& symbol) const;
+void   copy_pdi(const std::string& symbol, aiebu::detail::span<std::byte> dest) const;
+```
+
+`xrt_module.cpp` call sites change from:
+```cpp
+const auto& pdi_data = m_config.elf_parent->get_pdi(symbol);
+auto pdi_bo = xbi::create_bo(m_hwctx, pdi_data.size(), ...);
+fill_bo_with_data(pdi_bo, pdi_data);
+```
+to:
+```cpp
+auto sz = m_config.elf_parent->get_pdi_size(symbol);
+auto pdi_bo = xbi::create_bo(m_hwctx, sz, ...);
+m_config.elf_parent->copy_pdi(symbol, {pdi_bo.map<std::byte*>(), sz});
+```
+
+The `elf_parent` back-pointer in `module_config_aie_gen2` is retained for
+this step and removed in Step 2 when `module_config` is retired.  Similarly,
+`get_ctrlpkt_pm_buf_size()` / `copy_ctrlpkt_pm_buf()` replace the
+`m_ctrlpkt_pm_bufs` map reference in `module_config_aie_gen2`.
 
 `m_platform` is set from `m_elf.get_platform()` and cast to `xrt::elf::platform`
 (same numeric values, so a `static_cast<uint8_t>` round-trip is safe).
 
 **`buf` struct in `elf_int.h`:** Currently `buf::append_section_data()` takes
-`const ELFIO::section*`.  After this step it takes `std::span<const std::byte>`
-from `aiebu::elf::get_section()`.  The ELFIO-typed overloads are removed.
+`const ELFIO::section*`.  After this step it takes
+`aiebu::detail::span<const std::byte>` from `m_elf.get_section()`.
+The ELFIO-typed overloads are removed.  `buf` gains no ELFIO dependency.
+
+**Missing `aiebu::elf` accessor — `get_section_name(uint32_t)`:**  
+As noted above, this must be added to `aiebu::elf` and `elf_reader` before
+Step 1.2 can proceed.  It is a trivial addition: `m_elfio.sections[index]`
+returns the section; return its name or empty string.  This should be
+committed to the aiebu `elfio_migration` branch as a preparatory step.
 
 **Exit criterion:** `xrt_elf.cpp` and `elf_int.h` no longer include
 `<elfio/elfio.hpp>`.  XRT builds and existing tests pass.
+
+#### Implementation notes (step 1.2)
+
+**Files changed:** `elf_int.h`, `xrt_elf.cpp`, `xrt_module.cpp`,
+`xrt_kernel.cpp`, `aiebu/src/cpp/include/aiebu/elf.h`,
+`aiebu/src/cpp/elf/elf_reader.cpp`
+
+**`elf_impl` — constructor and data members:**  
+`m_elfio` is replaced by `m_elf` (type `aiebu::elf`).  The constructor now
+takes `aiebu::elf&&` and derives `m_platform` from `m_elf.get_os_abi()`.
+`m_kernels` and `m_arg2patcher` are initialised directly in the initializer
+list via two static helpers (`create_kernels`, `create_arg2patcher`) defined
+in the anonymous namespace before `namespace xrt` — required so they are
+visible at the point of use in the initializer list.
+
+**`parse_sections()` eliminated:**  
+The method is removed entirely.  Kernel translation (`create_kernels`) and
+patcher-table construction (`create_arg2patcher`) are now static free
+functions called from the `elf_impl` constructor initializer list.
+
+**Group/section maps not copied:**  
+The spec proposed copying `m_section_to_group_map`, `m_group_to_sections_map`,
+and `m_kernel_name_to_id_map` into `elf_impl`.  These were eliminated — no
+XRT consumer read them after construction; all access goes through
+`aiebu::elf` virtual accessors instead.
+
+**`buf` struct removed from `elf_int.h`:**  
+`struct buf`, `instr_buf`, `control_packet`, `ctrlcode` type aliases, and all
+ELFIO-typed overloads of `append_section_data()` are removed.  The module_run
+buffer creation path now calls `elf_impl::get_instr_buf_size()` /
+`copy_instr_buf()` etc. directly (see buffer accessor section below).
+
+**`elf_aie_gen2` and `elf_aie_gen2_plus` — gutted to shells:**  
+All buffer maps (`m_instr_buf_map`, `m_ctrlcodes_map`, etc.), all buffer
+initialisation methods, all `.rela.dyn` walking, and `get_module_config()`
+are removed.  Each derived class now contains only a constructor (trace point
+only, body empty), `is_group_elf()`, and `get_ert_opcode()`.
+`get_ctrlcode_id()` was promoted to a non-virtual on `elf_impl` since both
+overrides were identical.
+
+**Buffer accessor API on `elf_impl`:**  
+All buffer access uses size+copy pairs forwarding directly to `aiebu::elf`
+virtual methods (`get_instr_buf_size`/`copy_instr_buf`, etc.).  `module_run`
+calls these with the `ctrl_code_id` it already holds, allocates a BO, and
+copies directly into the BO mapping — no intermediate heap buffer.
+
+**`module_config_aie_gen2/plus` and `get_module_config()` removed:**  
+Both config structs and the `get_module_config()` pure virtual are gone.
+`module_run_aie_gen2` and `module_run_aie_gen2_plus` hold only `m_elf_impl`
+and call buffer accessors directly.  `elf_parent` back-pointer eliminated.
+
+**`has_pdi()` added to `aiebu::elf`:**  
+`get_ert_opcode()` originally checked `!m_pdi_buf_map.empty()` — true if any
+`.pdi.*` section is present in the ELF, regardless of relocations.  An
+intermediate draft used `get_patch_points()` iteration (O(N)) and then
+`!m_ctrl_pdi_map.empty()` (only true when a relocation references a PDI
+symbol), both of which are subtly different from the original.  The final
+implementation backs `has_pdi()` with `!m_pdi_buf_map.empty()`, which is
+faithful to the original semantic and O(1).
+
+**`aiebu::detail::span` relocated:**  
+`detail/span.h` moved to `aiebu/detail/span.h` so that consumers linking
+against `aiebu_static` can reach it via the aiebu include interface.
+
+**ELFIO transitional include in `elf_int.h`:**  
+`<elfio/elfio.hpp>` is re-added to `elf_int.h` with a transitional comment
+because external submodules (`xdna-driver` shim tests, `xdp` elf_helpers)
+access `ELFIO::elfio` through `elf_impl::get_elfio()`.  Removed in Step 1.3.
+
+**`get_elfio()` escape hatch:**  
+`get_elfio()` is added to both `aiebu::elf` (returning `const ELFIO::elfio&`)
+and `elf_impl` (forwarding to `m_elf.get_elfio()`).  Marked transitional;
+removed in Step 1.3.
+
+**`get_patch_points()` — no copy, cleared after use:**  
+`get_patch_points()` now returns `const&` into `elf_reader::m_patch_points`
+(zero allocation).  `create_arg2patcher()` iterates this reference once to
+build `m_arg2patcher`, then the `elf_impl` constructor calls
+`m_elf.clear_patch_points()` to free `m_patch_points` immediately.  This
+eliminates the steady-state duplication that would otherwise exist between
+`m_patch_points` and `m_arg2patcher` for the ELF's lifetime.
+
+The type boundary between `aiebu::elf::patch_point` and
+`xrt_core::elf_patcher::patch_config` means `m_arg2patcher` cannot reference
+`m_patch_points` data directly — a translation copy is unavoidable while
+patching lives in XRT.  Both `m_patch_points` and `m_arg2patcher` are
+**Phase 1 only**: Phase 2 removes `m_arg2patcher` (patching moves to AIEBU)
+and with it the need for `m_patch_points` in AIEBU at all.
+
+**`get_pdi_symbols(uint32_t ctrl_code_id)` added to `aiebu::elf`:**  
+`module_run_aie_gen2::create_instruction_buf()` previously called
+`get_patch_points()` and walked all groups and all relocations to find PDI
+symbols for `m_ctrl_code_id` — O(N) with a deep copy.  `get_pdi_symbols()`
+returns `const std::unordered_set<std::string>&` into `m_ctrl_pdi_map`
+directly indexed by `ctrl_code_id` — O(1), zero allocation.
+
+**Critical path unchanged:**  
+`m_arg2patcher` layout, `get_patcher_configs()` raw-pointer return, and
+`symbol_patcher::patch_symbol()` are byte-for-byte identical to Step 1.1.
+The construction-time translation (`create_arg2patcher`) runs once and is
+off the hot path.
 
 ---
 
