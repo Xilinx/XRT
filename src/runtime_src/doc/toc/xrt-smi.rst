@@ -108,7 +108,7 @@ The command ``xrt-smi validate`` validates the installed card by running precomp
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
 
     - ``JSON``: The report is shown in latest JSON schema
-    - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
+    - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema (legacy option that is identical to ``JSON``)
 
 - The ``--output`` (or ``-o``) specifies the output file to direct the output
 

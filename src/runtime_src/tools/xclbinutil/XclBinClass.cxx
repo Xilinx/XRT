@@ -1969,6 +1969,9 @@ XclBin::updateInterfaceuuid()
   }
 
   // Updating axlf header interface_uuid with interface_uuid from partition_metadata
+  if (ptInterfaces.empty())
+    return;
+
   boost::property_tree::ptree ptInterface = ptInterfaces[0];
   auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000-0000-0000-0000-000000000000");
   sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'

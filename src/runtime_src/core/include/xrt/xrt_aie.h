@@ -94,6 +94,7 @@ public:
    *   Reset shim;
    *   Write '0' to all the data and program memories.
    */
+  XRT_API_EXPORT
   void
   reset_array();
 
@@ -260,6 +261,7 @@ public:
    * Asynchronously transfer the buffer contents from BO offset to offset + sz
    * between GMIO and AIE.
    */
+  XRT_API_EXPORT
   async_handle 
   async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
 
@@ -280,6 +282,7 @@ public:
    *
    * The current thread will block until the transfer is completed.
    */
+  XRT_API_EXPORT
   void sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
 
   /**
@@ -319,6 +322,7 @@ public:
    * reset_array() - reset the AIE Array used for this hw_context
    *
    */
+  XRT_API_EXPORT
   void
   reset_array();
      /**
@@ -329,6 +333,7 @@ public:
    * This function retrieves the current AIE frequency for the partition
    * associated with this hardware context.
    */
+  XRT_API_EXPORT
   double
   get_aie_freq() const;
 
@@ -340,6 +345,7 @@ public:
    * This function sets the AIE frequency for the partition
    * associated with this hardware context.
    */
+  XRT_API_EXPORT
   void
   set_aie_freq(double /* freq_mhz*/);
 
@@ -386,9 +392,11 @@ public:
    *
    */
   [[deprecated("deprecated, please use profiling(hw_context) instead")]]
+  XRT_API_EXPORT
   explicit
   profiling(const xrt::device& device);
 
+  XRT_API_EXPORT
   explicit
   profiling(const xrt::hw_context& hwctx);
 
@@ -410,6 +418,7 @@ public:
    * port names and value. The port names and value will have different
    * meanings on different options.
    */
+  XRT_API_EXPORT
   int 
   start(profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const;
 
@@ -417,6 +426,7 @@ public:
    * read() - Read the current performance counter value
    *          associated with the profiling handle
    */
+  XRT_API_EXPORT
   uint64_t
   read() const;
 
@@ -425,6 +435,7 @@ public:
    *          associated with the profiling handle and
    *          release the corresponding hardware resources.
    */
+  XRT_API_EXPORT
   void
   stop() const;
 };

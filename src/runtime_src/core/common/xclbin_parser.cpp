@@ -70,8 +70,24 @@ validate_pointer_offset(uint64_t offset, uint64_t element_size, uint64_t count,
   uint64_t total_size = element_size * count;
   if (count > 0 && total_size / count != element_size)  // overflow check
     throw xrt_core::error(-EINVAL, boost::str(boost::format("%s size overflow") % field_name));
-  
+
   validate_offset_size(offset, total_size, section_size, field_name);
+}
+
+// Validate that an mpo (message-passing offset) string offset lies within the section.
+// mpo fields are uint32_t byte offsets from the section base to a null-terminated string.
+// We require offset < section_size so the pointer is inside the buffer; the caller
+// is responsible for ensuring the section buffer itself is null-terminated or bounded.
+static void
+validate_string_offset(uint32_t offset, uint64_t section_size, const char* field_name)
+{
+  if (static_cast<uint64_t>(offset) < section_size)
+    return;
+  
+  throw xrt_core::error(-EINVAL,
+          boost::str(boost::format("%s string offset out of bounds "
+          "(offset=%u, section_size=%llu)")
+          % field_name % offset % section_size));
 }
 
 static kernel_type
@@ -859,8 +875,21 @@ get_softkernels(const axlf* top)
   for (pSection = ::xclbin::get_axlf_section(top, SOFT_KERNEL);
     pSection != nullptr;
     pSection = ::xclbin::get_axlf_section_next(top, pSection, SOFT_KERNEL)) {
+      const uint64_t section_size = pSection->m_sectionSize;
+      validate_offset_size(pSection->m_sectionOffset, section_size,
+                           top->m_header.m_length, "SOFT_KERNEL section");
+
+      if (section_size < sizeof(soft_kernel))
+        throw xrt_core::error(-EINVAL, "SOFT_KERNEL section too small for header");
+
       auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
       auto soft = reinterpret_cast<const soft_kernel*>(begin);
+
+      validate_string_offset(soft->mpo_symbol_name, section_size, "soft_kernel::mpo_symbol_name");
+      validate_string_offset(soft->mpo_name,        section_size, "soft_kernel::mpo_name");
+      validate_string_offset(soft->mpo_version,     section_size, "soft_kernel::mpo_version");
+      validate_offset_size(soft->m_image_offset, soft->m_image_size,
+                           section_size, "soft_kernel::m_image");
 
       softkernel_object sko;
       sko.ninst = soft->m_num_instances;
@@ -904,6 +933,8 @@ get_aie_partition(const axlf* top)
                           "info.start_columns");
 
   auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
+
+  validate_string_offset(aiep->mpo_name, section_size, "aie_partition::mpo_name");
 
   aie_partition_obj obj{aiep->info.column_width,
                         {scp, scp + aiep->info.start_columns.size},
@@ -959,6 +990,8 @@ get_aie_partition(const axlf* top)
       auto kernel_idp = reinterpret_cast<const uint64_t*>(topbase + cdop->dpu_kernel_ids.offset);
       for (uint32_t k = 0; k < cdop->dpu_kernel_ids.size; ++k)
         dpu_kernel_ids.push_back(kernel_idp[k]);
+
+      validate_string_offset(cdop->mpo_name, section_size, "cdo_group::mpo_name");
 
       pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name,
                                                           cdop->cdo_type,

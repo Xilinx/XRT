@@ -15,6 +15,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_graph.h"
 #include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_message.h"
 #include "xrt/experimental/xrt_system.h"
@@ -746,4 +747,120 @@ PYBIND11_MODULE(pyxrt, m) {
         }), py::arg("timeout"),
         "Wait for the specified timeout for the runlist to complete");
         
+/*
+ *
+ * xrt::graph
+ *
+ */
+
+    py::class_<xrt::graph> pygraph(m, "graph", "Represents an AIE graph execution object");
+
+    py::enum_<xrt::graph::access_mode>(pygraph, "access_mode", "Graph access mode")
+        .value("exclusive", xrt::graph::access_mode::exclusive)
+        .value("primary",   xrt::graph::access_mode::primary)
+        .value("shared",    xrt::graph::access_mode::shared)
+        .export_values();
+
+    pygraph
+        .def(py::init([](const xrt::hw_context& ctx, const std::string& name) {
+            py::gil_scoped_release release;
+            return new xrt::graph(ctx, name);
+        }),
+        py::arg("ctx"), py::arg("name"),
+        "Create a graph from a hardware context and graph name.")
+        .def(py::init([](const xrt::hw_context& ctx, const std::string& name,
+                         xrt::graph::access_mode mode) {
+            py::gil_scoped_release release;
+            return new xrt::graph(ctx, name, mode);
+        }),
+        py::arg("ctx"), py::arg("name"), py::arg("mode"),
+        "Create a graph with an explicit access mode.")
+        .def("reset", [](xrt::graph& g) {
+            py::gil_scoped_release release;
+            g.reset();
+        }, "Reset the graph by disabling tiles and enabling tile reset.")
+        .def("get_timestamp", &xrt::graph::get_timestamp,
+             "Get the current graph timestamp in AIE cycles.")
+        .def("gmio_bank_id", &xrt::graph::gmio_bank_id, py::arg("gmio_name"),
+             "Get the memory bank index for a named GMIO port.")
+        .def("run", [](xrt::graph& g, uint32_t iterations) {
+            py::gil_scoped_release release;
+            g.run(iterations);
+        }, py::arg("iterations") = 0,
+        "Start graph execution.")
+        .def("wait", [](xrt::graph& g, std::chrono::milliseconds timeout_ms) {
+            py::gil_scoped_release release;
+            g.wait(timeout_ms);
+        }, py::arg("timeout_ms"),
+        "Wait for graph completion or until timeout.")
+        .def("wait", [](xrt::graph& g, uint64_t cycles) {
+            py::gil_scoped_release release;
+            g.wait(cycles);
+        }, py::arg("cycles") = 0,
+        "Wait for the given AIE cycles then suspend the graph.")
+        .def("suspend", [](xrt::graph& g) {
+            py::gil_scoped_release release;
+            g.suspend();
+        }, "Suspend a running graph.")
+        .def("resume", [](xrt::graph& g) {
+            py::gil_scoped_release release;
+            g.resume();
+        }, "Resume a suspended graph.")
+        .def("end", [](xrt::graph& g, uint64_t cycles) {
+            py::gil_scoped_release release;
+            g.end(cycles);
+        }, py::arg("cycles") = 0,
+        "Wait for the given AIE cycles then terminate the graph.")
+        .def("update", [](xrt::graph& g, const std::string& port_name, py::buffer data) {
+            py::buffer_info info = data.request();
+            g.update(port_name, info.ptr, static_cast<size_t>(info.itemsize * info.size));
+        }, py::arg("port_name"), py::arg("data"),
+        "Update a runtime parameter port.")
+        .def("read", [](xrt::graph& g, const std::string& port_name, size_t size) {
+            py::array_t<char> result(size);
+            py::buffer_info info = result.request();
+            g.read(port_name, info.ptr, size);
+            return result;
+        }, py::arg("port_name"), py::arg("size"),
+        "Read a runtime parameter port.");
+
+/*
+ *
+ * xrt::aie::bo
+ *
+ */
+
+    py::module_ aie = m.def_submodule("aie", "AIE-specific XRT functionality.");
+
+    py::class_<xrt::aie::bo, xrt::bo> pyaiebo(aie, "bo",
+        "AIE buffer object supporting GMIO synchronous transfers.");
+
+    pyaiebo
+        .def(py::init([](xrt::device& d, size_t sz, xrt::bo::flags flags, xrt::memory_group grp) {
+            return new xrt::aie::bo(d, sz, flags, grp);
+        }),
+        py::arg("device"), py::arg("size"), py::arg("flags"), py::arg("group"),
+        "Create a buffer object on a device with the requested size, flags, and memory group.")
+        .def(py::init([](xrt::hw_context& ctx, size_t sz, xrt::bo::flags flags, xrt::memory_group grp) {
+            return new xrt::aie::bo(ctx, sz, flags, grp);
+        }),
+        py::arg("ctx"), py::arg("size"), py::arg("flags"), py::arg("group"),
+        "Create a buffer object in a hardware context with the requested size, flags, and memory group.")
+        .def(py::init([](xrt::hw_context& ctx, size_t sz, xrt::memory_group grp) {
+            return new xrt::aie::bo(ctx, sz, grp);
+        }),
+        py::arg("ctx"), py::arg("size"), py::arg("group"),
+        "Create a buffer object in a hardware context using default flags.")
+        .def("sync", [](xrt::aie::bo& b, const std::string& port,
+                        xclBOSyncDirection dir, size_t sz, size_t offset) {
+            py::gil_scoped_release release;
+            b.sync(port, dir, sz, offset);
+        }, py::arg("port"), py::arg("direction"), py::arg("size"), py::arg("offset"),
+        "Synchronize buffer data with a named GMIO port.")
+        .def("sync", [](xrt::aie::bo& b, const std::string& port, xclBOSyncDirection dir) {
+            py::gil_scoped_release release;
+            b.sync(port, dir);
+        }, py::arg("port"), py::arg("direction"),
+        "Sync entire buffer content with a named GMIO port.");
+
 }

@@ -182,9 +182,9 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                              "  mpo_md5_value (0x%lx): '%s'\n")
                % pHdr->m_flash_type % getFlashTypeAsString((FLASH_TYPE)pHdr->m_flash_type)
                % pHdr->m_image_offset % pHdr->m_image_size
-               % pHdr->mpo_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_name)
-               % pHdr->mpo_version % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_version)
-               % pHdr->mpo_md5_value % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_md5_value));
+               % pHdr->mpo_name % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, _origSectionSize)
+               % pHdr->mpo_version % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version, _origSectionSize)
+               % pHdr->mpo_md5_value % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_md5_value, _origSectionSize));
 
   // Get the JSON metadata
   _istream.seekg(0, _istream.end);             // Go to the beginning
@@ -235,7 +235,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_name
   {
-    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_name;
+    auto sDefault = XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, _origSectionSize);
     auto sValue = ptFlash.get<std::string>("name", sDefault);
     flashHdr.mpo_name = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
@@ -245,7 +245,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_version
   {
-    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_version;
+    auto sDefault = XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version, _origSectionSize);
     auto sValue = ptFlash.get<std::string>("version", sDefault);
     flashHdr.mpo_version = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
@@ -254,7 +254,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_md5_value
   {
-    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_md5_value;
+    auto sDefault = XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_md5_value, _origSectionSize);
     auto sValue = ptFlash.get<std::string>("md5", sDefault);
     flashHdr.mpo_md5_value = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
@@ -277,7 +277,12 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::string sStringBlock = stringBlock.str();
   _buffer.write(sStringBlock.c_str(), sStringBlock.size());
 
-  // Image
+  // Image — validate offset+size against the original section before reading
+  {
+    uint64_t img_end = static_cast<uint64_t>(pHdr->m_image_offset) + pHdr->m_image_size;
+    if (img_end > _origSectionSize)
+      throw std::runtime_error("flash m_image_offset/m_image_size out of bounds");
+  }
   _buffer.write(reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset, pHdr->m_image_size);
 }
 
@@ -413,6 +418,12 @@ SectionFlash::writeObjImage(std::ostream& _oStream) const
   // No look at the data
   auto pHdr = reinterpret_cast<flash*>(m_pBuffer);
 
+  {
+    uint64_t img_end = static_cast<uint64_t>(pHdr->m_image_offset) + pHdr->m_image_size;
+    if (img_end > m_bufferSize)
+      throw std::runtime_error("flash m_image_offset/m_image_size out of bounds");
+  }
+
   auto pFWBuffer = reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset;
   _oStream.write(pFWBuffer, pHdr->m_image_size);
 }
@@ -441,9 +452,9 @@ SectionFlash::writeMetadata(std::ostream& _oStream) const
                              "  mpo_md5_value (0x%lx): '%s'\n")
                % pHdr->m_flash_type % getFlashTypeAsString((FLASH_TYPE)pHdr->m_flash_type)
                % pHdr->m_image_offset % pHdr->m_image_size
-               % pHdr->mpo_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_name)
-               % pHdr->mpo_version % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_version)
-               % pHdr->mpo_md5_value % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_md5_value));
+               % pHdr->mpo_name % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, m_bufferSize)
+               % pHdr->mpo_version % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version, m_bufferSize)
+               % pHdr->mpo_md5_value % XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_md5_value, m_bufferSize));
 
   // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptFlash;

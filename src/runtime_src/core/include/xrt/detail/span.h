@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_DETAIL_SPAN_H
 #define XRT_DETAIL_SPAN_H
 
@@ -36,9 +36,9 @@ public:
   using reference = T&;
   using const_reference = const T&;
   using iterator = pointer;
-  using const_iterator = const pointer;
+  using const_iterator = const_pointer;
   using reverse_iterator = std::reverse_iterator<iterator>;
-  using const_reverse_iterator = std::reverse_iterator<const iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
   
   constexpr span() = default;
   constexpr span(T* data, std::size_t size)
@@ -63,8 +63,8 @@ public:
   
   constexpr reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
   constexpr reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
-  constexpr const_reverse_iterator crbegin() const noexcept { return rbegin(); }
-  constexpr const_iterator crend() const noexcept { return rend(); }
+  constexpr const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(end()); }
+  constexpr const_reverse_iterator crend()   const noexcept { return const_reverse_iterator(begin()); }
 
   constexpr reference front() const { return *begin(); }
   constexpr reference back() const { return *(end() - 1) ; }

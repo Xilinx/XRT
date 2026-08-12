@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #pragma once
 
@@ -76,6 +76,12 @@ public:
   {
     return validate_test_desc;
   }
+
+  xrt_core::smi::subcommand
+  create_validate_subcommand() override;
+
+  xrt_core::smi::subcommand
+  create_examine_subcommand() override;
 };
 
 void

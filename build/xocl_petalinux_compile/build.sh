@@ -27,9 +27,25 @@ usage_and_exit()
 }
 
 PROGRAM=`basename $0`
-OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
-CMAKE=cmake
+CMAKE=""
+if command -v cmake >/dev/null 2>&1; then
+    CMAKE_MAJOR_VERSION=$(cmake --version | head -n 1 | awk '{print $3}' | cut -d. -f1)
+    if [[ "$CMAKE_MAJOR_VERSION" -ge 3 ]]; then
+        CMAKE=cmake
+    fi
+fi
+
+if [[ -z "$CMAKE" ]]; then
+    if command -v cmake3 >/dev/null 2>&1; then
+        CMAKE=cmake3
+    else
+        echo "CMake >= 3 is required, please install cmake3 by running following commands..."
+        echo "sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+        echo "sudo yum install -y cmake3"
+        exit 1
+    fi
+fi
 CORE=`grep -c ^processor /proc/cpuinfo`
 jcore=$CORE
 CONFIG_FILE=""
@@ -40,16 +56,6 @@ clean=0
 SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 
-
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
-    CMAKE=cmake3
-    if [[ ! -x "$(command -v $CMAKE)" ]]; then
-        echo "$CMAKE is not installed, please install cmake3 by running following commands..."
-        echo "sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
-        echo "sudo yum install -y cmake3"
-        exit 1
-    fi
-fi
 
 release_dir="cmake_files"
 

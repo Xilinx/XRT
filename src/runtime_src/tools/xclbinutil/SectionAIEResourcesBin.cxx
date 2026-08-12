@@ -200,7 +200,7 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_name
   {
-    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(aie_resources_bin) + pHdr->mpo_name;
+    auto sDefault = XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_name, _origSectionSize);
     auto sValue = ptSK.get<std::string>("name", sDefault);
 
     if (sValue.compare(getSectionIndexName()) != 0) {
@@ -215,7 +215,7 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_version
   {
-    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(aie_resources_bin) + pHdr->mpo_version;
+    auto sDefault = XUtil::bounded_mpo_cstr(pHdr, pHdr->mpo_version, _origSectionSize);
     auto sValue = ptSK.get<std::string>("version", sDefault);
     aieResourcesBinHdr.mpo_version = sizeof(aie_resources_bin) + stringBlock.tellp();
     stringBlock << sValue << '\0';
@@ -224,7 +224,7 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // m_start_column
   {
-    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(aie_resources_bin) + pHdr->m_start_column;
+    auto sDefault = XUtil::bounded_mpo_cstr(pHdr, pHdr->m_start_column, _origSectionSize);
     auto sValue = ptSK.get<std::string>("start_column", sDefault);
     aieResourcesBinHdr.m_start_column = sizeof(aie_resources_bin) + stringBlock.tellp();
     stringBlock << sValue << '\0';
@@ -233,7 +233,7 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // m_num_columns
   {
-    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(aie_resources_bin) + pHdr->m_num_columns;
+    auto sDefault = XUtil::bounded_mpo_cstr(pHdr, pHdr->m_num_columns, _origSectionSize);
     auto sValue = ptSK.get<std::string>("num_columns", sDefault);
     aieResourcesBinHdr.m_num_columns = sizeof(aie_resources_bin) + stringBlock.tellp();
     stringBlock << sValue << '\0';
@@ -257,7 +257,12 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::string sStringBlock = stringBlock.str();
   _buffer.write(sStringBlock.c_str(), sStringBlock.size());
 
-  // Image
+  // Image — validate offset+size against the original section before reading
+  {
+    uint64_t img_end = static_cast<uint64_t>(pHdr->m_image_offset) + pHdr->m_image_size;
+    if (img_end > _origSectionSize)
+      throw std::runtime_error("aie_resources_bin m_image_offset/m_image_size out of bounds");
+  }
   _buffer.write(reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset, pHdr->m_image_size);
 }
 
@@ -382,6 +387,12 @@ SectionAIEResourcesBin::writeObjImage(std::ostream& _oStream) const
 
   // No look at the data
   auto pHdr = reinterpret_cast<aie_resources_bin*>(m_pBuffer);
+
+  {
+    uint64_t img_end = static_cast<uint64_t>(pHdr->m_image_offset) + pHdr->m_image_size;
+    if (img_end > m_bufferSize)
+      throw std::runtime_error("aie_resources_bin m_image_offset/m_image_size out of bounds");
+  }
 
   auto pFWBuffer = reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset;
   _oStream.write(pFWBuffer, pHdr->m_image_size);
