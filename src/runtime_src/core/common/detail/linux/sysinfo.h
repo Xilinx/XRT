@@ -137,7 +137,7 @@ std::pair<unsigned int, unsigned int>
 get_terminal_size()
 {
   struct winsize ws{};
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) ioctl is the only portable way to query terminal size
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg) ioctl is the only portable way to query terminal size
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != 0 || ws.ws_row == 0 || ws.ws_col == 0)
     throw xrt_core::error(errno, "Unable to determine terminal size");
 
