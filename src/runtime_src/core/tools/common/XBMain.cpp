@@ -35,7 +35,7 @@ void  main_(int argc, char** argv,
             const std::string & _description,
             const SubCmdsCollection &_subCmds) 
 {
-  bool isUserDomain = boost::iequals(_executable, "xrt-smi"); 
+  bool isUserDomain = boost::iequals(_executable, "xrt-smi");
 
   // Global options
   bool bVerbose = false;
@@ -65,10 +65,10 @@ void  main_(int argc, char** argv,
   globalOptions.add(globalSubCmdOptions);
 
   // Hidden Options
-  const std::string device_default = xrt_core::get_total_devices(isUserDomain).first == 1 ? "default" : "";
+  const std::string device_default = XBU::get_enumerated_device_count(isUserDomain) > 0 ? "default" : "";
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
-    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "Specify a BDF. If the option is omitted and there is only 1 device, that device is used\n")
+    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "Specify a BDF. If omitted, the first available user device is used\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
     ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
@@ -173,19 +173,15 @@ void  main_(int argc, char** argv,
 
     if (available_devices.empty()) //no device
       config = xrt_smi_default::get_default_smi_config();
-    else if (available_devices.size() == 1 || !sDevice.empty()) { //1 device
+    else {
       auto device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
-      config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
-    }
-    else { //multiple devices
-      std::string dev;
-      for (auto& kd : available_devices) {
-        boost::property_tree::ptree& devpt = kd.second;
-        dev = devpt.get<std::string>("bdf");
+      if (vm["device"].defaulted() && available_devices.size() > 1) {
+        const auto bdf = xrt_core::query::pcie_bdf::to_string(
+          xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+        std::cout << (boost::format("NOTE: Multiple devices found, running for '%s'\n\n") % bdf).str();
       }
-      std::cout <<  (boost::format("NOTE: Multiple devices found. Showing help for %s device\n\n") % dev).str();
-      auto device = XBU::get_device(boost::algorithm::to_lower_copy(dev), isUserDomain);
-      config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
+      config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(
+        device, xrt_core::query::xrt_smi_config::type::options_config);
     }
 
     std::istringstream command_config_stream(config);

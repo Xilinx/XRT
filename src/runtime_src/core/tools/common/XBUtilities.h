@@ -29,6 +29,9 @@
 
 namespace XBUtilities {
 
+  xrt_core::device::id_type
+  get_enumerated_device_count(bool inUserDomain);
+
   class Timer {
   private:
     std::chrono::high_resolution_clock::time_point m_time_start;
