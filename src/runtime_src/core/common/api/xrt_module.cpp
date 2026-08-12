@@ -259,8 +259,8 @@ protected:
   static void
   fill_bo_with_data(xrt::bo& bo, const xrt::buf& buf, bool sync = true)
   {
-    auto ptr = bo.map<char*>();
-    buf.copy_to(ptr);
+    auto ptr = bo.map<uint8_t*>();
+    buf.copy_to({ptr, bo.size()});
     if (sync)
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
@@ -876,10 +876,12 @@ class module_run_aie_gen2_plus : public module_run
     const auto& col_data = m_config.ctrlcodes;
 
     // Copy all column control codes to instruction buffer
-    auto ptr = m_buffer.map<char*>();
+    auto ptr = m_buffer.map<uint8_t*>();
+    auto remaining = m_buffer.size();
     for (const auto& ctrlcode : col_data) {
-      ctrlcode.copy_to(ptr);
+      ctrlcode.copy_to({ptr, remaining});
       ptr += ctrlcode.size();
+      remaining -= ctrlcode.size();
     }
 
     // Dump pre-patched instruction buffer
