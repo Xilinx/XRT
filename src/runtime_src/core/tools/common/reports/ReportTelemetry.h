@@ -18,7 +18,7 @@ class ReportTelemetry : public Report {
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream& _output) const;
 
   // Full-screen "live" report: clear once, print header once, share it across reports.
-  virtual bool clearScreenBeforeReports() const override { return true; }
+  bool clearScreenBeforeReports() const override { return true; }
 };
 
 #endif
