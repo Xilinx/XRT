@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "ReportTelemetry.h"
 
@@ -214,14 +214,14 @@ ReportTelemetry::writeReport(const xrt_core::device* /*_pDevice*/,
                              const std::vector<std::string>& /*_elementsFilter*/,
                              std::ostream& _output) const
 {
-  _output << "Telemetry\n";
-
   boost::property_tree::ptree telemetry_pt = pt.get_child("telemetry", empty_ptree);
   if (telemetry_pt.empty()) {
+    _output << "Telemetry\n";
     _output << "  No telemetry information available\n\n";
     return;
   }
 
+  _output << "Telemetry\n";
   _output << generate_misc_string(telemetry_pt);
   _output << generate_rtos_string(telemetry_pt);
   _output << generate_rtos_dtlb_string(telemetry_pt);

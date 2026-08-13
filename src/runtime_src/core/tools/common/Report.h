@@ -67,6 +67,8 @@ class Report : public JSONConfigurable {
   bool isHidden() const { return m_isHidden; };
   bool getConfigHidden() const {return isHidden();};
 
+  virtual bool clearScreenBeforeReports() const { return false; }
+
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Needs a virtual destructor
