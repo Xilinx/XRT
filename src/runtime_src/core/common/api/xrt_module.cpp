@@ -1418,7 +1418,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
 
   if (sz < inst->size())
     throw std::runtime_error{"Control code buffer passed in is too small"};
-  inst->copy_to(ibuf);
+  inst->copy_to({ibuf, sz});
 
   // If no args to patch, we're done
   if (!args || args->empty())

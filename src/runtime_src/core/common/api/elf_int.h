@@ -39,8 +39,8 @@ namespace xrt {
 //
 // Stores non-owning pointers to ELFIO section objects.
 // Compression is fully abstracted — aiebu determines whether
-// decompression is needed via get_section_data_size() /
-// copy_section_data().
+// decompression is needed via get_section_uncompressed_size() /
+// copy_section_uncompressed_data().
 // Padding stored separately to avoid copying section data.
 ////////////////////////////////////////////////////////////////
 struct buf
@@ -79,7 +79,7 @@ public:
     view_entry entry;
     entry.section = sec;
     entry.elf = &elf;
-    entry.data_size = aiebu::get_section_data_size(sec, elf);
+    entry.data_size = aiebu::get_section_uncompressed_size(sec, elf);
     m_views.push_back(entry);
   }
 
@@ -134,7 +134,7 @@ public:
     auto* dst = dest.data();
     for (const auto& v : m_views) {
       if (v.section) {
-        aiebu::copy_section_data(v.section, *v.elf, dst, v.data_size);
+        aiebu::copy_section_uncompressed_data(v.section, *v.elf, dst, v.data_size);
       }
       else {
         std::memcpy(dst, v.padding.data(), v.data_size);
@@ -143,22 +143,17 @@ public:
     }
   }
 
-  // Get data pointer - only works for single uncompressed section view (zero-copy).
-  // Throws for compressed views — caller must use copy_to() instead.
+  // Get data pointer - only works for single view (zero-copy)
+  // Used by patcher that needs direct memory access
   const uint8_t*
   data() const
   {
     if (m_views.size() == 1 && m_views[0].section) {
-      if (m_views[0].data_size != m_views[0].section->get_size()) {
-        throw std::runtime_error(
-          "Cannot get direct pointer from compressed buffer. "
-          "Use copy_to() to decompress data instead."
-        );
-      }
       return reinterpret_cast<const uint8_t*>(m_views[0].section->get_data());
     }
 
-    // Multiple views or padding-only: cannot provide direct pointer
+    // Multiple views: cannot provide direct pointer
+    // Caller should use copy_to() instead
     throw std::runtime_error(
       "Cannot get direct pointer from buffer with multiple views. "
       "Use copy_to() to copy data instead."
