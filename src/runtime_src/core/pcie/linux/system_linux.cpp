@@ -23,6 +23,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <set>
 #include <thread>
 #include <unistd.h>
 #include <vector>
@@ -167,9 +168,14 @@ system_linux::
 get_driver_info(boost::property_tree::ptree &pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
+  std::set<std::string> reported;
 
   for (const auto& drv : driver_list::get()) {
-    boost::property_tree::ptree _drv = driver_version(drv->name());
+    const auto& drv_name = drv->name();
+    if (!reported.insert(drv_name).second)
+      continue;
+
+    boost::property_tree::ptree _drv = driver_version(drv_name);
     if (!_drv.empty())
       _ptDriverInfo.push_back( {"", _drv} );
   }
