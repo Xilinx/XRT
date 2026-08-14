@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef __SectionDTBO_h_
-#define __SectionDTBO_h_
+#ifndef SectionDTBO_h_
+#define SectionDTBO_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
 #include "Section.h"
