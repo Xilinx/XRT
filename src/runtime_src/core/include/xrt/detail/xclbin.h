@@ -160,6 +160,7 @@ extern "C" {
         IP_METADATA            = 33,
         AIE_RESOURCES_BIN      = 34,
         AIE_TRACE_METADATA     = 35,
+        DTBO                   = 36,
     };
 
     enum MEM_TYPE {

@@ -7,6 +7,8 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 
 // Simple Add Test
 TEST(AddSection, AddClearingBitstream) {
@@ -35,6 +37,41 @@ TEST(AddSection, AddClearingBitstream) {
    // Check to see if section was removed
    pSection = xclBin.findSection(_eKind);
    ASSERT_NE(pSection, nullptr) << "Section  '" << sSection << "' was not added.";
+}
+
+// Add a raw device tree overlay section
+TEST(AddSection, AddDTBO) {
+   XclBin xclBin;
+
+   const std::string sSection = "DTBO";
+   enum axlf_section_kind eKind;
+   Section::translateSectionKindStrToKind(sSection, eKind);
+
+   // Use a binary resource as the raw DTBO payload.  Xclbinutil treats the
+   // contents as opaque data, so a compiled device tree is not required here.
+   std::filesystem::path inputFile(TestUtilities::getResourceDir());
+   inputFile /= "unique_data1.bin";
+
+   ASSERT_EQ(xclBin.findSection(eKind), nullptr)
+      << "Section '" << sSection << "' found.";
+
+   const std::string formattedString = sSection + ":RAW:" + inputFile.string();
+   ParameterSectionData psd(formattedString);
+   xclBin.addSection(psd);
+
+   const Section* pSection = xclBin.findSection(eKind);
+   ASSERT_NE(pSection, nullptr)
+      << "Section '" << sSection << "' was not added.";
+
+   std::ifstream input(inputFile, std::ios::binary);
+   ASSERT_TRUE(input.is_open())
+      << "Unable to open input file: " << inputFile;
+   const std::string expected((std::istreambuf_iterator<char>(input)),
+                              std::istreambuf_iterator<char>());
+
+   std::ostringstream actual;
+   pSection->dumpContents(actual, Section::FormatType::raw);
+   EXPECT_EQ(actual.str(), expected) << "DTBO payload was not preserved.";
 }
 
 // Add or replace test
@@ -165,6 +202,5 @@ TEST(AddSection, AddMergeIPLayout) {
       << "Output  : " << outputFile << std::endl 
       << "Expected: " << ip_layoutMergeExpect;
 }
-
 
 
