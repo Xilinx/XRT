@@ -9,6 +9,7 @@
 #include "xrt/detail/xclbin.h"
 
 #include <boost/algorithm/string.hpp>
+#include <limits>
 
 // Too much typing
 using ptree_type = boost::property_tree::ptree;
@@ -192,6 +193,25 @@ void
 add_host_mem_info(const xrt_core::device* device, ptree_type& pt)
 {
   pt.add("host_memory_status", get_host_mem_status(device));
+}
+
+void
+add_aie_load_info(const xrt_core::device* device, ptree_type& pt)
+{
+  try {
+    const xq::aie_load::args args{}; // sample_duration_ms = 0 -> driver default
+    const auto data = xrt_core::device_query<xq::aie_load>(device, args);
+
+    ptree_type pt_aie_load;
+    if (data.load_percent == std::numeric_limits<uint32_t>::max())
+      pt_aie_load.put("load_percent", "N/A");
+    else
+      pt_aie_load.put("load_percent", data.load_percent);
+    pt.put_child("aie_load", pt_aie_load);
+  }
+  catch (const xq::exception&) {
+    // Ignoring if not available: older driver/DLL or unsupported device
+  }
 }
 
 void
@@ -431,6 +451,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   {
     add_electrical_info(device, pt_platform);
     add_thermal_info(device, pt_platform);
+    add_aie_load_info(device, pt_platform);
     break;
   }
   default:
