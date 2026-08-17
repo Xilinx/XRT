@@ -17,7 +17,6 @@
 
 #include "core/common/aiebu/src/cpp/include/aiebu/aiebu_decompress.h"
 
-#include <boost/interprocess/streams/bufferstream.hpp>
 #include <elfio/elfio.hpp>
 
 #include <cstdint>
@@ -25,7 +24,6 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <sstream>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -49,10 +47,23 @@ private:
   // A view into ELFIO section data, possibly compressed.
   // For section-backed views, section and elf are non-null.
   // For padding views, section is null and padding holds the zero buffer.
+  //
+  // Lifetime of section/elf pointers:
+  //   section points into m_elfio's internal section array; elf points to
+  //   m_elfio itself (stored as &elf in append_section_data).  Both m_elfio
+  //   and the buf objects (m_instr_buf_map, m_ctrl_packet_map, etc.) are
+  //   members of the same elf_impl instance (m_elfio in the base class,
+  //   buf maps in the derived classes elf_aie_gen2 / elf_aie_gen2_plus).
+  //   This is why the raw pointers are safe: a buf cannot outlive its
+  //   owning elf_impl because it is a member of it, so m_elfio is
+  //   guaranteed to be alive whenever a view_entry in that buf is accessed.
+  //   At the broader scope, module_impl holds a shared_ptr<elf_impl>
+  //   ensuring elf_impl is not destroyed while the module is in use.
+  //
   struct view_entry {
     const ELFIO::section* section = nullptr;   // section-backed view (may be compressed)
-    const ELFIO::elfio* elf = nullptr;         // ELFIO object owning the section
-    std::string_view padding;                  // for zero-padding (section == nullptr)
+    const ELFIO::elfio* elf = nullptr;         // ELFIO owning the section (see lifetime note above)
+    std::string_view padding;                  // for zero-padding, points into m_padding_buffer
     std::size_t data_size = 0;                 // effective size (uncompressed if compressed)
   };
 
@@ -117,6 +128,7 @@ public:
     size_t total = 0;
     for (const auto& v : m_views)
       total += v.data_size;
+
     return total;
   }
 
@@ -133,22 +145,25 @@ public:
 
     auto* dst = dest.data();
     for (const auto& v : m_views) {
-      if (v.section) {
+      if (v.section)
         aiebu::copy_section_uncompressed_data(v.section, *v.elf, dst, v.data_size);
-      }
-      else {
+      else
         std::memcpy(dst, v.padding.data(), v.data_size);
-      }
+
       dst += v.data_size;
     }
   }
 
-  // Get data pointer - only works for single view (zero-copy)
-  // Used by patcher that needs direct memory access
+  // Get data pointer - only works for single uncompressed view (zero-copy).
+  // Throws if the section is SHF_COMPRESSED — compressed bytes are not valid
+  // instruction data. Use copy_to() for compression-safe access.
   const uint8_t*
   data() const
   {
     if (m_views.size() == 1 && m_views[0].section) {
+      if (m_views[0].section->get_flags() & ELFIO::SHF_COMPRESSED)
+        throw std::runtime_error(
+          "buf::data() called on compressed section — use copy_to() instead");
       return reinterpret_cast<const uint8_t*>(m_views[0].section->get_data());
     }
 
@@ -156,8 +171,7 @@ public:
     // Caller should use copy_to() instead
     throw std::runtime_error(
       "Cannot get direct pointer from buffer with multiple views. "
-      "Use copy_to() to copy data instead."
-    );
+      "Use copy_to() to copy data instead.");
   }
 
   // Create std::string from views (for debug/trace).

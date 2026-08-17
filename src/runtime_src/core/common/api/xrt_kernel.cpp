@@ -1834,9 +1834,11 @@ private:
     if (ctrl_packet.size() == 0)
       return nullptr;
 
-    // Create mutable copy for buffer cache
-    std::vector<uint8_t> ctrlpkt_data(ctrl_packet.data(),
-                                      ctrl_packet.data() + ctrl_packet.size());
+    // Create mutable copy for buffer cache.
+    // copy_to() handles compressed sections transparently; for uncompressed
+    // ELFs this is a plain memcpy.
+    std::vector<uint8_t> ctrlpkt_data(ctrl_packet.size());
+    ctrl_packet.copy_to({ctrlpkt_data.data(), ctrlpkt_data.size()});
     auto ctrlpkt_buf_size = ctrlpkt_data.size();
 
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
