@@ -68,6 +68,12 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
 
     auto temp_c = pt_platform.get<std::string>("thermal.temp_C", "N/A");
     _output << boost::format("%-23s  : %s\n") % "Temperature (C)" % temp_c;
+
+    auto aie_load = pt_platform.get<std::string>("aie_load.load_percent", "N/A");
+    if (aie_load != "N/A")
+      _output << boost::format("%-23s  : %s%%\n") % "AIE Load" % aie_load;
+    else
+      _output << boost::format("%-23s  : %s\n") % "AIE Load" % aie_load;
   }
 
   _output << std::endl;
