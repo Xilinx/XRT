@@ -357,13 +357,17 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       const auto examine_watch_snapshot =
           [&](const xrt_core::device*) {
             std::ostringstream console;
-            XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, console, oSchemaOutput);
+            XBU::produce_reports(device, reportsToProcess, schemaVersion,
+                                 Report::getSchemaDescription(options.m_format).optionName,
+                                 options.m_elementsFilter, console, oSchemaOutput);
             return console.str();
           };
       smi_watch_mode::run_watch_mode(device.get(), std::cout, examine_watch_snapshot,
           *options.m_watchIntervalSec);
     } else {
-      XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, std::cout, oSchemaOutput);
+      XBU::produce_reports(device, reportsToProcess, schemaVersion,
+                           Report::getSchemaDescription(options.m_format).optionName,
+                           options.m_elementsFilter, std::cout, oSchemaOutput);
     }
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing

@@ -16,10 +16,10 @@ class ReportAieLoad : public Report {
   void setDuration(uint32_t duration_ms) { m_duration_ms = duration_ms; }
 
  public:
-  virtual void getPropertyTreeInternal(const xrt_core::device* dev, boost::property_tree::ptree& pt) const;
-  virtual void getPropertyTree20202(const xrt_core::device* dev, boost::property_tree::ptree& pt) const;
-  virtual void writeReport(const xrt_core::device* dev, const boost::property_tree::ptree& pt,
-                           const std::vector<std::string>& elementsFilter, std::ostream& output) const;
+  void getPropertyTreeInternal(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
+  void getPropertyTree20202(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
+  void writeReport(const xrt_core::device* dev, const boost::property_tree::ptree& pt,
+                   const std::vector<std::string>& elementsFilter, std::ostream& output) const override;
 
  private:
   uint32_t m_duration_ms = 0; // 0 = driver default (XRT_AIE_LOAD_SAMPLE_INTERVAL_MS)
