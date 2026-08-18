@@ -44,7 +44,6 @@
 #include "tools/common/reports/platform/ReportPlatforms.h"
 #include "tools/common/reports/ReportPsKernels.h"
 #include "tools/common/reports/ReportQspiStatus.h"
-#include "tools/common/reports/ReportAieLoad.h"
 #include "tools/common/reports/ReportTelemetry.h"
 #include <cstdint>
 #include "tools/common/reports/ReportThermal.h"
@@ -68,7 +67,6 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   uniqueReportCollection = {
   // Common reports
     std::make_shared<ReportAie>(),
-    std::make_shared<ReportAieLoad>(),
     std::make_shared<ReportAieShim>(),
     std::make_shared<ReportAieMem>(),
     std::make_shared<ReportAiePartitions>(),
@@ -107,11 +105,6 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     option->setExecutable(getExecutableName());
     option->setCommand(getName());
   }
-
-  // Register --duration directly so it is always recognized without --advanced.
-  m_commonOptions.add_options()
-    ("duration", po::value<uint32_t>()->default_value(0),
-     "Sampling window in milliseconds for the aie-load report (0 = driver default)");
 }
 
 void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamineOptions& options) const
@@ -122,7 +115,6 @@ void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamin
   options.m_reportNames = vm.count("report") ? vm["report"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
   options.m_elementsFilter = vm.count("element") ? vm["element"].as<std::vector<std::string>>() : std::vector<std::string>();
-  options.m_duration = vm["duration"].as<uint32_t>();
   options.m_watchIntervalSec.reset();
   if (vm.count("watch")) {
     const auto& s = vm["watch"].as<std::string>();
@@ -341,12 +333,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
       std::cout << XBUtilities::str_available_devs(true) << std::endl;
     }
-  }
-
-  // Propagate --duration to ReportAieLoad before running reports.
-  for (const auto& report : reportsToProcess) {
-    if (auto* aieLoad = dynamic_cast<ReportAieLoad*>(report.get()))
-      aieLoad->setDuration(options.m_duration);
   }
 
   // Create the report
