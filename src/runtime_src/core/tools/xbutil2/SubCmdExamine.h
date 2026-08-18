@@ -28,7 +28,6 @@ struct SubCmdExamineOptions {
   std::string               m_output;
   bool                      m_help;
   std::optional<unsigned>   m_watchIntervalSec;
-  uint32_t                  m_duration = 0; // sampling window in ms for aie-load (0 = driver default)
 };
 class SubCmdExamine : public SubCmd {
   ReportCollection uniqueReportCollection;
