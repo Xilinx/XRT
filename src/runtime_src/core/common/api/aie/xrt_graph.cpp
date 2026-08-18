@@ -119,6 +119,18 @@ public:
     m_graphHandle->read_graph_rtp(port, buffer, size);
   }
 
+  int
+  update_rtp_nb(const char* port, const char* buffer, size_t size)
+  {
+    return m_graphHandle->update_graph_rtp_nb(port, buffer, size);
+  }
+
+  int
+  read_rtp_nb(const char* port, char* buffer, size_t size)
+  {
+    return m_graphHandle->read_graph_rtp_nb(port, buffer, size);
+  }
+
   uint32_t
   gmio_bank_id(const std::string& gmio_name) const
   {
@@ -447,6 +459,24 @@ read_port(const std::string& port_name, void* value, size_t bytes)
 {
   xdp::native::profiling_wrapper("xrt::graph::read_port", [this, port_name, value, bytes]{
     handle->read_rtp(port_name.c_str(), reinterpret_cast<char *>(value), bytes);
+  });
+}
+
+int
+graph::
+update_port_nb(const std::string& port_name, const void* value, size_t bytes)
+{
+  return xdp::native::profiling_wrapper("xrt::graph::update_port_nb", [this, port_name, value, bytes]{
+    return handle->update_rtp_nb(port_name.c_str(), reinterpret_cast<const char*>(value), bytes);
+  });
+}
+
+int
+graph::
+read_port_nb(const std::string& port_name, void* value, size_t bytes)
+{
+  return xdp::native::profiling_wrapper("xrt::graph::read_port_nb", [this, port_name, value, bytes]{
+    return handle->read_rtp_nb(port_name.c_str(), reinterpret_cast<char*>(value), bytes);
   });
 }
 
