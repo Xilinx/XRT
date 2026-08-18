@@ -15,7 +15,6 @@ config_gen_ryzen::
 config_gen_ryzen()
 {
   examine_report_desc = {
-    {"aie-load", "AIE array load utilization", "common"},
     {"aie-partitions", "AIE partition information", "common"},
     {"all", "All known reports are produced", "common"},
     {"host", "Host information (default)", "common"},
@@ -114,7 +113,6 @@ config_gen_npu3::
 config_gen_npu3()
 {
   examine_report_desc = {
-    {"aie-load", "AIE array load utilization", "common"},
     {"aie-partitions", "AIE partition information", "common"},
     {"all", "All known reports are produced", "common"},
     {"host", "Host information", "common"},
