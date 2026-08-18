@@ -31,7 +31,7 @@ ReportAieLoad::getPropertyTree20202(const xrt_core::device* dev,
     node.put("operations_per_second", data.operations_per_second);
 
     boost::property_tree::ptree pt_counters;
-    for (size_t i = 0; i < 8; i++) {
+    for (size_t i = 0; i < xrt_core::query::aie_load::num_activity_counters; i++) {
       boost::property_tree::ptree pt_counter;
       pt_counter.put("", data.activity_counters[i]);
       pt_counters.push_back({"", pt_counter});
