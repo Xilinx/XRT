@@ -493,6 +493,45 @@ static void ert_ctrl_submit_exit_cmd(struct ert_ctrl *ec)
 
 static bool ert_ctrl_abort_sync(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
+	struct kds_client_hw_ctx *hw_ctx;
+	unsigned long submitted = 0, completed = 0;
+	int timeout_ms = 5000;
+
+	/* Sum submitted and completed counts across all hw contexts */
+	list_for_each_entry(hw_ctx, &client->hw_ctx_list, link) {
+		int i;
+
+		for (i = 0; i < MAX_CUS; i++) {
+			submitted += stat_read(hw_ctx->stats, s_cnt[i]);
+			submitted += stat_read(hw_ctx->stats, scu_s_cnt[i]);
+			completed += stat_read(hw_ctx->stats, c_cnt[i]);
+			completed += stat_read(hw_ctx->stats, scu_c_cnt[i]);
+		}
+	}
+
+	if (submitted == completed)
+		return false;
+
+	/* Wait for in-flight commands to drain before client is freed */
+	do {
+		msleep(500);
+		timeout_ms -= 500;
+		submitted = 0;
+		completed = 0;
+		list_for_each_entry(hw_ctx, &client->hw_ctx_list, link) {
+			int i;
+
+			for (i = 0; i < MAX_CUS; i++) {
+				submitted += stat_read(hw_ctx->stats, s_cnt[i]);
+				submitted += stat_read(hw_ctx->stats, scu_s_cnt[i]);
+				completed += stat_read(hw_ctx->stats, c_cnt[i]);
+				completed += stat_read(hw_ctx->stats, scu_c_cnt[i]);
+			}
+		}
+		if (submitted == completed)
+			return false;
+	} while (timeout_ms > 0);
+
 	return true;
 }
 
