@@ -139,7 +139,69 @@ jobs:
           path: composite-workflows
           ref: main
 
-      - name: Run pcie-hw tests for ${{ matrix.board_list }}
+      - name: Run pcie-hw tests for ${{ matrix.board_list }} (attempt 1)
+        id: attempt1
+        continue-on-error: true
+        uses: ./composite-workflows/pcie-hw
+        with:
+          organization: ${{ github.repository }}
+          runNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }}
+          release: ${{ env.RELEASE }}
+          env: ${{ env.ENV }}
+          pipeline: ${{ env.PIPELINE }}
+          boardType: 'pcie'
+          boardState: 'gating'
+          boardMode: 'hw'
+          workspace: ${{ github.workspace }}
+          USER: ${{ secrets.USER }}
+          board: ${{ matrix.board_list }}
+          runnerName: ${{ runner.name }}
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+          apiKey: ${{ secrets.apiKey }}
+          NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+
+      - name: Wait for board host to become available (retry 1)
+        if: steps.attempt1.outcome == 'failure'
+        run: |
+          echo "Attempt 1 failed. Waiting 10 minutes for board host reboot..."
+          sleep 600
+
+      - name: Run pcie-hw tests for ${{ matrix.board_list }} (attempt 2)
+        id: attempt2
+        if: steps.attempt1.outcome == 'failure'
+        continue-on-error: true
+        uses: ./composite-workflows/pcie-hw
+        with:
+          organization: ${{ github.repository }}
+          runNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }}
+          release: ${{ env.RELEASE }}
+          env: ${{ env.ENV }}
+          pipeline: ${{ env.PIPELINE }}
+          boardType: 'pcie'
+          boardState: 'gating'
+          boardMode: 'hw'
+          workspace: ${{ github.workspace }}
+          USER: ${{ secrets.USER }}
+          board: ${{ matrix.board_list }}
+          runnerName: ${{ runner.name }}
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+          apiKey: ${{ secrets.apiKey }}
+          NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+
+      - name: Wait for board host to become available (retry 2)
+        if: steps.attempt1.outcome == 'failure' && steps.attempt2.outcome == 'failure'
+        run: |
+          echo "Attempt 2 failed. Waiting 10 minutes for board host reboot..."
+          sleep 600
+
+      - name: Run pcie-hw tests for ${{ matrix.board_list }} (attempt 3)
+        if: steps.attempt1.outcome == 'failure' && steps.attempt2.outcome == 'failure'
         uses: ./composite-workflows/pcie-hw
         with:
           organization: ${{ github.repository }}
