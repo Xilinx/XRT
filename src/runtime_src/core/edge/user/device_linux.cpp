@@ -43,6 +43,7 @@ extern "C" {
 #include "xaiengine/xlnx-ai-engine.h"
 #endif
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 
 
 
@@ -1357,7 +1358,30 @@ import_bo(pid_t pid, shared_handle::export_handle ehdl)
   if (pid == 0 || getpid() == pid)
     return xrt::shim_int::import_bo(get_device_handle(), ehdl);
 
-  throw xrt_core::error(std::errc::not_supported, __func__);
+#if defined(SYS_pidfd_open) && defined(SYS_pidfd_getfd)
+  auto pidfd = syscall(SYS_pidfd_open, pid, 0);
+  if (pidfd < 0)
+    throw xrt_core::system_error(errno, "pidfd_open failed");
+
+  auto bofd = syscall(SYS_pidfd_getfd, pidfd, ehdl, 0);
+  if (bofd < 0) {
+    ::close(pidfd);
+    throw xrt_core::system_error
+      (errno, "pidfd_getfd failed, check that ptrace access mode "
+       "allows PTRACE_MODE_ATTACH_REALCREDS.  For more details please "
+       "check /etc/sysctl.d/10-ptrace.conf");
+  }
+
+  auto bo = xrt::shim_int::import_bo(get_device_handle(), bofd);
+  ::close(bofd);
+  ::close(pidfd);
+  return bo;
+#else
+  throw xrt_core::system_error
+    (std::errc::not_supported,
+     "Importing buffer object from different process requires XRT "
+     " built and installed on a system with 'pidfd' kernel support");
+#endif
 }
 
 void
