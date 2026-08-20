@@ -353,6 +353,22 @@ namespace xclswemuhal2 {
         if (auto ret = xclGraphReadRTP(m_xclGraphHandle, port, buffer, size))
           throw xrt_core::system_error(ret, "fail to read graph rtp");
       }
+
+      int
+      update_graph_rtp_nb(const char* port, const char* buffer, size_t size) override
+      {
+        // sw_emu delegates to blocking RTP APIs
+        update_graph_rtp(port, buffer, size);
+        return 0;
+      }
+
+      int
+      read_graph_rtp_nb(const char* port, char* buffer, size_t size) override
+      {
+        // sw_emu delegates to blocking RTP APIs
+        read_graph_rtp(port, buffer, size);
+        return 0;
+      }
     }; // graph_object
   private:
       // This is a hidden signature of this class and helps in preventing

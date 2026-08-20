@@ -318,4 +318,57 @@ graph_object::read_graph_rtp(const char* port, char* buffer, size_t size)
 
   graph_api_obj->read(&rtp, (void*)buffer, size);
 }
+
+/* Non-blocking version of update_graph_rtp().
+ * Returns EAGAIN if RTP lock is unavailable.
+ */
+int
+graph_object::update_graph_rtp_nb(const char* port, const char* buffer, size_t size)
+{
+  auto it = rtps.find(port);
+  if (it == rtps.end()) {
+    /* find if the update is for shared buffer */
+    auto it = shared_buffer_configs.find(port);
+    if (it == shared_buffer_configs.end()) {
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP Port / Shared Buffer Name '" + port + "' not found");
+    }
+    else {
+      throw xrt_core::error(-ENOTSUP, "Can't update graph '" + name + "': non-blocking update is not supported for shared buffer '" + port + "'");
+    }
+  }
+  else {
+    auto& rtp = it->second;
+
+    if (access_mode == xrt::graph::access_mode::shared && !rtp.isAsync)
+      throw xrt_core::error(-EPERM, "Shared context can not update sync RTP");
+
+    if (rtp.isPL)
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' is not AIE RTP");
+
+    if (graph_api_obj->update_nb(&rtp, (const void*)buffer, size) == adf::err_code::resource_unavailable)
+      return EAGAIN;
+
+    return 0;
+  }
+}
+
+/* Non-blocking version of read_graph_rtp().
+ * Returns EAGAIN if RTP lock is unavailable.
+ */
+int
+graph_object::read_graph_rtp_nb(const char* port, char* buffer, size_t size)
+{
+  auto it = rtps.find(port);
+  if (it == rtps.end())
+    throw xrt_core::error(-EINVAL, "Can't read graph '" + name + "': RTP port '" + port + "' not found");
+  auto& rtp = it->second;
+
+  if (rtp.isPL)
+    throw xrt_core::error(-EINVAL, "Can't read graph '" + name + "': RTP port '" + port + "' is not AIE RTP");
+
+  if (graph_api_obj->read_nb(&rtp, (void*)buffer, size) == adf::err_code::resource_unavailable)
+    return EAGAIN;
+
+  return 0;
+}
 }
