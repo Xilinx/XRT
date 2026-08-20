@@ -16,8 +16,11 @@ class TestNPUThroughput : public TestRunner {
     TestNPUThroughput();
 
   private:
-    double 
+    double
     get_throughput_from_report(const nlohmann::json& report) const;
+
+    double
+    get_ops_throughput_from_report(const nlohmann::json& report, bool use_runlist) const;
 };
 
 #endif

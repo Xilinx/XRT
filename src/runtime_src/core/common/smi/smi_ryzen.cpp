@@ -125,8 +125,6 @@ config_gen_npu3()
 
   validate_test_desc = {
     {"all", "All applicable validate tests will be executed (default)", "common"},
-    {"runlist-latency", "Run end-to-end latency test using runlist", "hidden"},
-    {"runlist-throughput", "Run end-to-end throughput test using runlist", "hidden"},
     {"df-bw", "Run bandwidth test on data fabric", "hidden"},
     {"shim-dma-bw", "Run 2xRead/1xWrite bandwidth test for SHIM DMA", "hidden"},
     {"latency", "Run end-to-end latency test", "common"},
