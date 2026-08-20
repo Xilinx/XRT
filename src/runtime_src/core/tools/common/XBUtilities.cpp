@@ -452,8 +452,12 @@ get_device_internal(xrt_core::device::id_type index, bool in_user_domain)
   if (mgmt_devices.size() <= domain_index )
     throw std::runtime_error("no device present with index " + std::to_string(index));
 
-  if (!mgmt_devices[domain_index])
-    mgmt_devices[domain_index] = xrt_core::get_mgmtpf_device(domain_index);
+  if (!mgmt_devices[domain_index]) {
+    if (in_user_domain)
+      mgmt_devices[domain_index] = xrt_core::get_userpf_device(index);
+    else
+      mgmt_devices[domain_index] = xrt_core::get_mgmtpf_device(domain_index);
+  }
 
   return mgmt_devices[domain_index];
 }

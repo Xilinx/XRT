@@ -229,7 +229,9 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::id_type id) const
 {
-  auto pdev = get_pcidev(id, true);
+  const auto user_ready = get_num_dev_ready(true);
+  auto pdev = (id < user_ready) ? get_pcidev(id, true) : get_pcidev(id - user_ready, false);
+
   return xrt_core::get_userpf_device(pdev->create_shim(id));
 }
 
@@ -237,8 +239,15 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::handle_type handle, device::id_type id) const
 {
-  auto pdev = get_pcidev(id, true);
-  return pdev->create_device(handle, id);
+  const auto user_ready = get_num_dev_ready(true);
+  if (id < user_ready) {
+    auto pdev = get_pcidev(id, true);
+    return pdev->create_device(handle, id);
+  }
+
+  const auto mgmt_index = id - user_ready;
+  auto pdev = get_pcidev(mgmt_index, false);
+  return pdev->create_device(handle, mgmt_index);
 }
 
 std::shared_ptr<device>
