@@ -37,6 +37,19 @@ get_throughput_from_report(const json& report) const
   return report.at("cpu").at("throughput").get<double>();
 }
 
+double
+TestNPUThroughput::
+get_ops_throughput_from_report(const json& report, bool use_runlist) const
+{
+  const auto runlist_throughput = get_throughput_from_report(report);
+  if (use_runlist) {
+    const auto recipe_runs = report.at("resources").at("runs").get<double>();
+    return runlist_throughput * recipe_runs;
+  } else {
+    return runlist_throughput;
+  }
+}
+
 boost::property_tree::ptree
 TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
@@ -72,7 +85,7 @@ TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_c
     runner.wait();
 
     const auto report = json::parse(runner.get_report());
-    const double throughput = get_throughput_from_report(report);
+    const double throughput = get_ops_throughput_from_report(report, use_runlist);
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops/s") % throughput));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
