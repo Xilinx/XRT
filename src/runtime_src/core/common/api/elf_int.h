@@ -43,6 +43,7 @@ namespace xrt {
 ////////////////////////////////////////////////////////////////
 struct buf
 {
+  template <typename T> using span = xrt_core::span<T>;
 private:
   // A view into ELFIO section data, possibly compressed.
   // For section-backed views, section and elf are non-null.
@@ -63,7 +64,7 @@ private:
   struct view_entry {
     const ELFIO::section* section = nullptr;   // section-backed view (may be compressed)
     const ELFIO::elfio* elf = nullptr;         // ELFIO owning the section (see lifetime note above)
-    std::string_view padding;                  // for zero-padding, points into m_padding_buffer
+    span<uint8_t> padding;                     // for zero-padding, points into m_padding_buffer
     std::size_t data_size = 0;                 // effective size (uncompressed if compressed)
   };
 
@@ -108,16 +109,15 @@ public:
   add_padding_to_size(size_t target_size)
   {
     size_t current = size();
-    if (target_size > current) {
-      size_t padding_size = target_size - current;
-      m_padding_buffer.resize(padding_size, 0);
-      view_entry entry;
-      entry.padding = std::string_view(
-          reinterpret_cast<const char*>(m_padding_buffer.data()),
-          padding_size);
-      entry.data_size = padding_size;
-      m_views.push_back(entry);
-    }
+    if (target_size <= current)
+      return;
+    
+    size_t padding_size = target_size - current;
+    m_padding_buffer.resize(padding_size, 0);
+    view_entry entry;
+    entry.padding = {m_padding_buffer.data(), m_padding_buffer.size()};
+    entry.data_size = padding_size;
+    m_views.push_back(entry);
   }
 
   // Get total size across all views.
