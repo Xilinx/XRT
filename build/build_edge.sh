@@ -338,7 +338,7 @@ GIT_MODULES=$XRT_REPO_DIR/.gitmodules
 if [ -f "$GIT_MODULES" ] && [ $init_submodule == 1 ]; then
     cd $XRT_REPO_DIR
     echo "Updating Git XRT submodules, use -noinit option to avoid updating"
-    git submodule update --init
+    git submodule update --init --recursive
     cd $ORIGINAL_DIR
 fi
 
