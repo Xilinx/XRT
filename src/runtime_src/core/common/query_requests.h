@@ -13,6 +13,7 @@
 #include "core/include/ert.h"
 #include "core/include/xclerr_int.h"
 
+#include <array>
 #include <cstdint>
 #include <iomanip>
 #include <map>
@@ -350,7 +351,8 @@ enum class key_type
 
   aie_read,
   aie_write,
-  aie_coredump
+  aie_coredump,
+  aie_load
 };
 
 struct pcie_vendor : request
@@ -4312,6 +4314,32 @@ struct aie_coredump : request
 
   using result_type = std::vector<char>;
   static const key_type key = key_type::aie_coredump;
+
+  std::any
+  get(const device*, const std::any&) const override = 0;
+};
+
+// AIE array hardware utilization, computed from two consecutive firmware
+// activity-counter snapshots separated by sample_duration_ms milliseconds.
+struct aie_load : request
+{
+  static constexpr size_t num_activity_counters = 8;
+
+  struct result_type {
+    uint32_t load_percent;          // 0-100, or UINT32_MAX if unavailable
+    uint64_t timestamp_ms;          // FW uptime when second snapshot was taken
+    std::array<uint64_t, num_activity_counters> activity_counters; // raw counter values from second snapshot
+    uint64_t operations_per_second; // total counter change across all activity counters per second
+  };
+
+  struct args {
+    uint32_t sample_duration_ms = 0; // 0 = driver default (XRT_AIE_LOAD_SAMPLE_INTERVAL_MS)
+  };
+
+  static const key_type key = key_type::aie_load;
+
+  std::any
+  get(const device*) const override = 0;
 
   std::any
   get(const device*, const std::any&) const override = 0;
