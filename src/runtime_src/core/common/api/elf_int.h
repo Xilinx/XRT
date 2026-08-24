@@ -23,6 +23,7 @@
 #include "ert.h"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <unordered_set>
 #include <memory>
@@ -210,7 +211,7 @@ public:
   void   copy_pdi(const std::string& sym, aiebu::detail::span<std::byte> d) const { m_elf.copy_pdi(sym, d); }
 
   // gen2: ctrlpkt preemption buffers
-  std::set<std::string> get_ctrlpkt_pm_dynsyms() const { return m_elf.get_ctrlpkt_pm_dynsyms(); }
+  const std::set<std::string>& get_ctrlpkt_pm_dynsyms() const { return m_elf.get_ctrlpkt_pm_dynsyms(); }
   size_t get_ctrlpkt_pm_buf_size(const std::string& sym) const { return m_elf.get_ctrlpkt_pm_buf_size(sym); }
   void   copy_ctrlpkt_pm_buf(const std::string& sym, aiebu::detail::span<std::byte> d) const { m_elf.copy_ctrlpkt_pm_buf(sym, d); }
 
@@ -223,9 +224,15 @@ public:
   void   copy_ctrlcode_col(uint32_t id, uint32_t col, aiebu::detail::span<std::byte> d) const { m_elf.copy_ctrlcode(id, col, d); }
 
   // gen2plus: ctrlpkt buffers
+  // Prefer for_each_ctrlpkt() for iteration — avoids the vector<string> heap allocation.
   std::vector<std::string> get_ctrlpkt_section_names(uint32_t id) const { return m_elf.get_ctrlpkt_section_names(id); }
   size_t get_ctrlpkt_size(uint32_t id, const std::string& name) const { return m_elf.get_ctrlpkt_size(id, name); }
   void   copy_ctrlpkt(uint32_t id, const std::string& name, aiebu::detail::span<std::byte> d) const { m_elf.copy_ctrlpkt(id, name, d); }
+
+  void
+  for_each_ctrlpkt(uint32_t id,
+                   const std::function<void(const std::string&, size_t)>& f) const
+  { m_elf.for_each_ctrlpkt(id, f); }
 
   // gen2plus: dump buffer
   size_t get_dump_buf_size(uint32_t id) const { return m_elf.get_dump_buf_size(id); }

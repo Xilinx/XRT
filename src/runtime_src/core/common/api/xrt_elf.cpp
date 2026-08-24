@@ -22,6 +22,7 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/runner/capture.h"
 
+#include <chrono>
 #include <cstdint>
 #include <map>
 #include <memory>

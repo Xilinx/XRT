@@ -879,18 +879,19 @@ class module_run_aie_gen2_plus : public module_run
 
   // Allocate and fill one BO per .ctrlpkt section.  The addresses of these
   // BOs are later patched into the instruction buffer by fill_instruction_buffer().
+  // for_each_ctrlpkt() performs a single outer map lookup and iterates the inner
+  // map directly — no intermediate vector<string> is allocated.
   void
   create_ctrlpkt_bufs()
   {
-    for (const auto& name : m_elf_impl->get_ctrlpkt_section_names(m_ctrl_code_id)) {
-      auto sz = m_elf_impl->get_ctrlpkt_size(m_ctrl_code_id, name);
+    m_elf_impl->for_each_ctrlpkt(m_ctrl_code_id, [&](const std::string& name, size_t sz) {
       if (sz == 0)
-        continue;
+        return;
 
       auto& bo = m_ctrlpkt_bos[name] = xbi::create_bo(m_hwctx, sz, xbi::use_type::ctrlpkt);
       m_elf_impl->copy_ctrlpkt(m_ctrl_code_id, name, {bo.map<std::byte*>(), sz});
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    }
+    });
 
     if (is_dump_control_packet()) {
       for (auto& [name, bo] : m_ctrlpkt_bos) {
