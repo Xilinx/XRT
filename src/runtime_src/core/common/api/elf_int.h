@@ -7,6 +7,7 @@
 // It provides access to xrt::elf_impl class that is not
 // directly exposed to end users.
 #include "core/common/config.h"
+#include "core/common/span.h"
 #include "core/common/xclbin_parser.h"
 #include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/xrt_bo.h"
@@ -14,9 +15,12 @@
 
 #include "ert.h"
 
+#include "core/common/aiebu/src/cpp/include/aiebu/aiebu_decompress.h"
+
 #include <elfio/elfio.hpp>
 
 #include <cstdint>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <set>
@@ -31,15 +35,41 @@ namespace xrt {
 ////////////////////////////////////////////////////////////////
 // buf - wrapper for holding ELF section data
 //
-// Uses std::string_view for zero-copy non-owning view of
-// ELFIO section data.
+// Stores non-owning pointers to ELFIO section objects.
+// Compression is fully abstracted — aiebu determines whether
+// decompression is needed via get_section_uncompressed_size() /
+// copy_section_uncompressed_data().
 // Padding stored separately to avoid copying section data.
 ////////////////////////////////////////////////////////////////
 struct buf
 {
+  template <typename T> using span = xrt_core::span<T>;
 private:
+  // A view into ELFIO section data, possibly compressed.
+  // For section-backed views, section and elf are non-null.
+  // For padding views, section is null and padding holds the zero buffer.
+  //
+  // Lifetime of section/elf pointers:
+  //   section points into m_elfio's internal section array; elf points to
+  //   m_elfio itself (stored as &elf in append_section_data).  Both m_elfio
+  //   and the buf objects (m_instr_buf_map, m_ctrl_packet_map, etc.) are
+  //   members of the same elf_impl instance (m_elfio in the base class,
+  //   buf maps in the derived classes elf_aie_gen2 / elf_aie_gen2_plus).
+  //   This is why the raw pointers are safe: a buf cannot outlive its
+  //   owning elf_impl because it is a member of it, so m_elfio is
+  //   guaranteed to be alive whenever a view_entry in that buf is accessed.
+  //   At the broader scope, module_impl holds a shared_ptr<elf_impl>
+  //   ensuring elf_impl is not destroyed while the module is in use.
+  //
+  struct view_entry {
+    const ELFIO::section* section = nullptr;   // section-backed view (may be compressed)
+    const ELFIO::elfio* elf = nullptr;         // ELFIO owning the section (see lifetime note above)
+    span<uint8_t> padding;                     // for zero-padding, points into m_padding_buffer
+    std::size_t data_size = 0;                 // effective size (uncompressed if compressed)
+  };
+
   // Non-owning views into ELFIO or external data
-  std::vector<std::string_view> m_views;
+  std::vector<view_entry> m_views;
 
   // Padding buffer - only allocated when AIE2PS/AIE4 needs page alignment
   // Stored separately to avoid copying section data
@@ -48,20 +78,29 @@ private:
 public:
   buf() = default;
 
-  // Append section data without copying (zero-copy from ELFIO)
+  // Append section data from an ELFIO section.
+  // Compression handling is delegated to aiebu — XRT does not inspect
+  // SHF_COMPRESSED or Chdr headers directly.  Decompression is deferred
+  // until copy_to().
   void
-  append_section_data(const ELFIO::section* sec)
+  append_section_data(const ELFIO::section* sec, const ELFIO::elfio& elf)
   {
-    if (sec && sec->get_size() > 0) {
-      m_views.emplace_back(sec->get_data(), sec->get_size());
-    }
+    if (!sec || sec->get_size() == 0)
+      return;
+
+    view_entry entry;
+    entry.section = sec;
+    entry.elf = &elf;
+    entry.data_size = aiebu::get_section_uncompressed_size(sec, elf);
+    m_views.push_back(entry);
   }
 
   // Overload for smart pointers (from ELFIO range-based for loops)
   void
-  append_section_data(const std::unique_ptr<ELFIO::section>& sec)
+  append_section_data(const std::unique_ptr<ELFIO::section>& sec,
+                      const ELFIO::elfio& elf)
   {
-    append_section_data(sec.get());
+    append_section_data(sec.get(), elf);
   }
 
   // Add padding to reach target size (for AIE2PS/AIE4 page alignment)
@@ -70,65 +109,79 @@ public:
   add_padding_to_size(size_t target_size)
   {
     size_t current = size();
-    if (target_size > current) {
-      size_t padding_size = target_size - current;
-      m_padding_buffer.resize(padding_size, 0);
-      m_views.emplace_back(
-        reinterpret_cast<const char*>(m_padding_buffer.data()),
-        padding_size
-      );
-    }
+    if (target_size <= current)
+      return;
+    
+    size_t padding_size = target_size - current;
+    m_padding_buffer.resize(padding_size, 0);
+    view_entry entry;
+    entry.padding = {m_padding_buffer.data(), m_padding_buffer.size()};
+    entry.data_size = padding_size;
+    m_views.push_back(entry);
   }
 
-  // Get total size across all views
+  // Get total size across all views.
+  // For compressed sections, returns the uncompressed size (what copy_to will produce).
   size_t
   size() const
   {
     size_t total = 0;
-    for (const auto& view : m_views) {
-      total += view.size();
-    }
+    for (const auto& v : m_views)
+      total += v.data_size;
+
     return total;
   }
 
-  // Copy all views to destination buffer
-  // Iterates views and copies directly - used for copying to device BOs
+  // Copy all views to destination buffer.
+  // Compressed sections are decompressed directly into dest via aiebu.
+  // Uncompressed sections and padding are memcpy'd.
   void
-  copy_to(void* dest) const
+  copy_to(xrt_core::span<uint8_t> dest) const
   {
-    auto* dst = static_cast<uint8_t*>(dest);
-    for (const auto& view : m_views) {
-      std::memcpy(dst, view.data(), view.size());
-      dst += view.size();
+    if (dest.size() < size())
+      throw std::runtime_error(
+        "buf::copy_to: dest size (" + std::to_string(dest.size())
+        + ") < buf size (" + std::to_string(size()) + ")");
+
+    auto* dst = dest.data();
+    for (const auto& v : m_views) {
+      if (v.section)
+        aiebu::copy_section_uncompressed_data(v.section, *v.elf, dst, v.data_size);
+      else
+        std::memcpy(dst, v.padding.data(), v.data_size);
+
+      dst += v.data_size;
     }
   }
 
-  // Get data pointer - only works for single view (zero-copy)
-  // Used by patcher that needs direct memory access
+  // Get data pointer - only works for single uncompressed view (zero-copy).
+  // Throws if the section is SHF_COMPRESSED — compressed bytes are not valid
+  // instruction data. Use copy_to() for compression-safe access.
   const uint8_t*
   data() const
   {
-    if (m_views.size() == 1) {
-      return reinterpret_cast<const uint8_t*>(m_views[0].data());
+    if (m_views.size() == 1 && m_views[0].section) {
+      if (m_views[0].section->get_flags() & ELFIO::SHF_COMPRESSED)
+        throw std::runtime_error(
+          "buf::data() called on compressed section — use copy_to() instead");
+      return reinterpret_cast<const uint8_t*>(m_views[0].section->get_data());
     }
 
     // Multiple views: cannot provide direct pointer
     // Caller should use copy_to() instead
     throw std::runtime_error(
       "Cannot get direct pointer from buffer with multiple views. "
-      "Use copy_to() to copy data instead."
-    );
+      "Use copy_to() to copy data instead.");
   }
 
-  // Create std::string from views (for debug/trace)
+  // Create std::string from views (for debug/trace).
+  // Decompresses compressed views into the result string.
   std::string
   to_string() const
   {
     std::string result;
-    result.reserve(size());
-    for (const auto& view : m_views) {
-      result.append(view);
-    }
+    result.resize(size());
+    copy_to({reinterpret_cast<uint8_t*>(result.data()), result.size()});
     return result;
   }
 
@@ -359,7 +412,10 @@ public:
   elf_impl& operator=(const elf_impl&) = delete;
   elf_impl& operator=(elf_impl&&) = delete;
 
-  // Get raw ELFIO object reference
+  // Get raw ELFIO object reference.
+  // Compressed sections (.ctrltext*, .ctrldata*, .ctrlpkt*) contain raw compressed
+  // bytes with SHF_COMPRESSED set. Callers that need section data should use
+  // buf::append_section_data() + copy_to() which delegate to aiebu for decompression.
   const ELFIO::elfio&
   get_elfio() const
   {

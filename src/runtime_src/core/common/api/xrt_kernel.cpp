@@ -1834,9 +1834,11 @@ private:
     if (ctrl_packet.size() == 0)
       return nullptr;
 
-    // Create mutable copy for buffer cache
-    std::vector<uint8_t> ctrlpkt_data(ctrl_packet.data(),
-                                      ctrl_packet.data() + ctrl_packet.size());
+    // Create mutable copy for buffer cache.
+    // copy_to() handles compressed sections transparently; for uncompressed
+    // ELFs this is a plain memcpy.
+    std::vector<uint8_t> ctrlpkt_data(ctrl_packet.size());
+    ctrl_packet.copy_to({ctrlpkt_data.data(), ctrlpkt_data.size()});
     auto ctrlpkt_buf_size = ctrlpkt_data.size();
 
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
@@ -5194,7 +5196,9 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
           << ctx_health->aie4.uc_info[i].uc_esr
           << "\n";
 
-      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary
+      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary.
+      // AIEDebug handles SHF_COMPRESSED sections internally — only the specific
+      // .ctrltext section is decompressed on demand, not the entire ELF.
       if (elf_impl_ptr) {
         aiebu::AIEDebug dbg(elf_impl_ptr->get_elfio());
         auto info = dbg.get_opcode_information(

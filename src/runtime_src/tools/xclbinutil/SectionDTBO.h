@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021, 2022 Xilinx, Inc
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,21 +14,20 @@
  * under the License.
  */
 
-#include "SectionAIEResources.h"
+#ifndef SectionDTBO_h_
+#define SectionDTBO_h_
 
+// ----------------------- I N C L U D E S -----------------------------------
+#include "Section.h"
 
-// Static Variables / Classes
-SectionAIEResources::init SectionAIEResources::initializer;
+// --------------- C L A S S :   S e c t i o n D T B O -----------------------
+class SectionDTBO : public Section {
+ private:
+  // Static initializer helper class
+  static class init {
+   public:
+    init();
+  } initializer;
+};
 
-SectionAIEResources::init::init()
-{
-  auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES, "AIE_RESOURCES", []{ return new SectionAIEResources(); });
-
-  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
-
-  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
-
-  addSectionType(std::move(sectionInfo));
-}
-
-
+#endif

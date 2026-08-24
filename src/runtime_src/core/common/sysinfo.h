@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _xrt_core_common_sysinfo_h_
 #define _xrt_core_common_sysinfo_h_
 
@@ -9,7 +9,14 @@
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 
+// System - Include Files
+#include <utility>
+
 namespace xrt_core::sysinfo {
+
+XRT_CORE_COMMON_EXPORT
+std::pair<unsigned int, unsigned int>
+get_terminal_size();
 
 XRT_CORE_COMMON_EXPORT
 void

@@ -16,14 +16,13 @@
 
 #include "SectionSchedulerFW.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionSchedulerFW::init SectionSchedulerFW::initializer;
 
 SectionSchedulerFW::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(SCHED_FIRMWARE, "SCHED_FIRMWARE", boost::factory<SectionSchedulerFW*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(SCHED_FIRMWARE, "SCHED_FIRMWARE", []{ return new SectionSchedulerFW(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

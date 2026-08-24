@@ -44,7 +44,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("preemption_layer_event", entry.preemption_layer_event);
     pt_entry.put("errors", entry.errors);
     pt_entry.put("suspensions", entry.suspensions);
-    pt_entry.put("memory_usage", entry.memory_usage == 0 ? "N/A" : xrt_core::utils::unit_convert(entry.memory_usage));
+    pt_entry.put("npu_memory_usage", entry.memory_usage == 0 ? "N/A" : xrt_core::utils::unit_convert(entry.memory_usage));
 
     xrt_core::query::aie_partition_info::qos_info qos = entry.qos;
     pt_entry.put("gops", qos.gops ? std::to_string(qos.gops) : "N/A");
@@ -88,9 +88,9 @@ getPropertyTree20202(const xrt_core::device* _pDevice,
   pt.put("description", "AIE Partition Information");
   auto total_mem_usage = xrt_core::device_query_default<xrt_core::query::total_mem_usage>(_pDevice, 0);
   if (total_mem_usage != 0) {
-    pt.put("total_memory_usage", xrt_core::utils::unit_convert(total_mem_usage));
+    pt.put("total_npu_memory_usage", xrt_core::utils::unit_convert(total_mem_usage));
   } else {
-    pt.put("total_memory_usage", "N/A");
+    pt.put("total_npu_memory_usage", "N/A");
   }
   pt.add_child("partitions", populate_aie_partition(_pDevice));
   _pt.add_child("aie_partitions", pt);
@@ -111,7 +111,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  _output << boost::str(boost::format("  Total Memory Usage: %s\n") % _pt.get<std::string>("aie_partitions.total_memory_usage"));
+  _output << boost::str(boost::format("  Total NPU Memory Usage: %s\n") % _pt.get<std::string>("aie_partitions.total_npu_memory_usage"));
 
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
@@ -134,7 +134,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     hw_table.set_stacked_headers({
       {"PID", "Ctx ID", "Submissions", "Migrations", "Frame Evts", "Err", "Priority"},
       {"Process Name", "Status", "Completions", "Suspensions", "Layer Evts", "", "GOPS"},
-      {"Memory Usage", "Instr BO", "", "", "", "", "FPS"},
+      {"NPU Memory Usage", "Instr BO", "", "", "", "", "FPS"},
       {"", "", "", "", "", "", "Latency"},
     });
 
@@ -161,7 +161,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
           hw_context.get<std::string>("gops"),
         },
         {
-          hw_context.get<std::string>("memory_usage"),
+          hw_context.get<std::string>("npu_memory_usage"),
           hw_context.get<std::string>("instr_bo_mem"),
           "", "", "", "",
           hw_context.get<std::string>("fps"),

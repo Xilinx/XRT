@@ -6,7 +6,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -21,7 +20,7 @@ SectionSoftKernel::init SectionSoftKernel::initializer;
 
 SectionSoftKernel::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", boost::factory<SectionSoftKernel*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", []{ return new SectionSoftKernel(); });
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::obj));
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));

@@ -186,6 +186,25 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("processor", value);
 }
 
+std::pair<unsigned int, unsigned int>
+get_terminal_size()
+{
+  // Query the visible console window
+  const HANDLE hout = GetStdHandle(STD_OUTPUT_HANDLE);
+  CONSOLE_SCREEN_BUFFER_INFO csbi{};
+  if (hout == INVALID_HANDLE_VALUE || !GetConsoleScreenBufferInfo(hout, &csbi))
+    throw xrt_core::error("Unable to determine terminal size");
+
+  // srWindow describes the visible window; derive rows/cols from it (the
+  // buffer height/width can be much larger than what is on screen).
+  const auto cols = static_cast<unsigned int>(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+  const auto rows = static_cast<unsigned int>(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+  if (rows == 0 || cols == 0)
+    throw xrt_core::error("Unable to determine terminal size");
+
+  return {rows, cols};
+}
+
 bool
 is_advanced()
 {

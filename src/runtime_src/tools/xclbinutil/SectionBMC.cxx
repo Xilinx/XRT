@@ -19,7 +19,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -34,7 +33,7 @@ SectionBMC::init SectionBMC::initializer;
 
 SectionBMC::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(BMC, "BMC", boost::factory<SectionBMC*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(BMC, "BMC", []{ return new SectionBMC(); });
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::fw));
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));

@@ -16,14 +16,13 @@
 
 #include "SectionManagementFW.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionManagementFW::init SectionManagementFW::initializer;
 
 SectionManagementFW::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(FIRMWARE, "FIRMWARE", boost::factory<SectionManagementFW*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(FIRMWARE, "FIRMWARE", []{ return new SectionManagementFW(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

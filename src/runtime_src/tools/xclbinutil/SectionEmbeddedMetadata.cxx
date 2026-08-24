@@ -17,7 +17,6 @@
 #include "SectionEmbeddedMetadata.h"
 
 #include "XclBinUtilities.h"
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -27,7 +26,7 @@ SectionEmbeddedMetadata::init SectionEmbeddedMetadata::initializer;
 
 SectionEmbeddedMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(EMBEDDED_METADATA, "EMBEDDED_METADATA", boost::factory<SectionEmbeddedMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(EMBEDDED_METADATA, "EMBEDDED_METADATA", []{ return new SectionEmbeddedMetadata(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

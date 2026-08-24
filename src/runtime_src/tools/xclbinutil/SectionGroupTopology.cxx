@@ -18,7 +18,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <iostream>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionGroupTopology::init SectionGroupTopology::initializer;
 
 SectionGroupTopology::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_TOPOLOGY, "GROUP_TOPOLOGY", boost::factory<SectionGroupTopology*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_TOPOLOGY, "GROUP_TOPOLOGY", []{ return new SectionGroupTopology(); });
   sectionInfo->nodeName = "group_topology";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

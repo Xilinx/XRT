@@ -19,7 +19,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <iostream>
 
@@ -33,7 +32,7 @@ SectionAIEPartition::init SectionAIEPartition::initializer;
 
 SectionAIEPartition::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(AIE_PARTITION, "AIE_PARTITION", boost::factory<SectionAIEPartition*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_PARTITION, "AIE_PARTITION", []{ return new SectionAIEPartition(); });
   sectionInfo->nodeName = "aie_partition";
   sectionInfo->supportsSubSections = true;
   sectionInfo->supportsIndexing = true;

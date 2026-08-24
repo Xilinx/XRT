@@ -18,7 +18,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <iostream>
 #include <stdint.h>
 
@@ -29,7 +28,7 @@ SectionClockFrequencyTopology::init SectionClockFrequencyTopology::initializer;
 
 SectionClockFrequencyTopology::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", boost::factory<SectionClockFrequencyTopology*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", []{ return new SectionClockFrequencyTopology(); });
   sectionInfo->nodeName = "clock_freq_topology";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

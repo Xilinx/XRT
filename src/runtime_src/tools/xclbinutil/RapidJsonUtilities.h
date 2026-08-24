@@ -21,7 +21,16 @@
 #define __RapidJsonUtilities_h_
 
 // Include files
+// GCC 16 added -Wtemplate-body which fires on a const-member copy-assignment in
+// rapidjson::GenericStringRef; suppress until an upstream rapidjson fix is available.
+#if defined(__GNUC__) && __GNUC__ >= 16
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtemplate-body"
+#endif
 #include <rapidjson/document.h>
+#if defined(__GNUC__) && __GNUC__ >= 16
+#pragma GCC diagnostic pop
+#endif
 #include <vector>
 #include <utility>
 #include <sstream>

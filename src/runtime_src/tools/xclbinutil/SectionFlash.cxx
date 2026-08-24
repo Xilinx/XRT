@@ -6,7 +6,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -21,7 +20,7 @@ SectionFlash::init SectionFlash::initializer;
 
 SectionFlash::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(ASK_FLASH, "FLASH", boost::factory<SectionFlash*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(ASK_FLASH, "FLASH", []{ return new SectionFlash(); });
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::data));
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));

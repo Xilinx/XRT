@@ -17,7 +17,6 @@
 #include "SectionAIETraceMetadata.h"
 
 #include "XclBinUtilities.h"
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionAIETraceMetadata::init SectionAIETraceMetadata::initializer;
 
 SectionAIETraceMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(AIE_TRACE_METADATA, "AIE_TRACE_METADATA", boost::factory<SectionAIETraceMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_TRACE_METADATA, "AIE_TRACE_METADATA", []{ return new SectionAIETraceMetadata(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
