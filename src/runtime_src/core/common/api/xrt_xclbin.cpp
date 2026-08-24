@@ -234,7 +234,8 @@ public: // purposely not a struct to match decl in xrt_xclbin.h
   void
   add_mem_at_idx(int32_t argidx, const xclbin::mem& mem)
   {
-    resize_args(argidx + 1);
+    // cast before +1 to avoid signed overflow when argidx == INT32_MAX
+    resize_args(static_cast<size_t>(argidx) + 1);
     if (!m_args[argidx])
       m_args[argidx] = xclbin::arg{std::make_shared<arg_impl>()};
     m_args[argidx].get_handle()->add_mem(mem);
@@ -257,6 +258,10 @@ public:
         auto& cxn = conn->m_connection[idx];
         if (cxn.m_ip_layout_index != m_ip_layout_idx)
           continue;
+
+        if (cxn.arg_index < 0 || cxn.mem_data_index < 0 ||
+            static_cast<size_t>(cxn.mem_data_index) >= mems.size())
+          throw std::runtime_error("xclbin: invalid connectivity index");
 
         add_mem_at_idx(cxn.arg_index, mems.at(cxn.mem_data_index));
     }
