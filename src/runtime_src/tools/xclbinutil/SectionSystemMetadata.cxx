@@ -18,7 +18,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionSystemMetadata::init SectionSystemMetadata::initializer;
 
 SectionSystemMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(SYSTEM_METADATA, "SYSTEM_METADATA", boost::factory<SectionSystemMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(SYSTEM_METADATA, "SYSTEM_METADATA", []{ return new SectionSystemMetadata(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

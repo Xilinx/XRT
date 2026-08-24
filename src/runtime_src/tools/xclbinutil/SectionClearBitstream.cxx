@@ -16,14 +16,13 @@
 
 #include "SectionClearBitstream.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionClearBitstream::init SectionClearBitstream::initializer;
 
 SectionClearBitstream::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", boost::factory<SectionClearBitstream*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", []{ return new SectionClearBitstream(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

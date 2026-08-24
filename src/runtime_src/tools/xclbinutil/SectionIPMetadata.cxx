@@ -19,7 +19,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -29,7 +28,7 @@ SectionIPMetadata::init SectionIPMetadata::initializer;
 
 SectionIPMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(IP_METADATA, "IP_METADATA", boost::factory<SectionIPMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(IP_METADATA, "IP_METADATA", []{ return new SectionIPMetadata(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

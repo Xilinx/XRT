@@ -18,7 +18,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <iostream>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionMemTopology::init SectionMemTopology::initializer;
 
 SectionMemTopology::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(MEM_TOPOLOGY, "MEM_TOPOLOGY", boost::factory<SectionMemTopology*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(MEM_TOPOLOGY, "MEM_TOPOLOGY", []{ return new SectionMemTopology(); });
   sectionInfo->nodeName = "mem_topology";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

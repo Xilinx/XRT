@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -31,7 +30,7 @@ SectionPartitionMetadata::init SectionPartitionMetadata::initializer;
 
 SectionPartitionMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(PARTITION_METADATA, "PARTITION_METADATA", boost::factory<SectionPartitionMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(PARTITION_METADATA, "PARTITION_METADATA", []{ return new SectionPartitionMetadata(); });
   sectionInfo->nodeName = "partition_metadata";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

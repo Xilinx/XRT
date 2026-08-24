@@ -16,14 +16,13 @@
 
 #include "SectionDesignCheckPoint.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionDesignCheckPoint::init SectionDesignCheckPoint::initializer;
 
 SectionDesignCheckPoint::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", boost::factory<SectionDesignCheckPoint*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", []{ return new SectionDesignCheckPoint(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

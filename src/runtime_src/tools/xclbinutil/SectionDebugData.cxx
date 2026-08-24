@@ -16,14 +16,13 @@
 
 #include "SectionDebugData.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionDebugData::init SectionDebugData::initializer;
 
 SectionDebugData::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_DATA, "DEBUG_DATA", boost::factory<SectionDebugData*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_DATA, "DEBUG_DATA", []{ return new SectionDebugData(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

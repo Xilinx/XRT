@@ -16,14 +16,13 @@
 
 #include "SectionEmulationData.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionEmulationData::init SectionEmulationData::initializer;
 
 SectionEmulationData::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(EMULATION_DATA, "EMULATION_DATA", boost::factory<SectionEmulationData*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(EMULATION_DATA, "EMULATION_DATA", []{ return new SectionEmulationData(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

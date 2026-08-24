@@ -5,7 +5,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -20,7 +19,7 @@ SectionAIEResourcesBin::init SectionAIEResourcesBin::initializer;
 
 SectionAIEResourcesBin::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES_BIN, "AIE_RESOURCES_BIN", boost::factory<SectionAIEResourcesBin*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES_BIN, "AIE_RESOURCES_BIN", []{ return new SectionAIEResourcesBin(); });
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::obj));
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));

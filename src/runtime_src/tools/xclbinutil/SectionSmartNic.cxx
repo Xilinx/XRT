@@ -26,7 +26,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/hex.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <filesystem>
 #include <fstream>
@@ -40,7 +39,7 @@ SectionSmartNic::init SectionSmartNic::initializer;
 
 SectionSmartNic::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(SMARTNIC, "SMARTNIC", boost::factory<SectionSmartNic*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(SMARTNIC, "SMARTNIC", []{ return new SectionSmartNic(); });
   sectionInfo->nodeName = "smartnic";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

@@ -18,7 +18,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <iostream>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionConnectivity::init SectionConnectivity::initializer;
 
 SectionConnectivity::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(CONNECTIVITY, "CONNECTIVITY", boost::factory<SectionConnectivity*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(CONNECTIVITY, "CONNECTIVITY", []{ return new SectionConnectivity(); });
   sectionInfo->nodeName = "connectivity";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

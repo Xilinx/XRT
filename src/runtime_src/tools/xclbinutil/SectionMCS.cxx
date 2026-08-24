@@ -20,7 +20,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -35,7 +34,7 @@ SectionMCS::init SectionMCS::initializer;
 
 SectionMCS::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(MCS, "MCS", boost::factory<SectionMCS*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(MCS, "MCS", []{ return new SectionMCS(); });
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(MCS_PRIMARY));
   sectionInfo->subSections.push_back(getSubSectionName(MCS_SECONDARY));

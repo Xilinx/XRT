@@ -5,7 +5,6 @@
 #include "XclBinUtilities.h"
 #include "xrt/detail/version.h"
 
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -15,7 +14,7 @@ SectionBuildMetadata::init SectionBuildMetadata::initializer;
 
 SectionBuildMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(BUILD_METADATA, "BUILD_METADATA", boost::factory<SectionBuildMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(BUILD_METADATA, "BUILD_METADATA", []{ return new SectionBuildMetadata(); });
   sectionInfo->nodeName = "build_metadata";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);
