@@ -5,10 +5,13 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
 
 #include "elf_int.h"
 #include "elf_patcher.h"
+#include "core/common/aiebu/src/cpp/elf/aie_elf_constants.h"
+#include "core/common/aiebu/src/cpp/include/aiebu/aiebu_assembler.h"
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
@@ -1659,6 +1662,49 @@ get_filename(const xrt::elf_impl* elf_impl)
   return elf_impl
     ? elf_impl->get_filename()
     : "";
+}
+
+namespace {
+
+aiebu::aiebu_assembler::buffer_type
+osabi_to_coredump_type(uint8_t os_abi)
+{
+  switch (os_abi) {
+  case aiebu::osabi_aie2p:  return aiebu::aiebu_assembler::buffer_type::coredump_aie2p;
+  case aiebu::osabi_aie2ps: return aiebu::aiebu_assembler::buffer_type::coredump_aie2ps;
+  case aiebu::osabi_aie4:   return aiebu::aiebu_assembler::buffer_type::coredump_aie4;
+  case aiebu::osabi_aie4a:  return aiebu::aiebu_assembler::buffer_type::coredump_aie4a;
+  case aiebu::osabi_aie4z:  return aiebu::aiebu_assembler::buffer_type::coredump_aie4z;
+  default: throw std::runtime_error("AIE coredump not supported for this ELF architecture");
+  }
+}
+
+aiebu::aie_coredump_meta
+to_aiebu_meta(const xrt::aie::coredump_meta& m)
+{
+  return aiebu::aie_coredump_meta{
+    m.timestamp_ns, m.driver_version, m.fw_version, m.device_info,
+    static_cast<aiebu::aie_context_status>(m.ctx_status), m.uuid
+  };
+}
+
+} // namespace
+
+std::vector<char>
+make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob)
+{
+  auto buf_type = osabi_to_coredump_type(elf.get_handle()->get_os_abi());
+  aiebu::aiebu_assembler a(buf_type, blob, aiebu::aiebu_assembler::no_meta);
+  return a.get_elf();
+}
+
+std::vector<char>
+make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
+                      const xrt::aie::coredump_meta& meta)
+{
+  auto buf_type = osabi_to_coredump_type(elf.get_handle()->get_os_abi());
+  aiebu::aiebu_assembler a(buf_type, blob, to_aiebu_meta(meta));
+  return a.get_elf();
 }
 
 } // xrt_core::elf_int

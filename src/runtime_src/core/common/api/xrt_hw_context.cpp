@@ -718,6 +718,32 @@ public:
     }
   }
 
+  std::vector<char>
+  get_aie_coredump_elf() const
+  {
+    xrt::elf elf = [this] {
+      std::lock_guard lk(m_mutex);
+      if (m_elf_map.empty())
+        throw std::runtime_error("AIE coredump ELF not available: no ELF loaded in this context");
+      // All ELFs in one hw_context target the same AIE partition — any entry yields correct OS/ABI
+      return m_elf_map.begin()->second;
+    }();
+    return xrt_core::elf_int::make_aie_coredump_elf(elf, get_aie_coredump());
+  }
+
+  std::vector<char>
+  get_aie_coredump_elf(const xrt::aie::coredump_meta& meta) const
+  {
+    xrt::elf elf = [this] {
+      std::lock_guard lk(m_mutex);
+      if (m_elf_map.empty())
+        throw std::runtime_error("AIE coredump ELF not available: no ELF loaded in this context");
+      // All ELFs in one hw_context target the same AIE partition — any entry yields correct OS/ABI
+      return m_elf_map.begin()->second;
+    }();
+    return xrt_core::elf_int::make_aie_coredump_elf(elf, get_aie_coredump(), meta);
+  }
+
   // Returns map of kernel names to their corresponding elf files
   // registered with this hardware context
   std::map<std::string, xrt::elf>
@@ -1013,6 +1039,20 @@ hw_context::
 get_aie_coredump() const
 {
   return get_handle()->get_aie_coredump();
+}
+
+std::vector<char>
+hw_context::
+get_aie_coredump_elf() const
+{
+  return get_handle()->get_aie_coredump_elf();
+}
+
+std::vector<char>
+hw_context::
+get_aie_coredump_elf(const xrt::aie::coredump_meta& meta) const
+{
+  return get_handle()->get_aie_coredump_elf(meta);
 }
 
 } // xrt

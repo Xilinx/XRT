@@ -13,7 +13,31 @@
 
 #ifdef __cplusplus
 
+#include <cstdint>
 #include <map>
+#include <string>
+#include <vector>
+
+namespace xrt::aie {
+
+enum class context_status : uint32_t {
+  idle    = 0,  ///< Context is idle — no work queued or running
+  ready   = 1,  ///< Context is ready to run but not yet scheduled
+  running = 2,  ///< Context is actively executing on the hardware
+  timeout = 3,  ///< Context timed out waiting for hardware completion
+  error   = 4,  ///< Context encountered any other error
+};
+
+struct coredump_meta {
+  uint64_t       timestamp_ns;    ///< Capture timestamp in nanoseconds
+  std::string    driver_version;  ///< Driver version string
+  std::string    fw_version;      ///< Firmware version string
+  std::string    device_info;     ///< Device identification string
+  context_status ctx_status;      ///< Context state at time of dump
+  std::string    uuid;            ///< UUID of the AIE ELF loaded on target
+};
+
+} // namespace xrt::aie
 
 // Opaque handle for internal use
 namespace xrt_core {
@@ -356,6 +380,32 @@ public:
   XRT_API_EXPORT
   std::vector<char>
   get_aie_coredump() const;
+
+  /**
+   * get_aie_coredump_elf() - Returns the coredump of AIE Array as an ET_CORE ELF.
+   * Fetches the raw AIE dump blob and packages it into a coredump ELF.
+   * The AIE architecture is derived from the ELF loaded in this context.
+   * This function can throw.
+   *
+   * @return
+   *  ELF bytes of the ET_CORE coredump ELF
+   */
+  XRT_API_EXPORT
+  std::vector<char>
+  get_aie_coredump_elf() const;
+
+  /**
+   * get_aie_coredump_elf() - Returns the coredump of AIE Array as an ET_CORE ELF with metadata.
+   *
+   * @param meta
+   *  Metadata to embed (timestamp, versions, uuid, context status)
+   *
+   * @return
+   *  ELF bytes of the ET_CORE coredump ELF
+   */
+  XRT_API_EXPORT
+  std::vector<char>
+  get_aie_coredump_elf(const xrt::aie::coredump_meta& meta) const;
 
 public:
   /// @cond

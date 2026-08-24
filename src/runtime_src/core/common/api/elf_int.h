@@ -30,6 +30,11 @@
 #include <variant>
 #include <vector>
 
+// Forward declaration — full definition in xrt/xrt_hw_context.h
+namespace xrt::aie {
+struct coredump_meta;
+} // namespace xrt::aie
+
 namespace xrt {
 
 ////////////////////////////////////////////////////////////////
@@ -541,6 +546,15 @@ get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
 // Empty string if ELF was loaded from buffer/stream
 std::string
 get_filename(const xrt::elf_impl* elf_impl);
+
+// Package a raw AIE coredump blob into an ET_CORE ELF.
+// The AIE architecture is derived from the ELF's OS/ABI byte.
+std::vector<char>
+make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob);
+
+std::vector<char>
+make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
+                      const xrt::aie::coredump_meta& meta);
 
 } // namespace xrt_core::elf_int
 
