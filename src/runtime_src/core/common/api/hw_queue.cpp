@@ -119,6 +119,7 @@ private:
   std::mutex work_mutex;
   std::condition_variable work_cond;
   command_queue_type submitted_cmds;
+  std::vector<xrt_core::command*> running_cmds;  // guarded by work_mutex
   bool stop = false;
 
   // thread can be constructed only after data members are initialized
@@ -135,7 +136,6 @@ private:
   monitor_loop()
   {
     std::vector<xrt_core::command*> busy_cmds;
-    std::vector<xrt_core::command*> running_cmds;
 
     while (true) {
 
@@ -271,11 +271,20 @@ public:
       m_impl->submit(cmd);
     }
     catch (...) {
-      // Remove the pending command
+      // Remove the specific command to avoid two races:
+      // 1. monitor may have already drained submitted_cmds into running_cmds
+      // 2. a concurrent launch() may have pushed another command, making
+      //    pop_back() remove the wrong entry
       std::lock_guard<std::mutex> lk(work_mutex);
-      assert(get_command_state(cmd)==ERT_CMD_STATE_NEW);
-      if (!submitted_cmds.empty())
-        submitted_cmds.pop_back();
+      assert(get_command_state(cmd) == ERT_CMD_STATE_NEW);
+      auto it = std::find(submitted_cmds.begin(), submitted_cmds.end(), cmd);
+      if (it != submitted_cmds.end())
+        submitted_cmds.erase(it);
+      else {
+        auto rit = std::find(running_cmds.begin(), running_cmds.end(), cmd);
+        if (rit != running_cmds.end())
+          running_cmds.erase(rit);
+      }
       throw;
     }
 
