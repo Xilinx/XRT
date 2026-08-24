@@ -17,7 +17,6 @@
 #include "SectionKeyValueMetadata.h"
 
 #include "XclBinUtilities.h"
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -27,7 +26,7 @@ SectionKeyValueMetadata::init SectionKeyValueMetadata::initializer;
 
 SectionKeyValueMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(KEYVALUE_METADATA, "KEYVALUE_METADATA", boost::factory<SectionKeyValueMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(KEYVALUE_METADATA, "KEYVALUE_METADATA", []{ return new SectionKeyValueMetadata(); });
   sectionInfo->nodeName = "keyvalue_metadata";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

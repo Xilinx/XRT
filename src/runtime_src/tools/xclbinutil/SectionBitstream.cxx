@@ -17,7 +17,6 @@
 #include "SectionBitstream.h"
 
 #include "XclBinUtilities.h"
-#include <boost/functional/factory.hpp>
 
 namespace XUtil = XclBinUtilities;
 
@@ -26,7 +25,7 @@ SectionBitstream::init SectionBitstream::initializer;
 
 SectionBitstream::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM, "BITSTREAM", boost::factory<SectionBitstream*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM, "BITSTREAM", []{ return new SectionBitstream(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

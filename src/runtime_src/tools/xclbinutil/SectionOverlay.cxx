@@ -16,14 +16,13 @@
 
 #include "SectionOverlay.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionOverlay::init SectionOverlay::initializer;
 
 SectionOverlay::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(OVERLAY, "OVERLAY", boost::factory<SectionOverlay*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(OVERLAY, "OVERLAY", []{ return new SectionOverlay(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

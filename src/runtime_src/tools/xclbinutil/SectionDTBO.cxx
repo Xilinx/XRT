@@ -16,14 +16,13 @@
 
 #include "SectionDTBO.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionDTBO::init SectionDTBO::initializer;
 
 SectionDTBO::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(DTBO, "DTBO", boost::factory<SectionDTBO*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(DTBO, "DTBO", []{ return new SectionDTBO(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

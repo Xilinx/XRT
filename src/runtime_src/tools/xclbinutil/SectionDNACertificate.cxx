@@ -18,7 +18,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <string>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionDNACertificate::init SectionDNACertificate::initializer;
 
 SectionDNACertificate::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(DNA_CERTIFICATE, "DNA_CERTIFICATE", boost::factory<SectionDNACertificate*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(DNA_CERTIFICATE, "DNA_CERTIFICATE", []{ return new SectionDNACertificate(); });
 
   // Add format support empty (no support)
 

@@ -16,14 +16,13 @@
 
 #include "SectionPDI.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionPDI::init SectionPDI::initializer;
 
 SectionPDI::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(PDI, "PDI", boost::factory<SectionPDI*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(PDI, "PDI", []{ return new SectionPDI(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

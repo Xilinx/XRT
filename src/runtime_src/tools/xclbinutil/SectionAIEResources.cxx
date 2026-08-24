@@ -16,14 +16,13 @@
 
 #include "SectionAIEResources.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionAIEResources::init SectionAIEResources::initializer;
 
 SectionAIEResources::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES, "AIE_RESOURCES", boost::factory<SectionAIEResources*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES, "AIE_RESOURCES", []{ return new SectionAIEResources(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

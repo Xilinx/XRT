@@ -16,14 +16,13 @@
 
 #include "SectionUserMetadata.h"
 
-#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
 SectionUserMetadata::init SectionUserMetadata::initializer;
 
 SectionUserMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(USER_METADATA, "USER_METADATA", boost::factory<SectionUserMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(USER_METADATA, "USER_METADATA", []{ return new SectionUserMetadata(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

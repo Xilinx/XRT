@@ -18,7 +18,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <iostream>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionDebugIPLayout::init SectionDebugIPLayout::initializer;
 
 SectionDebugIPLayout::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", boost::factory<SectionDebugIPLayout*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", []{ return new SectionDebugIPLayout(); });
   sectionInfo->nodeName = "debug_ip_layout";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);

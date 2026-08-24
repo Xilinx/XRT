@@ -5,7 +5,6 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -20,7 +19,7 @@ SectionVenderMetadata::init SectionVenderMetadata::initializer;
 
 SectionVenderMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", boost::factory<SectionVenderMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", []{ return new SectionVenderMetadata(); });
   sectionInfo->supportsSubSections = true;
 
   // There is only one-subsection that is supported.  By default it is not named.

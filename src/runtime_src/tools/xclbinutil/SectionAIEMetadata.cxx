@@ -17,7 +17,6 @@
 #include "SectionAIEMetadata.h"
 
 #include "XclBinUtilities.h"
-#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
@@ -28,7 +27,7 @@ SectionAIEMetadata::init SectionAIEMetadata::initializer;
 
 SectionAIEMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(AIE_METADATA, "AIE_METADATA", boost::factory<SectionAIEMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_METADATA, "AIE_METADATA", []{ return new SectionAIEMetadata(); });
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
