@@ -5169,7 +5169,16 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
         << "\nnumber of uC reported = " << std::dec
         << ctx_health->aie4.num_uc;
 
-    for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
+    // clamp num_uc to entries that fit in the packet payload; fixed overhead
+    // is version+npu_gen+ctx_state+num_uc+ctx_error_type = 5 uint32_t words
+    constexpr uint32_t aie4_fixed_words = 5;
+    constexpr uint32_t uc_entry_words = sizeof(ert_uc_health_info) / sizeof(uint32_t);
+    const uint32_t max_uc = (epkt->count > aie4_fixed_words)
+      ? (epkt->count - aie4_fixed_words) / uc_entry_words
+      : 0;
+    const uint32_t num_uc = std::min(max_uc, ctx_health->aie4.num_uc);
+
+    for (uint32_t i = 0; i < num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
           << "\nuc_idx=0x" << std::setw(indent8) << std::hex
           << ctx_health->aie4.uc_info[i].uc_idx
