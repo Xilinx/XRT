@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT APIs as declared in
 // core/include/experimental/xrt_aie.h -- end user APIs
@@ -18,6 +18,7 @@
 #include "core/include/xcl_graph.h"
 
 #include "core/common/api/device_int.h"
+#include "core/common/api/handle.h"
 #include "core/common/api/native_profile.h"
 #include "core/common/device.h"
 #include "core/common/error.h"
@@ -257,7 +258,7 @@ namespace {
 
 // C-API Graph handles are inserted to this map.
 // Note: xrtGraphClose must be explicitly called before xclClose.
-static std::map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
+static xrt_core::handle_map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
 
 static std::shared_ptr<xrt::graph_impl>
 open_graph(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
@@ -272,17 +273,13 @@ open_graph(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char* graph_nam
 static std::shared_ptr<xrt::graph_impl>
 get_graph_hdl(xrtGraphHandle graph_handle)
 {
-  auto itr = graph_cache.find(graph_handle);
-  if (itr == graph_cache.end())
-    throw xrt_core::error(-EINVAL, "No such graph handle");
-  return (*itr).second;
+  return graph_cache.get_or_error(graph_handle);
 }
 
 static void
 close_graph(xrtGraphHandle hdl)
 {
-  if (graph_cache.erase(hdl) == 0)
-    throw std::runtime_error("Unexpected internal error");
+  graph_cache.remove_or_error(hdl);
 }
 
 static void
@@ -323,7 +320,7 @@ wait_gmio(xrtDeviceHandle dhdl, const char *gmio_name)
 }
 
 // C-API Profiling handles are inserted to this map.
-static std::map<int, std::shared_ptr<xrt::aie::profiling_impl>> profiling_cache;
+static xrt_core::handle_map<int, std::shared_ptr<xrt::aie::profiling_impl>> profiling_cache;
 
 static std::shared_ptr<xrt::aie::profiling_impl>
 create_profiling_event(xrtDeviceHandle dhdl)
@@ -592,8 +589,9 @@ xrtGraphOpen(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* g
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::primary);
-    graph_cache[hdl.get()] = hdl;
-    return hdl.get();
+    auto key = hdl.get();
+    graph_cache.add(key, std::move(hdl));
+    return key;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -610,8 +608,9 @@ xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, cons
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::exclusive);
-    graph_cache[hdl.get()] = hdl;
-    return hdl.get();
+    auto key = hdl.get();
+    graph_cache.add(key, std::move(hdl));
+    return key;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -628,8 +627,9 @@ xrtGraphOpenShared(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const c
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::shared);
-    graph_cache[hdl.get()] = hdl;
-    return hdl.get();
+    auto key = hdl.get();
+    graph_cache.add(key, std::move(hdl));
+    return key;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -1024,7 +1024,7 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
     const std::string port2 = port2Name ? port2Name : "";
     auto hdl = event->start(option, port1, port2, value);
     if (hdl != xrt::aie::profiling_impl::invalid_handle) {
-      profiling_cache[hdl] = std::move(event);
+      profiling_cache.add(hdl, std::move(event));
       return hdl;
     }
     else
@@ -1053,11 +1053,7 @@ uint64_t
 xrtAIEReadProfiling(xrtDeviceHandle /*handle*/, int pHandle)
 {
   try {
-    auto it = profiling_cache.find(pHandle);
-    if (it != profiling_cache.end())
-      return it->second->read();
-    else
-      throw xrt_core::error(-EINVAL, "No such profiling handle");
+    return profiling_cache.get_or_error(pHandle)->read();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -1083,13 +1079,8 @@ void
 xrtAIEStopProfiling(xrtDeviceHandle /*handle*/, int pHandle)
 {
   try {
-    auto it = profiling_cache.find(pHandle);
-    if (it != profiling_cache.end()) {
-      it->second->stop();
-      profiling_cache.erase(pHandle);
-    }
-    else
-      throw xrt_core::error(-EINVAL, "No such profiling handle");
+    profiling_cache.get_or_error(pHandle)->stop();
+    profiling_cache.remove_or_error(pHandle);
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

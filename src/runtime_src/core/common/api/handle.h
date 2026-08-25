@@ -46,7 +46,7 @@ public:
     return handles;
   }
 
-  const std::shared_ptr<ImplType>&
+  std::shared_ptr<ImplType>
   get_or_error(HandleType handle) const
   {
     std::lock_guard<std::mutex> lk(mutex);

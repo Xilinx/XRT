@@ -1073,7 +1073,7 @@ namespace {
 // deleted if no other shared ptrs exists for this buffer
 static xrt_core::handle_map<xrtBufferHandle, std::shared_ptr<xrt::bo_impl>> bo_cache;
 
-static const std::shared_ptr<xrt::bo_impl>&
+static std::shared_ptr<xrt::bo_impl>
 get_boh(xrtBufferHandle bhdl)
 {
   return bo_cache.get_or_error(bhdl);

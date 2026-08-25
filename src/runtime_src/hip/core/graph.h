@@ -91,7 +91,7 @@ public:
     return m_node_list;
   }
 
-  const std::shared_ptr<graph_node>&
+  std::shared_ptr<graph_node>
   get_node(node_handle node_handle) const
   {
     return m_node_cache.get_or_error(node_handle);

@@ -336,6 +336,9 @@ xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, si
       if (!out)
         return 0;
 
+      if (len == 0)
+        return -EINVAL;
+
       auto cp_len = std::min(len - 1, str.size());
       std::memcpy(out, str.c_str(), cp_len);
       out[cp_len] = 0;

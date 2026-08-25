@@ -434,7 +434,7 @@ xclGetDeviceInfo2(xclDeviceInfo2 *info)
     mVBNV >> deviceName;
   }
   mVBNV.close();
-  std::size_t length = deviceName.copy(info->mName, deviceName.length(),0);
+  std::size_t length = deviceName.copy(info->mName, sizeof(info->mName) - 1, 0);
   info->mName[length] = '\0';
   return 0;
 }
