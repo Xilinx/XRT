@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #define XRT_CORE_COMMON_SOURCE
 #include "info_aie2.h"
@@ -744,6 +744,10 @@ get_aie_data(const xrt_core::device* device, const aie_tiles_info& info, aie_til
   if (tiles_status.cols_filled == 0)
     throw std::runtime_error("No open HW-Context\n");
 
+  // validate driver response: reject cols_filled bits beyond info.cols
+  if (tiles_status.cols_filled >> info.cols)
+    throw std::runtime_error("aie_tiles_status: cols_filled has bits set beyond info.cols");
+
   std::vector<aie2::aie_tiles_status> aie_status_vec;
 
   // Allocate an entry for each active column
@@ -755,6 +759,10 @@ get_aie_data(const xrt_core::device* device, const aie_tiles_info& info, aie_til
 
     cols_filled >>= 1;
   }
+
+  // use the already-computed column count to validate buffer size
+  if (tiles_status.buf.size() < aie_status_vec.size() * info.col_size)
+    throw std::runtime_error("aie_tiles_status: buffer too small for reported cols_filled");
 
   switch (tile_type) {
     case aie_tile_type::core:
