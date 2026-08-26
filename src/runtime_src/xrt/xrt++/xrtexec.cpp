@@ -316,6 +316,10 @@ void
 exec_write_command::
 add(addr_type addr, value_type value)
 {
+  constexpr auto max_words = xrt_core::bo_cache::bo_size / sizeof(uint32_t);
+  if (m_impl->ert_pkt->count + 2 >= max_words)
+    throw std::runtime_error("exec_write_command: exec buffer full");
+
   (*m_impl)[++m_impl->ert_pkt->count] = addr;
   (*m_impl)[++m_impl->ert_pkt->count] = value;
 }
