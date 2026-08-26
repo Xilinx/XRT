@@ -19,6 +19,8 @@ extern "C" {
 #endif
 
 /***************************** Include Files *********************************/
+#include <limits.h>
+#include <stdint.h>
 #include "cdo_cmd.h"
 
 /************************** Constant Definitions *****************************/
@@ -28,15 +30,23 @@ extern "C" {
 static inline int XCdo_IoMemCpy(void * dest, const void * src,
 		size_t n)
 {
+	if (n > (size_t)INT_MAX) {
+        XCdo_PError("COPY size exceeds the supported range\n");
+        return -1;
+    }
+
+    const uint32_t length = (uint32_t)n;
+    const uintptr_t destination = (uintptr_t)dest;
+
 	XCdo_Print("COPY: %s, Dest: %p, Src: %p, Size: %lu(Bytes)\n", __func__, 
 		dest, src, n);
 	IoAssignVar(XCDO_CMD_DMAWRITE);
-	IoAssignVar((uint64_t)dest);
-	IoAssignVar(((uint64_t)dest)>>32);
-	IoAssignVar(n);
-	IoCopyMem((void *)src, n);
-	
-	return n;
+    IoAssignVar((uint32_t)destination);
+    IoAssignVar((uint32_t)((uint64_t)destination >> 32U));
+    IoAssignVar(length);
+    IoCopyMem((void *)src, length);
+
+	return (int)length;
 }
 
 
