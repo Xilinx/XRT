@@ -80,6 +80,14 @@ class TestRunner : public JSONConfigurable, public std::enable_shared_from_this<
   public:
     virtual ~TestRunner() = default;
 
+    // Instances must stay shared_ptr owned so that startTest() can hand the
+    // worker thread a strong reference; a copy would not be owned by that
+    // shared_ptr and shared_from_this() would throw on it.
+    TestRunner(const TestRunner&) = delete;
+    TestRunner(TestRunner&&) = delete;
+    TestRunner& operator=(const TestRunner&) = delete;
+    TestRunner& operator=(TestRunner&&) = delete;
+
 };
   
 #endif

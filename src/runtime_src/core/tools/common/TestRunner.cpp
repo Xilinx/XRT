@@ -135,7 +135,7 @@ TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev,
     if (ctx->error)
       std::rethrow_exception(ctx->error);
 
-    result = std::move(ctx->result);
+    result = ctx->result;
   }
 
   return result;
