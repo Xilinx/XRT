@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2015-2017 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidev.h"
 #include "shim.h"
@@ -76,9 +76,21 @@ namespace xocl {
     if( ifs ) {
       //debug_ip_layout max size is 65536
       ifs.read(buffer, 65536);
-      if (ifs.gcount() > 0) {
+      auto bytes_read = static_cast<size_t>(ifs.gcount());
+      // debug_ip_layout is: uint16_t m_count followed by debug_ip_data m_debug_ip_data[]
+      // offsetof() gives the byte offset to the array, i.e. the header size.
+      // We need at least that many bytes before we can safely read m_count and
+      // index into m_debug_ip_data[].
+      if (bytes_read > offsetof(debug_ip_layout, m_debug_ip_data)) {
         map = (debug_ip_layout*)(buffer);
-        for( unsigned int i = 0; i < map->m_count; i++ ) {
+        // Derive how many complete debug_ip_data entries fit in the bytes we
+        // actually read, then clamp m_count (from the xclbin) to that limit.
+        // This prevents walking off the end of the stack buffer when the xclbin
+        // supplies an inflated m_count.
+        auto max_entries = (bytes_read - offsetof(debug_ip_layout, m_debug_ip_data))
+                           / sizeof(debug_ip_data);
+        auto entry_count = std::min(static_cast<size_t>(map->m_count), max_entries);
+        for( unsigned int i = 0; i < entry_count; i++ ) {
           if (count >= size) break;
           if (map->m_debug_ip_data[i].m_type == type) {
             if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
