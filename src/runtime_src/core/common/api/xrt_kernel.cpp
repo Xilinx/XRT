@@ -3167,12 +3167,13 @@ public:
 
     try {
       auto hwctx = kernel->get_hw_context();
-      auto core = hwctx.get_aie_coredump();  // may throw
+      auto core = hwctx.get_aie_coredump_elf();  // may throw
 
       std::ofstream ostr{file, std::ios::binary};
       if (!ostr)
         throw std::runtime_error("Could not open '" + file + "' for writing");
       ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
+      ostr.flush();  // flush before abort — destructors do not run after std::abort()
       std::abort();
     }
     catch (const std::exception& ex) {

@@ -1670,12 +1670,18 @@ aiebu::aiebu_assembler::buffer_type
 osabi_to_coredump_type(uint8_t os_abi)
 {
   switch (os_abi) {
-  case aiebu::osabi_aie2p:  return aiebu::aiebu_assembler::buffer_type::coredump_aie2p;
-  case aiebu::osabi_aie2ps: return aiebu::aiebu_assembler::buffer_type::coredump_aie2ps;
-  case aiebu::osabi_aie4:   return aiebu::aiebu_assembler::buffer_type::coredump_aie4;
-  case aiebu::osabi_aie4a:  return aiebu::aiebu_assembler::buffer_type::coredump_aie4a;
-  case aiebu::osabi_aie4z:  return aiebu::aiebu_assembler::buffer_type::coredump_aie4z;
-  default: throw std::runtime_error("AIE coredump not supported for this ELF architecture");
+  case aiebu::osabi_aie2p:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie2p;
+  case aiebu::osabi_aie2ps:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie2ps;
+  case aiebu::osabi_aie4:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie4;
+  case aiebu::osabi_aie4a:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie4a;
+  case aiebu::osabi_aie4z:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie4z;
+  default:
+    throw std::runtime_error("AIE coredump not supported for this ELF architecture");
   }
 }
 
@@ -1689,14 +1695,6 @@ to_aiebu_meta(const xrt::aie::coredump_meta& m)
 }
 
 } // namespace
-
-std::vector<char>
-make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob)
-{
-  auto buf_type = osabi_to_coredump_type(elf.get_handle()->get_os_abi());
-  aiebu::aiebu_assembler a(buf_type, blob, aiebu::aiebu_assembler::no_meta);
-  return a.get_elf();
-}
 
 std::vector<char>
 make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,

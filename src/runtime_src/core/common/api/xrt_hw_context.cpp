@@ -33,6 +33,7 @@
 #include <fstream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -719,29 +720,41 @@ public:
   }
 
   std::vector<char>
-  get_aie_coredump_elf() const
+  get_aie_coredump_elf(std::optional<xrt::aie::coredump_meta> meta) const
   {
     xrt::elf elf = [this] {
       std::lock_guard lk(m_mutex);
       if (m_elf_map.empty())
         throw std::runtime_error("AIE coredump ELF not available: no ELF loaded in this context");
-      // All ELFs in one hw_context target the same AIE partition — any entry yields correct OS/ABI
-      return m_elf_map.begin()->second;
-    }();
-    return xrt_core::elf_int::make_aie_coredump_elf(elf, get_aie_coredump());
-  }
 
-  std::vector<char>
-  get_aie_coredump_elf(const xrt::aie::coredump_meta& meta) const
-  {
-    xrt::elf elf = [this] {
-      std::lock_guard lk(m_mutex);
-      if (m_elf_map.empty())
-        throw std::runtime_error("AIE coredump ELF not available: no ELF loaded in this context");
       // All ELFs in one hw_context target the same AIE partition — any entry yields correct OS/ABI
       return m_elf_map.begin()->second;
     }();
-    return xrt_core::elf_int::make_aie_coredump_elf(elf, get_aie_coredump(), meta);
+
+    if (!meta) {
+      xrt::aie::coredump_meta m{};
+      m.timestamp_ns  = xrt_core::time_ns();
+      m.ctx_status    = xrt::aie::context_status::timeout;  //default
+      m.uuid          = elf.get_cfg_uuid().to_string();
+
+      try {
+        auto fw = xrt_core::device_query<xrt_core::query::firmware_version>(
+            m_core_device.get(),
+            xrt_core::query::firmware_version::firmware_type::npu_firmware);
+        m.fw_version = std::to_string(fw.major) + "." + std::to_string(fw.minor)
+                     + "." + std::to_string(fw.patch) + "." + std::to_string(fw.build);
+      }
+      catch (const std::exception&) { /* leave empty if not supported */ }
+
+      try {
+        m.device_info = xrt_core::device_query<xrt_core::query::rom_vbnv>(m_core_device.get());
+      }
+      catch (const std::exception&) { /* leave empty if not supported */ }
+
+      meta = std::move(m);
+    }
+
+    return xrt_core::elf_int::make_aie_coredump_elf(elf, get_aie_coredump(), *meta);
   }
 
   // Returns map of kernel names to their corresponding elf files
@@ -1043,16 +1056,9 @@ get_aie_coredump() const
 
 std::vector<char>
 hw_context::
-get_aie_coredump_elf() const
+get_aie_coredump_elf(std::optional<xrt::aie::coredump_meta> meta) const
 {
-  return get_handle()->get_aie_coredump_elf();
-}
-
-std::vector<char>
-hw_context::
-get_aie_coredump_elf(const xrt::aie::coredump_meta& meta) const
-{
-  return get_handle()->get_aie_coredump_elf(meta);
+  return get_handle()->get_aie_coredump_elf(std::move(meta));
 }
 
 } // xrt
