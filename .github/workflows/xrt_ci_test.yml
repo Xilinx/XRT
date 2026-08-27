@@ -137,7 +137,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: composite-workflows
-          ref: main
+          ref: gevadlam/add-xtc-templates-root-path
 
       - name: Wait for board host availability
         run: |
