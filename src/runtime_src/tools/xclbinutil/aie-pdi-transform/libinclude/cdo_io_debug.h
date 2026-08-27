@@ -18,6 +18,7 @@
 #define XCDO_IO_DEBUG_H
 
 #include <limits.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -28,6 +29,8 @@ typedef uint32_t TaskHandle_t;
 /***************************** Include Files *********************************/
 
 /************************** Constant Definitions *****************************/
+#define XCDO_UINT32_WIDTH 32U
+
 #include "cdo_common.h"
 #include "cdo_cmd.h"  // XCDO_CMD_WRITE for clang-tidy check
 
@@ -117,7 +120,7 @@ static inline int XCdo_IoMemcpy(void * dest, const void * src,
 		dest, src, n, PdiOffset);
 	IoAssignVar(XCDO_CMD_DMAWRITE);
     IoAssignVar((uint32_t)destination);
-    IoAssignVar((uint32_t)((uint64_t)destination >> 32U));
+    IoAssignVar((uint32_t)((uint64_t)destination >> XCDO_UINT32_WIDTH));
 	//in some test case src is different but data is same, then we only need to
 	//veify the address when not check the data.
 	if (!gcheckDmaData) {

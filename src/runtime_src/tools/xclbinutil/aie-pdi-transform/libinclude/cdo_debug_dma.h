@@ -20,8 +20,10 @@ extern "C" {
 
 /***************************** Include Files *********************************/
 #include <limits.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "cdo_cmd.h"
+#include "cdo_io_debug.h"
 
 /************************** Constant Definitions *****************************/
 #define CACHE_INVALIDATE(cache, cpylen)
@@ -38,11 +40,11 @@ static inline int XCdo_IoMemCpy(void * dest, const void * src,
     const uint32_t length = (uint32_t)n;
     const uintptr_t destination = (uintptr_t)dest;
 
-	XCdo_Print("COPY: %s, Dest: %p, Src: %p, Size: %lu(Bytes)\n", __func__, 
+	XCdo_Print("COPY: %s, Dest: %p, Src: %p, Size: %zu(Bytes)\n", __func__,
 		dest, src, n);
 	IoAssignVar(XCDO_CMD_DMAWRITE);
     IoAssignVar((uint32_t)destination);
-    IoAssignVar((uint32_t)((uint64_t)destination >> 32U));
+    IoAssignVar((uint32_t)((uint64_t)destination >> XCDO_UINT32_WIDTH));
     IoAssignVar(length);
     IoCopyMem((void *)src, length);
 
