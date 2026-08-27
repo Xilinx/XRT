@@ -1864,8 +1864,8 @@ static int installBitstreamGuard(xrt_core::device *dev, std::FILE *flashDev,
     int ret;
 
     memset(buf, 0xff, sizeof(buf));
-    memset(buf, 0xff, sizeof(buf1));
-    memset(buf, 0xff, sizeof(buf2));
+    memset(buf1, 0xff, sizeof(buf1));
+    memset(buf2, 0xff, sizeof(buf2));
     memcpy(buf + bitstream_guard_offset, BITSTREAM_GUARD,
         sizeof(BITSTREAM_GUARD));
     stripe_data(buf, buf1, buf2, sizeof(buf));
