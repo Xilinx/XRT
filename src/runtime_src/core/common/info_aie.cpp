@@ -773,13 +773,16 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
       continue;
 
     boost::property_tree::ptree igraph;
-    auto dma_row_it = g_node.second.get_child("dma_rows", empty_pt).begin();
+    const auto& dma_rows = g_node.second.get_child("dma_rows", empty_pt);
+    auto dma_row_it = dma_rows.begin();
     for (const auto& node : g_node.second.get_child("dma_columns", empty_pt)) {
+      if (dma_row_it == dma_rows.end())
+        throw std::runtime_error("aie_metadata: dma_rows shorter than dma_columns");
+
       boost::property_tree::ptree tile;
       tile.put("column", (std::stoul(node.second.data()) +  start_col));
       tile.put("row", dma_row_it->second.data());
-      if (dma_row_it != g_node.second.end())
-        dma_row_it++;
+      dma_row_it++;
       // Check whether this core is already added
       if (is_duplicate_core(tile_array, tile))
         continue;
@@ -910,11 +913,18 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
     int gr_id = igraph.get<int>("id");
     ograph.put("name", igraph.get<std::string>("name"));
     ograph.put("status", graph_status_to_string(gh_status.get<int>("graphs." + igraph.get<std::string>("name"), -1)));
+    const auto& core_cols = gr.second.get_child("core_columns", empty_pt);
+    if (gr.second.get_child("core_rows", empty_pt).size() != core_cols.size() ||
+        gr.second.get_child("iteration_memory_columns", empty_pt).size() != core_cols.size() ||
+        gr.second.get_child("iteration_memory_rows", empty_pt).size() != core_cols.size() ||
+        gr.second.get_child("iteration_memory_addresses", empty_pt).size() != core_cols.size())
+      throw std::runtime_error("aie_metadata: mismatched array sizes in graph");
+
     auto row_it = gr.second.get_child("core_rows").begin();
     auto memcol_it = gr.second.get_child("iteration_memory_columns").begin();
     auto memrow_it = gr.second.get_child("iteration_memory_rows").begin();
     auto memaddr_it = gr.second.get_child("iteration_memory_addresses").begin();
-    for (const auto& node : gr.second.get_child("core_columns", empty_pt)) {
+    for (const auto& node : core_cols) {
       boost::property_tree::ptree tile;
       tile.put("column", (std::stoul(node.second.data()) + start_col));
       tile.put("row", row_it->second.data());
