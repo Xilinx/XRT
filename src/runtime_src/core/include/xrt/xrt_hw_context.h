@@ -9,13 +9,11 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "xrt/experimental/xrt_aie_coredump.h"
 #include "xrt/experimental/xrt_elf.h"
 
 #ifdef __cplusplus
 
 #include <map>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -362,23 +360,19 @@ public:
   get_aie_coredump() const;
 
   /**
-   * get_aie_coredump_elf() - Returns the coredump of AIE Array as an ET_CORE ELF with metadata.
+   * get_aie_coredump_elf() - Returns the coredump of AIE Array as an ET_CORE ELF.
    * Fetches the raw AIE dump blob and packages it into a coredump ELF.
    * The AIE architecture is derived from the ELF loaded in this context.
-   * Metadata (timestamp, versions, device info, uuid) is always embedded.
-   * If @meta is provided it is used as-is; otherwise metadata is built
-   * internally from the hw_context and device.
+   * Metadata (timestamp, firmware version, device info, ELF UUID) is always
+   * embedded and populated internally from the hw_context and device.
    * This function can throw.
-   *
-   * @param meta
-   *  Optional metadata to embed. When omitted, metadata is populated internally.
    *
    * @return
    *  ELF bytes of the ET_CORE coredump ELF
    */
   XRT_API_EXPORT
   std::vector<char>
-  get_aie_coredump_elf(std::optional<xrt::aie::coredump_meta> meta = std::nullopt) const;
+  get_aie_coredump_elf() const;
 
 public:
   /// @cond

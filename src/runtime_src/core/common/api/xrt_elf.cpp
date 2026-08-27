@@ -13,8 +13,11 @@
 #include "core/common/aiebu/src/cpp/elf/aie_elf_constants.h"
 #include "core/common/aiebu/src/cpp/include/aiebu/aiebu_assembler.h"
 #include "core/common/config_reader.h"
+#include "core/common/device.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/time.h"
 #include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/runner/capture.h"
@@ -1685,23 +1688,54 @@ osabi_to_coredump_type(uint8_t os_abi)
   }
 }
 
-aiebu::aie_coredump_meta
-to_aiebu_meta(const xrt::aie::coredump_meta& m)
-{
-  return aiebu::aie_coredump_meta{
-    m.timestamp_ns, m.driver_version, m.fw_version, m.device_info,
-    static_cast<aiebu::aie_context_status>(m.ctx_status), m.uuid
-  };
-}
-
 } // namespace
 
 std::vector<char>
 make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
-                      const xrt::aie::coredump_meta& meta)
+                      const xrt_core::device* device, uint32_t slot)
 {
+  // Fail fast: verify arch is supported before doing any device queries or blob fetch
   auto buf_type = osabi_to_coredump_type(elf.get_handle()->get_os_abi());
-  aiebu::aiebu_assembler a(buf_type, blob, to_aiebu_meta(meta));
+
+  aiebu::aie_coredump_meta meta{};
+  meta.timestamp_ns = xrt_core::time_ns();
+  meta.uuid = elf.get_cfg_uuid().to_string();
+
+  try {
+    auto data = xrt_core::device_query<xrt_core::query::aie_partition_info>(device);
+    auto islot = static_cast<int>(slot);
+    for (const auto& entry : data) {
+      if (std::stoi(entry.metadata.id) == islot) {
+        meta.context_status = entry.is_suspended
+            ? aiebu::aie_context_status::idle
+            : aiebu::aie_context_status::running;
+        break;
+      }
+    }
+  }
+  catch (const std::exception&) {
+    /* leave as default idle if query not supported */
+  }
+
+  try {
+    auto fw = xrt_core::device_query<xrt_core::query::firmware_version>(
+        device,
+        xrt_core::query::firmware_version::firmware_type::npu_firmware);
+    meta.fw_version = std::to_string(fw.major) + "." + std::to_string(fw.minor)
+                    + "." + std::to_string(fw.patch) + "." + std::to_string(fw.build);
+  }
+  catch (const std::exception&) {
+    /* leave empty if not supported */
+  }
+
+  try {
+    meta.device_info = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+  }
+  catch (const std::exception&) {
+    /* leave empty if not supported */
+  }
+
+  aiebu::aiebu_assembler a(buf_type, blob, meta);
   return a.get_elf();
 }
 
