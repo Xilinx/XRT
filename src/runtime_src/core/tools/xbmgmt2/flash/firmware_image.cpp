@@ -115,25 +115,48 @@ static void uuid2ts(const std::string& uuid, uint64_t& ts)
     ts = strtoull(str.c_str(), nullptr, 16);
 }
 
-void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
+static std::vector<std::string>
+getUUIDFromDTB(const void* blob, size_t blob_len)
 {
-    struct fdt_header *bph = (struct fdt_header *)blob;
+    const char *blob_start = reinterpret_cast<const char*>(blob);
+    const char *blob_end   = blob_start + blob_len;
+
+    // need at least a complete fdt_header before reading any field
+    if (blob_len < sizeof(struct fdt_header))
+        throw std::runtime_error("DTB blob too small to contain fdt_header");
+
+    const struct fdt_header *bph = reinterpret_cast<const struct fdt_header*>(blob);
     uint32_t version = be32toh(bph->version);
-    uint32_t off_dt = be32toh(bph->off_dt_struct);
-    const char *p_struct = (const char *)blob + off_dt;
+    uint32_t off_dt  = be32toh(bph->off_dt_struct);
     uint32_t off_str = be32toh(bph->off_dt_strings);
-    const char *p_strings = (const char *)blob + off_str;
+
+    // validate that both section offsets fall inside the buffer
+    if (off_dt >= blob_len || off_str >= blob_len)
+        throw std::runtime_error("DTB blob: struct/strings offset out of range");
+
+    const char *p_struct  = blob_start + off_dt;
+    const char *p_strings = blob_start + off_str;
     const char *p, *s;
     uint32_t tag;
-    int sz;
 
+    std::vector<std::string> uuids;
     p = p_struct;
-    uuids.clear();
-    while ((tag = be32toh(GET_CELL(p))) != FDT_END)
+    while (true)
     {
+        // need 4 bytes for the tag cell
+        if (p + 4 > blob_end)
+            break;
+
+        tag = be32toh(GET_CELL(p));
+        if (tag == FDT_END)
+            break;
+
         if (tag == FDT_BEGIN_NODE)
         {
             s = p;
+            // ensure the node name is NUL-terminated within the buffer
+            if (std::find(s, blob_end, '\0') == blob_end)
+                break;
             p = PALIGN(p + strlen(s) + 1, 4);
             continue;
         }
@@ -141,23 +164,43 @@ void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
         if (tag != FDT_PROP)
             continue;
 
-        sz = be32toh(GET_CELL(p));
-        s = p_strings + be32toh(GET_CELL(p));
+        // need 8 bytes: 4 for sz, 4 for string offset
+        if (p + 8 > blob_end)
+            break;
+
+        // GET_CELL reads 4 bytes and advances p — two consecutive fields:
+        // [data length][name string offset]
+        uint32_t sz      = be32toh(GET_CELL(p));
+        uint32_t str_off = be32toh(GET_CELL(p));
+
+        // validate string offset within the strings block
+        if (p_strings + str_off >= blob_end)
+            break;
+
+        s = p_strings + str_off;
+        if (std::find(s, blob_end, '\0') == blob_end)
+            break;
+
         if (version < 16 && sz >= 8)
             p = PALIGN(p, 8);
 
+        // validate property data lies within the buffer
+        if (p + sz > blob_end)
+            break;
+
         if (!strcmp(s, "logic_uuid"))
         {
-            uuids.insert(uuids.begin(), std::string(p));
+            if (std::find(p, blob_end, '\0') != blob_end)
+                uuids.insert(uuids.begin(), std::string(p));
         }
-	else if (!strcmp(s, "interface_uuid"))
+        else if (!strcmp(s, "interface_uuid"))
         {
-            uuids.push_back(std::string(p));
+            if (std::find(p, blob_end, '\0') != blob_end)
+                uuids.push_back(std::string(p));
         }
         p = PALIGN(p + sz, 4);
     }
-    if (uuids.size() > 0)
-        uuid2ts(uuids[0], ts);
+    return uuids;
 }
 
 // Verify that [offset, offset+size) fits within a buffer of known length.
@@ -301,7 +344,9 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
             std::vector<char> dtbbuf(dtbSection->m_sectionSize);
             in.seekg(dtbSection->m_sectionOffset);
             in.read(dtbbuf.data(), dtbSection->m_sectionSize);
-            getUUIDFromDTB(dtbbuf.data(), timestamp, uuids);
+            uuids = getUUIDFromDTB(dtbbuf.data(), dtbbuf.size());
+            if (!uuids.empty())
+                uuid2ts(uuids[0], timestamp);
         }
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
