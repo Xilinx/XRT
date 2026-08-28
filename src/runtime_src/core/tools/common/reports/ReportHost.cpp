@@ -145,7 +145,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
     _output << xrt_version_ss.str();
   }
   catch (const boost::property_tree::ptree_error &ex) {
-    throw xrt_core::error(boost::str(boost::format("%s. Please contact your Xilinx representative to fix the issue")
+    throw xrt_core::error(boost::str(boost::format("%s. Please contact your representative to fix the issue")
          % ex.what()));
   }
   _output << std::endl << "Device(s) Present\n";
