@@ -106,7 +106,7 @@ typedef struct {
 typedef struct {
 	uint8_t bLeft;
 	uint32_t cmd_id;
-	uint16_t cmdNum;
+	uint32_t cmdNum;
 	uint32_t cmdHeaderLeft[MAX_HEADER_LEFT];
 	uint32_t cmdHeaderLeftLen;
 } XCdoCmdLeft;

@@ -21,6 +21,8 @@
 
 /***************************** Include Files *********************************/
 #include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include "cdo_cmd.h"
 #include "load_pdi.h"
@@ -29,6 +31,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+
+static int
+pointer_difference_to_u32(const char* end, const char* begin, uint32_t* result)
+{
+    const ptrdiff_t difference = end - begin;
+
+    if (difference < 0 || (uint64_t)difference > UINT32_MAX)
+        return 0;
+
+    *result = (uint32_t)difference;
+    return 1;
+}
 
 uint8_t XPdi_Cmd_Match(uint32_t CmdId)
 {
@@ -152,9 +166,15 @@ uint32_t XPdi_Cmd_Parse(char* pdi_buf, uint32_t BufLen, const uint32_t *Buf)
     Buf += Cmd.Size;
     BufLen -= Cmd.Size;
   }
-  // printf("buf len is %ld\n", cur_pdi_buf - pdi_buf);
-  XCdo_Print("buf len is %ld\n", cur_pdi_buf - pdi_buf);
-  return cur_pdi_buf - pdi_buf;
+  
+  uint32_t parsed_length = 0;
+  if (!pointer_difference_to_u32(cur_pdi_buf, pdi_buf, &parsed_length)) {
+      XCdo_PError("Parsed command length exceeds the supported range\n");
+      return 0;
+  }
+  // printf("buf len is %u\n", parsed_length);
+  XCdo_Print("buf len is %u\n", parsed_length);
+  return parsed_length;
 }
 
 uint8_t is_bss(uint32_t dst_addr)
@@ -227,8 +247,15 @@ uint32_t XPdi_Buf_Parse(char* pdi_buf, uint32_t CBufLen, uint32_t BufLen, const 
             ((uint32_t*)pdi_buf)[3] = ((uint32_t*)pdi_buf)[3] | (1 << 16);
           }
           //point to the offset location of data.
-          ((uint32_t*)pdi_buf)[2] = data_buf - odata_buf;
+            //point to the offset location of data.
+          uint32_t data_offset = 0;
+          if (!pointer_difference_to_u32(data_buf, odata_buf, &data_offset)) {
+              XCdo_PError("PDI data offset exceeds the supported range\n");
+              return 0;
+          }
+          ((uint32_t*)pdi_buf)[2] = data_offset;
           data_buf += mem_len;
+         
           //move cmd pointer
           pdi_buf += cmd_len;
           // printf("dma len %d \n", mem_len);
@@ -244,8 +271,13 @@ uint32_t XPdi_Buf_Parse(char* pdi_buf, uint32_t CBufLen, uint32_t BufLen, const 
   // printf("the all zero dma data length is  %d\n", dma_zero_data_size);
   XCdo_Print("the all zero dma data length is  %d\n", dma_zero_data_size);
 
-  return data_buf - obuf;
+  uint32_t total_length = 0;
+  if (!pointer_difference_to_u32(data_buf, obuf, &total_length)) {
+      XCdo_PError("Transformed PDI length exceeds the supported range\n");
+      return 0;
+  }
 
+  return total_length;
 }
 
 void XPdi_Export(const XPdiLoad* PdiLoad, const char* pdi_file_out)
@@ -367,12 +399,24 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
   uint32_t Cmd_len = XPdi_Cmd_Parse(cdo_buf +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), BufLen, Buf);
 
+  if (Cmd_len == 0) {
+    XCdo_PError("Failed to parse PDI command zone - buffer overflow or empty PDI\n");
+    free(pdi_buf);
+    return;
+  }
+
   //Change the pdi header to mark that this is a tranform/compress pdi
   XPdi_Header_Set_Transform_Type(&newPdiLoad, CMDDATASPERATE, Cmd_len);
 
   //Parse and generate the data zone
   uint32_t TotalCdoLen = XPdi_Buf_Parse(cdo_buf  +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), Cmd_len, BufLen, (const char*)Buf);
+
+  if (TotalCdoLen == 0) {
+    XCdo_PError("Failed to parse PDI data zone - buffer overflow or malformed PDI\n");
+    free(pdi_buf);
+    return;
+  }
 
   //Update the pdi length.
   //TotalCdoLen is the total size of cdo command zone + data zone
