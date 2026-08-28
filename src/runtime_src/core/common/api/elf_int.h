@@ -545,12 +545,18 @@ std::string
 get_filename(const xrt::elf_impl* elf_impl);
 
 // Package a raw AIE coredump blob into an ET_CORE ELF with metadata.
-// Metadata (timestamp, firmware version, device info, context status, UUID)
-// is built internally by querying device and the loaded ELF.
-// The AIE architecture is derived from the ELF's OS/ABI byte.
+// Metadata (timestamp, firmware version, device info, context status) is built
+// internally by querying the device.  The AIE architecture is derived from the
+// ELF's OS/ABI byte.
+//
+// uuid: UUID to embed in the coredump metadata.  Pass the UUID of the specific
+//   ELF that caused the fault (e.g. the timed-out run's ELF).  Pass empty string
+//   when no single ELF is attributable — e.g. a partition-level dump triggered
+//   from the public API where multiple ELFs may be loaded.
 std::vector<char>
 make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
-                      const xrt_core::device* device, uint32_t slot);
+                      const xrt_core::device* device, uint32_t slot,
+                      const std::string& uuid = "");
 
 } // namespace xrt_core::elf_int
 

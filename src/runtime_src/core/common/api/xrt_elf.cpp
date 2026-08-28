@@ -1668,8 +1668,6 @@ get_filename(const xrt::elf_impl* elf_impl)
     : "";
 }
 
-namespace {
-
 aiebu::aiebu_assembler::buffer_type
 osabi_to_coredump_type(uint8_t os_abi)
 {
@@ -1689,20 +1687,19 @@ osabi_to_coredump_type(uint8_t os_abi)
   }
 }
 
-} // namespace
-
 std::vector<char>
 make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
-                      const xrt_core::device* device, uint32_t slot)
+                      const xrt_core::device* device, uint32_t slot,
+                      const std::string& uuid)
 {
-  // Fail fast: verify arch is supported before doing any device queries or blob fetch
+  // Fail fast: verify arch is supported before doing any device queries.
   auto buf_type = osabi_to_coredump_type(elf.get_handle()->get_os_abi());
 
   aiebu::aie_coredump_meta meta{};
   meta.timestamp_ns = static_cast<uint64_t>(
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::system_clock::now().time_since_epoch()).count());
-  meta.uuid = elf.get_cfg_uuid().to_string();
+  meta.uuid = uuid;
 
   try {
     boost::property_tree::ptree pt_xrt;
@@ -1716,6 +1713,7 @@ make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
         if (!name.empty() && !ver.empty() && ver != "unknown") {
           if (!drv_str.empty())
             drv_str += "; ";
+
           drv_str += name + " " + ver;
         }
       }
@@ -1726,17 +1724,18 @@ make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
     /* leave empty if not available */
   }
 
-
   try {
     auto data = xrt_core::device_query<xrt_core::query::aie_partition_info>(device);
     auto islot = static_cast<int>(slot);
+
     for (const auto& entry : data) {
-      if (std::stoi(entry.metadata.id) == islot) {
-        meta.context_status = entry.is_suspended
-            ? aiebu::aie_context_status::idle
-            : aiebu::aie_context_status::running;
-        break;
-      }
+      if (std::stoi(entry.metadata.id) != islot)
+        continue;
+
+      meta.context_status = entry.is_suspended
+          ? aiebu::aie_context_status::idle
+          : aiebu::aie_context_status::running;
+      break;
     }
   }
   catch (const std::exception&) {
