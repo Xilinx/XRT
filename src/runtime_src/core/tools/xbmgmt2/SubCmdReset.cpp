@@ -37,13 +37,15 @@ static void
 reset_ecc(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::reset_type& reset)
 {
   auto raw_mem = xrt_core::device_query<xrt_core::query::mem_topology_raw>(dev);
-  const mem_topology *map = (mem_topology *)raw_mem.data();
-    if(raw_mem.empty() || map->m_count == 0) {
-      std::cout << "WARNING: 'mem_topology' not found, "
+  const auto *map = reinterpret_cast<const mem_topology *>(raw_mem.data());
+  if (map->m_count <= 0 || 
+      raw_mem.size() < sizeof(mem_topology) + (static_cast<size_t>(map->m_count) - 1) * sizeof(mem_data)) 
+  {
+    std::cout << "WARNING: 'mem_topology' not found, "
         << "unable to query ECC info. Has the xclbin been loaded? "
         << "See 'xbmgmt status'." << std::endl;
-      return;
-    }
+    return;
+  }
 
     for(int32_t i = 0; i < map->m_count; i++) {
       if(!map->m_mem_data[i].m_used)
