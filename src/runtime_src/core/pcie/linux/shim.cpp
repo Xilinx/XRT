@@ -2225,7 +2225,7 @@ int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint3
   uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
   traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
-  traceSamples = std::min(nSamples, xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO);
+  traceSamples = std::min(nSamples, static_cast<uint32_t>(xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO));
 
   return 0;
 }
