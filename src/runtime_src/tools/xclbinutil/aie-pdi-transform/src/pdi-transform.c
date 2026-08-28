@@ -399,12 +399,24 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
   uint32_t Cmd_len = XPdi_Cmd_Parse(cdo_buf +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), BufLen, Buf);
 
+  if (Cmd_len == 0) {
+    XCdo_PError("Failed to parse PDI command zone - buffer overflow or empty PDI\n");
+    free(pdi_buf);
+    return;
+  }
+
   //Change the pdi header to mark that this is a tranform/compress pdi
   XPdi_Header_Set_Transform_Type(&newPdiLoad, CMDDATASPERATE, Cmd_len);
 
   //Parse and generate the data zone
   uint32_t TotalCdoLen = XPdi_Buf_Parse(cdo_buf  +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), Cmd_len, BufLen, (const char*)Buf);
+
+  if (TotalCdoLen == 0) {
+    XCdo_PError("Failed to parse PDI data zone - buffer overflow or malformed PDI\n");
+    free(pdi_buf);
+    return;
+  }
 
   //Update the pdi length.
   //TotalCdoLen is the total size of cdo command zone + data zone
