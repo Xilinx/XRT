@@ -139,27 +139,6 @@ jobs:
           path: composite-workflows
           ref: gevadlam/add-xtc-templates-root-path
 
-      - name: Wait for board host availability
-        run: |
-          BOARD=$(echo "${{ matrix.board_list }}" | sed 's/xilinx_//' | cut -d'_' -f1)
-          PACT_CMD="/proj/sdxbf/pact_prod/src/pylib/lib/cmds/pact_pipeline_cmd"
-          MAX_RETRIES=3
-          WAIT_SECS=600
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "Checking host availability for board $BOARD (attempt $i/$MAX_RETRIES)..."
-            OUTPUT=$($PACT_CMD --json show-hosts --pipeline pipeline-xrt --boards "$BOARD" 2>&1) || true
-            if echo "$OUTPUT" | grep -qi "idle"; then
-              echo "Board host is available"
-              break
-            fi
-            if [ $i -eq $MAX_RETRIES ]; then
-              echo "Warning: Could not confirm host availability after $MAX_RETRIES attempts, proceeding anyway"
-              break
-            fi
-            echo "No idle host found. Waiting $((WAIT_SECS/60)) minutes for board host reboot..."
-            sleep $WAIT_SECS
-          done
-
       - name: Run pcie-hw tests for ${{ matrix.board_list }}
         uses: ./composite-workflows/pcie-hw
         with:
