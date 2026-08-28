@@ -1585,9 +1585,75 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 #endif
 }
 
+/**
+ * zocl_drm_platform_shutdown - Shutdown handler for ZOCL platform device
+ *
+ * @pdev: Platform device instance
+ *
+ * This function is called during system shutdown, reboot, or kexec to quiesce
+ * all traffic and ensure no ongoing transactions before the subsystem restart.
+ * All active resources must properly quiesce traffic during shutdown.
+ *
+ * The handler performs the following operations:
+ * 1. Stops DMA channels
+ * 2. Quiesces all soft compute units (SCUs/PS kernels)
+ * 3. Flushes AIE work queues
+ *
+ */
+static void zocl_drm_platform_shutdown(struct platform_device *pdev)
+{
+	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
+	int i;
+
+	if (!zdev) {
+		DRM_WARN("Shutdown called with no device data\n");
+		return;
+	}
+
+	DRM_INFO("ZOCL shutdown: Quiescing all traffic for subsystem restart\n");
+
+	/* 1. Quiesce DMA channel if active */
+	if (zdev->zdev_dma_chan) {
+		dma_release_channel(zdev->zdev_dma_chan);
+		zdev->zdev_dma_chan = NULL;
+		DRM_INFO("DMA channel released and quiesced\n");
+	}
+
+	/* 2. Quiesce all soft CUs (PS kernels)
+	 * Iterate through all CU subdevices and shutdown soft kernels
+	 */
+	mutex_lock(&zdev->cu_subdev.lock);
+	for (i = 0; i < MAX_CU_NUM; i++) {
+		struct platform_device *cu_pdev = zdev->cu_subdev.cu_pldev[i];
+		if (cu_pdev && !strcmp(cu_pdev->name, "SCU")) {
+			/* Shutdown soft kernel using existing shutdown function */
+			zocl_scu_sk_shutdown(cu_pdev);
+		}
+	}
+	mutex_unlock(&zdev->cu_subdev.lock);
+	DRM_INFO("All soft CUs quiesced\n");
+
+	/* 3. Quiesce AIE work queues for all slots */
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
+		struct drm_zocl_slot *slot = zdev->pr_slot[i];
+		if (slot && slot->aie) {
+			mutex_lock(&slot->aie_lock);
+			if (slot->aie->wq) {
+				flush_workqueue(slot->aie->wq);
+				DRM_INFO("AIE partition %d work queue flushed\n",
+					slot->aie->partition_id);
+			}
+			mutex_unlock(&slot->aie_lock);
+		}
+	}
+
+	DRM_INFO("ZOCL shutdown complete: All traffic quiesced\n");
+}
+
 static struct platform_driver zocl_drm_private_driver = {
 	.probe			= zocl_drm_platform_probe,
 	.remove			= zocl_drm_platform_remove,
+	.shutdown		= zocl_drm_platform_shutdown,
 	.driver			= {
 		.name	        = "zocl-drm",
 		.of_match_table	= zocl_drm_of_match,
