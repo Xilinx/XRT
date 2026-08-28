@@ -692,12 +692,23 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	struct kds_cu_mgmt *cu_mgmt = NULL;
 	u32 cu_idx = cu_ctx->cu_idx;
 	int domain = cu_ctx->cu_domain;
-	uint32_t hw_ctx = cu_ctx->hw_ctx->hw_ctx_idx;
 	unsigned long submitted;
 	unsigned long completed;
 	bool bad_state = false;
+	uint32_t hw_ctx;
 	int wait_ms;
 	int cu_set;
+
+	/* kds_initialize_cu_ctx() does not set this; each shim assigns it
+	 * after kds_alloc_cu_ctx() returns, so NULL is reachable.
+	 */
+	if (!cu_ctx->hw_ctx) {
+		kds_err(client, "Client pid(%d) Domain(%d) CU(%d) has no hw context",
+			pid_nr(client->pid), domain, cu_idx);
+		return -EINVAL;
+	}
+
+	hw_ctx = cu_ctx->hw_ctx->hw_ctx_idx;
 
 	cu_mgmt = (domain == DOMAIN_PL) ? &kds->cu_mgmt : &kds->scu_mgmt;
 	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx])) {
@@ -1133,6 +1144,10 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	if (!cctx)
 		return;
 
+	/* Nothing to drain. Keeps this safe to call more than once */
+	if (list_empty(&cctx->cu_ctx_list))
+		return;
+
 	kds_info(client, "Client pid(%d) has open context for %d slot",
 			pid_nr(client->pid), cctx->slot_idx);
 
@@ -1154,31 +1169,64 @@ out:
 	mutex_unlock(&client->lock);
 }
 
-void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
+/*
+ * kds_fini_client_ctxs() - Drain and release every CU context of a client
+ *
+ * Covers both the legacy contexts hanging off client->ctx_list and the
+ * hw_context ones hanging off hw_ctx->cu_ctx_list.
+ *
+ * The hardware contexts must still be alive when this runs.
+ * kds_del_cu_context() dereferences cu_ctx->hw_ctx and resolves the per hw
+ * context percpu counters through client_stat_read() to decide whether
+ * outstanding commands must be aborted. Releasing a hardware context before
+ * this point both dangles cu_ctx->hw_ctx and makes those counters read back
+ * zero, which silently skips the abort and leaves commands referencing a
+ * client that is about to be freed.
+ *
+ * Safe to call twice; the second call finds every list empty and does
+ * nothing.
+ */
+void kds_fini_client_ctxs(struct kds_sched *kds, struct kds_client *client)
 {
 	struct kds_client_hw_ctx *curr = NULL;
 	struct kds_client_ctx *c_curr = NULL;
 
 	/* Release legacy client's resources */
+	_kds_fini_client(kds, client, client->ctx);
+
+	list_for_each_entry(c_curr, &client->ctx_list, link)
+		_kds_fini_client(kds, client, c_curr);
+
+	/* release new hw client's resources */
+	list_for_each_entry(curr, &client->hw_ctx_list, link)
+		kds_fini_hw_ctx_client(kds, client, curr);
+}
+
+/*
+ * kds_fini_client() - Release client level state
+ *
+ * Destroys client->lock, so the caller must already have released its
+ * hardware contexts. Callers that manage hardware contexts themselves run
+ * kds_fini_client_ctxs() first, release those contexts, then call this.
+ */
+void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
+{
+	struct kds_client_hw_ctx *curr = NULL;
+
+	kds_fini_client_ctxs(kds, client);
+
+	/* Release the legacy client's default hw context. This must stay
+	 * here rather than move into the shims: a shim's own hw_ctx_list walk
+	 * may share xclbin_id with client->ctx, and a pure hw_context
+	 * client's first context is also index 0 and must not be freed by
+	 * this path.
+	 */
 	if ((client->ctx) || !list_empty(&client->ctx_list)) {
-		_kds_fini_client(kds, client, client->ctx);
-
-		if(!list_empty(&client->ctx_list))
-			list_for_each_entry(c_curr, &client->ctx_list, link)
-				_kds_fini_client(kds, client, c_curr);
-
 		mutex_lock(&client->lock);
 		curr = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
 		if (curr)
 			kds_free_hw_ctx(client, curr);
 		mutex_unlock(&client->lock);
-	}
-
-	if(!list_empty(&client->hw_ctx_list)) {
-		list_for_each_entry(curr, &client->hw_ctx_list, link) {
-			/* release new hw client's resources */
-			kds_fini_hw_ctx_client(kds, client, curr);
-		}
 	}
 
 	mutex_lock(&client->lock);

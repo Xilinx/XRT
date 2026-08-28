@@ -289,11 +289,13 @@ out:
 /*
  * Release hw contexts on client exit. Legacy apps use ctx_list for
  * bitstream unlock; hw_context API apps need unlock here.
+ *
+ * The caller must have run kds_fini_client_ctxs() first, since a hw context
+ * cannot be freed while CU contexts still reference it.
  */
 static void zocl_fini_client_hw_ctxs(struct drm_zocl_dev *zdev,
 				     struct kds_client *client)
 {
-	struct kds_sched *kds = &zdev->kds;
 	struct kds_client_hw_ctx *hw_ctx, *next;
 	struct zocl_hw_graph_ctx *graph_ctx;
 	struct list_head *gptr, *gnext;
@@ -301,9 +303,6 @@ static void zocl_fini_client_hw_ctxs(struct drm_zocl_dev *zdev,
 	uuid_t *xclbin_id;
 	u32 s_id;
 	bool unlock = list_empty(&client->ctx_list);
-
-	list_for_each_entry_safe(hw_ctx, next, &client->hw_ctx_list, link)
-		kds_fini_hw_ctx_client(kds, client, hw_ctx);
 
 	mutex_lock(&client->lock);
 	list_for_each_entry_safe(hw_ctx, next, &client->hw_ctx_list, link) {
@@ -356,12 +355,14 @@ void zocl_destroy_client(void *client_hdl)
 
 	kds = &zdev->kds;
 
-	/* kds_fini_client should released resources hold by the client.
-	 * release xclbin_id and unlock bitstream if needed.
+	/* Teardown runs in three ordered phases. A kds_client_hw_ctx must
+	 * outlive every kds_client_cu_ctx that references it, and
+	 * kds_fini_client() destroys client->lock, which phase 2 needs.
 	 */
 	zocl_aie_kds_del_graph_context_all(client);
-	zocl_fini_client_hw_ctxs(zdev, client);
-	kds_fini_client(kds, client);
+	kds_fini_client_ctxs(kds, client);	/* drain and free CU contexts */
+	zocl_fini_client_hw_ctxs(zdev, client);	/* unlock and free hw contexts */
+	kds_fini_client(kds, client);		/* destroy the client */
 
 	/* Delete all the existing context associated to this device for this
 	 * client.
