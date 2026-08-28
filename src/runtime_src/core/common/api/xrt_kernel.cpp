@@ -3154,7 +3154,9 @@ public:
   }
 
   // abort_coredump_or_noop() - AIE coredump if enabled
-  // Dump core and abort, or do nothing.
+  // Write AIE coredump ELF to the configured file and return.
+  // The caller proceeds to throw aie_error so the normal exception message
+  // is printed.
   void
   abort_coredump_or_noop(ert_cmd_state state) const
   {
@@ -3173,8 +3175,6 @@ public:
       if (!ostr)
         throw std::runtime_error("Could not open '" + file + "' for writing");
       ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
-      ostr.flush();  // flush before abort — destructors do not run after std::abort()
-      std::abort();
     }
     catch (const std::exception& ex) {
       xrt_core::send_exception_message(std::string("Failed to create core dump: ") + ex.what());

@@ -17,7 +17,7 @@
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
-#include "core/common/time.h"
+#include "core/common/system.h"
 #include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/runner/capture.h"
@@ -25,6 +25,7 @@
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <elfio/elfio.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -1698,8 +1699,33 @@ make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
   auto buf_type = osabi_to_coredump_type(elf.get_handle()->get_os_abi());
 
   aiebu::aie_coredump_meta meta{};
-  meta.timestamp_ns = xrt_core::time_ns();
+  meta.timestamp_ns = static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::system_clock::now().time_since_epoch()).count());
   meta.uuid = elf.get_cfg_uuid().to_string();
+
+  try {
+    boost::property_tree::ptree pt_xrt;
+    xrt_core::get_driver_info(pt_xrt);
+    std::string drv_str;
+    if (const auto drivers = pt_xrt.get_child_optional("drivers")) {
+      for (const auto& kv : *drivers) {
+        const auto& drv = kv.second;
+        auto name = drv.get<std::string>("name", "");
+        auto ver  = drv.get<std::string>("version", "");
+        if (!name.empty() && !ver.empty() && ver != "unknown") {
+          if (!drv_str.empty())
+            drv_str += "; ";
+          drv_str += name + " " + ver;
+        }
+      }
+    }
+    meta.driver_version = drv_str;
+  }
+  catch (const std::exception&) {
+    /* leave empty if not available */
+  }
+
 
   try {
     auto data = xrt_core::device_query<xrt_core::query::aie_partition_info>(device);
