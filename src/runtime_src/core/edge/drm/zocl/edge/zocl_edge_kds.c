@@ -168,7 +168,8 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
         if (!hw_ctx) {
                 DRM_ERROR("No valid HW context is open");
 		zocl_remove_client_context(zdev, client, cctx);
-                return -EINVAL;
+			ret = -EINVAL;
+			goto out;
         }
 
         cu_ctx->hw_ctx = hw_ctx;
