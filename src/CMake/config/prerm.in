@@ -57,7 +57,7 @@ rm -rf /etc/systemd/system/msd.service
 rm -rf /etc/systemd/system/mpd.service
 systemctl daemon-reload
 # Remove config file for MSD as well
-@@CMAKE_INSTALL_PREFIX@@/xrt/bin/xbmgmt --legacy config --purge 2>&1 > /dev/null
+@CMAKE_INSTALL_PREFIX@/xrt/bin/xbmgmt --legacy config --purge 2>&1 > /dev/null
 
 echo "Unloading old XRT Linux kernel modules"
 rmmod xocl
@@ -79,7 +79,7 @@ rm -f /etc/dracut.conf.d/xocl.dracut.conf
 rm -f /etc/dracut.conf.d/xclmgmt.dracut.conf
 
 echo "Cleaning up python..."
-rm -f @@CMAKE_INSTALL_PREFIX@@/xrt/python/*.pyc
-rm -f @@CMAKE_INSTALL_PREFIX@@/xrt/test/*.pyc
+rm -f @CMAKE_INSTALL_PREFIX@/xrt/python/*.pyc
+rm -f @CMAKE_INSTALL_PREFIX@/xrt/test/*.pyc
 
 exit 0
