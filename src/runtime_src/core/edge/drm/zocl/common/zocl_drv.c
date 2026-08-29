@@ -1620,15 +1620,16 @@ static void zocl_drm_platform_shutdown(struct platform_device *pdev)
 
 	/*
 	 * Cleanup AIE and PR slots to prevent firmware loading errors.
-	 * During shutdown/suspend, the system may attempt to reload AIE firmware
+	 * During shutdown/reboot, the system may attempt to reload AIE firmware
 	 * which can fail with "merged_plio_gmio_rtp_lut.pdi" errors. Cleaning up
 	 * AIE resources here prevents these spurious firmware load attempts.
 	 */
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		struct drm_zocl_slot *zocl_slot = zdev->pr_slot[i];
 		if (zocl_slot) {
-			zocl_cleanup_aie(zocl_slot);
+			/* Match zocl_pr_slot_fini() order to avoid ordering dependencies */
 			zocl_free_sections(zdev, zocl_slot);
+			zocl_cleanup_aie(zocl_slot);
 		}
 	}
 
@@ -1646,14 +1647,18 @@ static void zocl_drm_platform_shutdown(struct platform_device *pdev)
 	}
 
 	/* Release DMA channel if allocated */
+	mutex_lock(&zdev->mm_lock);
 	if (zdev->zdev_dma_chan) {
 		struct dma_chan *chan = zdev->zdev_dma_chan;
 		/* Prevent new users from reusing the channel during shutdown */
 		zdev->zdev_dma_chan = NULL;
+		mutex_unlock(&zdev->mm_lock);
 		/* Ensure any in-flight transactions are stopped before releasing */
 		dmaengine_terminate_sync(chan);
 		dma_release_channel(chan);
 		DRM_INFO("DMA channel terminated and released\n");
+	} else {
+		mutex_unlock(&zdev->mm_lock);
 	}
 
 	DRM_INFO("Shutdown cleanup completed\n");
