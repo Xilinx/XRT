@@ -3175,6 +3175,7 @@ public:
       // correct UUID is embedded in the coredump metadata.
       if (!m_module)
         throw std::runtime_error("AIE coredump ELF not available: no ELF associated with this run");
+
       auto elf = xrt::elf{xrt_core::module_int::get_elf_handle(m_module)};
 
       auto core = xrt_core::hw_context_int::get_aie_coredump_elf(hwctx, elf);
@@ -3182,6 +3183,7 @@ public:
       std::ofstream ostr{file, std::ios::binary};
       if (!ostr)
         throw std::runtime_error("Could not open '" + file + "' for writing");
+
       ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
       ostr.flush();  // flush before abort — destructors do not run after std::abort()
       std::abort();
