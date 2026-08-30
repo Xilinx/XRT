@@ -348,6 +348,8 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp);
 struct platform_device *zocl_find_pdev(char *name);
+void zocl_cu_intc_refresh(struct drm_zocl_dev *zdev);
+int zert_cu_intc_refresh(void);
 
 static inline struct drm_zocl_dev *
 zocl_get_zdev(void)
