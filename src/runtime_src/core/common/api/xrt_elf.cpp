@@ -1668,7 +1668,7 @@ get_filename(const xrt::elf_impl* elf_impl)
     : "";
 }
 
-aiebu::aiebu_assembler::buffer_type
+static aiebu::aiebu_assembler::buffer_type
 osabi_to_coredump_type(uint8_t os_abi)
 {
   switch (os_abi) {
@@ -1706,8 +1706,7 @@ make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
     xrt_core::get_driver_info(pt_xrt);
     std::string drv_str;
     if (const auto drivers = pt_xrt.get_child_optional("drivers")) {
-      for (const auto& kv : *drivers) {
-        const auto& drv = kv.second;
+      for (const auto& [dummy, drv] : *drivers) {
         auto name = drv.get<std::string>("name", "");
         auto ver  = drv.get<std::string>("version", "");
         if (!name.empty() && !ver.empty() && ver != "unknown") {

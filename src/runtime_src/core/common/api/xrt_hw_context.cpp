@@ -718,8 +718,6 @@ public:
     }
   }
 
-  // Public-API path — picks any ELF for OS/ABI; UUID is left empty because
-  // no single ELF is attributable for a partition-level dump.
   std::vector<char>
   get_aie_coredump_elf() const
   {
@@ -731,7 +729,7 @@ public:
     }();
 
     return xrt_core::elf_int::make_aie_coredump_elf(
-        elf, get_aie_coredump(), m_core_device.get(), m_hdl->get_slotidx(), "");
+        elf, get_aie_coredump(), m_core_device.get(), m_hdl->get_slotidx());
   }
 
   // Returns map of kernel names to their corresponding elf files
