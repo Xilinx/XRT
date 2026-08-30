@@ -1601,8 +1601,12 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	/* If dma channel has been requested, make sure it is released */
 	if (zdev->zdev_dma_chan) {
-		dma_release_channel(zdev->zdev_dma_chan);
+		struct dma_chan *chan = zdev->zdev_dma_chan;
+		/* Prevent new users from reusing the channel during teardown */
 		zdev->zdev_dma_chan = NULL;
+		/* Ensure any in-flight transactions are stopped before releasing */
+		dmaengine_terminate_sync(chan);
+		dma_release_channel(chan);
 	}
 
 	if (zdev->fpga_mgr)
@@ -1629,9 +1633,85 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 #endif
 }
 
+/*
+ * Shutdown handler - Clean up resources to prevent errors during system shutdown
+ *
+ * This handler is called during system shutdown/reboot to cleanly release
+ * resources and prevent firmware loading errors. The key operations are:
+ * - Stop the scheduler to prevent new commands
+ * - Cleanup AIE to prevent firmware reload attempts
+ * - Release hardware resources (CUs, FPGA manager, DMA)
+ *
+ * @param        pdev: Platform Device Instance
+ */
+static void zocl_drm_platform_shutdown(struct platform_device *pdev)
+{
+	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
+	int i;
+
+	if (!zdev) {
+		DRM_WARN("No device data available during shutdown\n");
+		return;
+	}
+
+	DRM_INFO("Shutdown handler invoked for %s\n", dev_name(&pdev->dev));
+
+	/*
+	 * Stop scheduler to prevent new commands during shutdown.
+	 * This prevents AIE from attempting firmware loads during shutdown.
+	 */
+	zocl_fini_sched(zdev);
+
+	/*
+	 * Cleanup AIE and PR slots to prevent firmware loading errors.
+	 * During shutdown/reboot, the system may attempt to reload AIE firmware
+	 * which can fail with "merged_plio_gmio_rtp_lut.pdi" errors. Cleaning up
+	 * AIE resources here prevents these spurious firmware load attempts.
+	 */
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
+		struct drm_zocl_slot *zocl_slot = zdev->pr_slot[i];
+		if (zocl_slot) {
+			/* Match zocl_pr_slot_fini() order to avoid ordering dependencies */
+			zocl_free_sections(zdev, zocl_slot);
+			zocl_cleanup_aie(zocl_slot);
+		}
+	}
+
+	/* Destroy CU interrupt controller */
+	if (zdev->cu_intc)
+		zocl_ert_destroy_intc(zdev->cu_intc);
+
+	/* Destroy compute unit subdevices to stop any ongoing operations */
+	subdev_destroy_cu(zdev);
+
+	/* Release FPGA manager if acquired */
+	if (zdev->fpga_mgr) {
+		fpga_mgr_put(zdev->fpga_mgr);
+		zdev->fpga_mgr = NULL;
+	}
+
+	/* Release DMA channel if allocated */
+	mutex_lock(&zdev->mm_lock);
+	if (zdev->zdev_dma_chan) {
+		struct dma_chan *chan = zdev->zdev_dma_chan;
+		/* Prevent new users from reusing the channel during shutdown */
+		zdev->zdev_dma_chan = NULL;
+		mutex_unlock(&zdev->mm_lock);
+		/* Ensure any in-flight transactions are stopped before releasing */
+		dmaengine_terminate_sync(chan);
+		dma_release_channel(chan);
+		DRM_INFO("DMA channel terminated and released\n");
+	} else {
+		mutex_unlock(&zdev->mm_lock);
+	}
+
+	DRM_INFO("Shutdown cleanup completed\n");
+}
+
 static struct platform_driver zocl_drm_private_driver = {
 	.probe			= zocl_drm_platform_probe,
 	.remove			= zocl_drm_platform_remove,
+	.shutdown		= zocl_drm_platform_shutdown,
 	.driver			= {
 		.name	        = "zocl-drm",
 		.of_match_table	= zocl_drm_of_match,
