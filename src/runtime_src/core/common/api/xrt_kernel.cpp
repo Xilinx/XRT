@@ -3157,7 +3157,9 @@ public:
   // Write AIE coredump ELF to the configured file then abort.
   // std::abort() ensures the OS reclaims driver resources (hw_context, hardware
   // state) after a timeout. Users who set xrt.ini to capture AIE coredump
-  // have already observed the timeout exception on a prior run.
+  // would get coredump and don't see the timeout exception message.
+  // The timeout excpetion message is seen only w/o this xrt.ini setting
+  // This coredump functionality is not applicable to non-elf flow
   void
   abort_coredump_or_noop(ert_cmd_state state) const
   {

@@ -360,10 +360,10 @@ public:
   get_aie_coredump() const;
 
   /**
-   * get_aie_coredump_elf() - Returns the coredump of AIE Array as an ET_CORE ELF.
+   * get_aie_coredump_elf() - Returns the coredump of AIE Array as an ELF (e_type = ET_CORE).
    * Fetches the raw AIE dump blob and packages it into a coredump ELF.
    * The AIE architecture is derived from the ELF loaded in this context.
-   * Metadata (timestamp, firmware version, device info, ELF UUID) is always
+   * Metadata (timestamp, firmware version, device info) is always
    * embedded and populated internally from the hw_context and device.
    * This function can throw.
    *
