@@ -50,7 +50,8 @@ reset_ecc(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::reset_t
     for(int32_t i = 0; i < map->m_count; i++) {
       if(!map->m_mem_data[i].m_used)
         continue;
-      reset.set_subdev(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+      reset.set_subdev(std::string(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag),
+                                   sizeof(map->m_mem_data[i].m_tag)));
       dev->reset(reset);
     }
 }
