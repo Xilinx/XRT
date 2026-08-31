@@ -185,9 +185,15 @@ create_config_generator(smi_hardware_config::hardware_family family)
     return std::make_shared<config_gen_strix>();
   case smi_hardware_config::hardware_family::npu3:
     return std::make_shared<config_gen_npu3>();
-  default:
+  case smi_hardware_config::hardware_family::aie2ps:
+  case smi_hardware_config::hardware_family::unknown:
+    // No aie2ps generator exists, so these keep the strix config they already
+    // got. Stated rather than left to default:, which would silently absorb the
+    // next family as well.
     return std::make_shared<config_gen_strix>();
   }
+
+  return std::make_shared<config_gen_strix>();
 }
 
 void
