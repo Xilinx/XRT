@@ -162,6 +162,17 @@ add_performance_info(const xrt_core::device* device, ptree_type& pt)
   }
 }
 
+void
+add_npu_load_info(const xrt_core::device* device, ptree_type& pt)
+{
+  try {
+    pt.put("npu_load", xrt_core::device_query<xq::npu_load>(device));
+  }
+  catch (const xq::exception&) {
+    // Query not supported on this device
+  }
+}
+
 static std::string
 get_host_mem_status(const xrt_core::device* device)
 {
@@ -431,6 +442,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   {
     add_electrical_info(device, pt_platform);
     add_thermal_info(device, pt_platform);
+    add_npu_load_info(device, pt_platform);
     break;
   }
   default:
