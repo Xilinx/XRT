@@ -876,10 +876,11 @@ std::vector<char>
 get_aie_coredump_elf(const xrt::hw_context& hwctx, const xrt::elf& elf)
 {
   auto* impl = hwctx.get_handle().get();
+  auto cfg_uuid = elf.get_cfg_uuid();
   return xrt_core::elf_int::make_aie_coredump_elf(
       elf, impl->get_aie_coredump(), impl->get_core_device().get(),
       static_cast<uint32_t>(static_cast<xrt_core::hwctx_handle*>(hwctx)->get_slotidx()),
-      elf.get_cfg_uuid().to_string());
+      cfg_uuid ? cfg_uuid.to_string() : std::string{});
 }
 
 } // xrt_core::hw_context_int

@@ -556,6 +556,7 @@ parse_sections()
 }
 
 // Get configuration UUID from ELF
+// Returns an empty UUID if the section is absent (e.g. partial ELFs).
 xrt::uuid
 elf_impl::
 get_cfg_uuid() const
@@ -565,15 +566,12 @@ get_cfg_uuid() const
 
   auto section = m_elfio.sections[".note.xrt.UID"];
   if (!section)
-    throw std::runtime_error("ELF is missing .note.xrt.UID section\n");
+    return {};
 
   auto data = get_note(section, first_note);
   if (data.size() != uuid_size)
-    throw std::runtime_error("Invalid UUID size in .note.xrt.UID section, expected 16 bytes but got " +
-                             std::to_string(data.size()) + " bytes\n");
+    return {};
 
-  // UUID is stored as raw 16 bytes in the note section
-  // Copy directly to uuid_t (which is unsigned char[16])
   xuid_t uuid_data;
   std::memcpy(uuid_data, data.data(), uuid_size);
   return xrt::uuid(uuid_data);
