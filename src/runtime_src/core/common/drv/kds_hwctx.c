@@ -132,6 +132,13 @@ void kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 	if (!hw_ctx)
 		return;
 
+	/* Nothing to drain. A legacy client's default hw context reaches
+	 * here with an empty list, since its CU contexts live on
+	 * kds_client_ctx::cu_ctx_list instead.
+	 */
+	if (list_empty(&hw_ctx->cu_ctx_list))
+		return;
+
 	kds_info(client, "Client pid(%d) has open context for %d slot",
 			pid_nr(client->pid), hw_ctx->slot_idx);
 

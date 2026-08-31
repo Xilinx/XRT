@@ -4529,6 +4529,13 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			goto failed;
 		}
 
+		if (data_len > icap->rp_bit_len) {
+			ICAP_ERR(icap, "Write size %zu exceeds allocated buffer size %zu",
+				data_len, icap->rp_bit_len);
+			ret = -EINVAL;
+			goto failed;
+		}
+
 		ret = copy_from_user(icap->rp_bit, data, data_len);
 		if (ret) {
 			ICAP_ERR(icap, "copy bit file failed %ld", ret);

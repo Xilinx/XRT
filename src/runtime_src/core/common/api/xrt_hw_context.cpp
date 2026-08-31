@@ -273,10 +273,6 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // init_from_elf() - Initialize this hwctx from an ELF
   // This function is called if and only if the hwctx has no
   // underlying representation (no m_hdl).
-  //
-  // The caller (add_config()) is responsible for calling
-  // xdp::update_device() once this function has returned and the
-  // hwctx lock has been released.
   void
   init_from_elf(const xrt::elf& elf, uint32_t partition_size)
   {
@@ -285,6 +281,10 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     update_from_elf(elf);
     m_elf_flow = true; // ELF flow
     m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
+  
+    // XDP configuration is required only once,
+    // as all the elfs in one HWCtx will have the same partition size
+    xrt_core::xdp::update_device(this, true);
   }
 
   // Amend configuration parameters 
@@ -487,37 +487,20 @@ public:
   add_config(const xrt::elf& elf)
   {
     auto part_size = elf.get_partition_size();
-    bool initialized = false;
 
-    {
-      // The lock must be held here to prevent race on m_hdl
-      // in case it is created in init_from_elf(). The lock
-      // also protects updated data structures.
-      std::lock_guard lk(m_mutex);
-      if (m_hdl && m_partition_size != part_size)
-        throw std::runtime_error("can not add config to ctx with different configuration\n");
+    // The lock must be held here to prevent race on m_hdl
+    // in case it is created in init_from_elf(). The lock
+    // also protects updated data structures.
+    std::lock_guard lk(m_mutex);
+    if (m_hdl && m_partition_size != part_size)
+      throw std::runtime_error("can not add config to ctx with different configuration\n");
 
-      if (m_hdl) {
-        // Add ELF kernels to elf map. Throws if kernel already in map
-        update_from_elf(elf);
-      }
-      else {
-        // Intialize this hwctx, and add kernels
-        init_from_elf(elf, part_size);
-        initialized = true;
-      }
-    }
-
-    // XDP configuration is required only once, as all the elfs in one
-    // HWCtx will have the same partition size.
-    //
-    // This must run with m_mutex released. The profiling plugins call
-    // back into this hwctx from their hooks, both to read the
-    // configuration elfs and to register their own control code elf via
-    // add_config(). m_mutex is not recursive, so invoking the hooks with
-    // it held self deadlocks the calling thread.
-    if (initialized)
-      xrt_core::xdp::update_device(this, true);
+    if (m_hdl)
+      // Add  ELF kernels to elf map. Throws if kernel already in map
+      update_from_elf(elf);
+    else
+      // Initiize this hwctx, and add kernels
+      init_from_elf(elf, part_size);
   }
 
   void

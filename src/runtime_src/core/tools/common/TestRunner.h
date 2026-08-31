@@ -29,7 +29,7 @@ namespace xrt_core {
   class archive; 
 }
 
-class TestRunner : public JSONConfigurable {
+class TestRunner : public JSONConfigurable, public std::enable_shared_from_this<TestRunner> {
   public:
     // Default forwards to archive overload; legacy tests override only run(dev).
     virtual boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>& dev);
@@ -41,8 +41,11 @@ class TestRunner : public JSONConfigurable {
       return run(dev);
     }
     
+    // Requires the TestRunner to be owned by a shared_ptr: a test that times
+    // out keeps running in a detached thread which must not outlive its
+    // referents, so the worker takes shared ownership of them.
     boost::property_tree::ptree startTest(const std::shared_ptr<xrt_core::device>&,
-                                          const xrt_core::archive* archive,
+                                          std::shared_ptr<const xrt_core::archive> archive,
                                           unsigned int iter);
     
     virtual void set_param(const std::string&, const std::string&) {}
@@ -76,6 +79,14 @@ class TestRunner : public JSONConfigurable {
   
   public:
     virtual ~TestRunner() = default;
+
+    // Instances must stay shared_ptr owned so that startTest() can hand the
+    // worker thread a strong reference; a copy would not be owned by that
+    // shared_ptr and shared_from_this() would throw on it.
+    TestRunner(const TestRunner&) = delete;
+    TestRunner(TestRunner&&) = delete;
+    TestRunner& operator=(const TestRunner&) = delete;
+    TestRunner& operator=(TestRunner&&) = delete;
 
 };
   

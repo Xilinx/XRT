@@ -187,21 +187,16 @@ parse_log_entries(size_t start_offset, size_t bytes_to_end, size_t length,
     if (log.length == (offsetof(log_entry, argument1) / sizeof(uint32_t))) {
       out << log_format;
     }
-    else if (log.length == (offsetof(log_entry, argument2) / sizeof(uint32_t))) {
-      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
-      static_cast<void>(std::snprintf(log_message.data(), log_message.size(),
-                                      log_format, log.argument1));
-      out << log_message.data();
-    }
-    else if (log.length == (sizeof(log_entry) / sizeof(uint32_t))) {
+    else {
+      // Always pass both arguments regardless of log.length so that the
+      // device cannot independently control the snprintf argument count
+      // relative to the format string's specifier count, which would
+      // cause snprintf to read uninitialized register/stack values.
+      // Passing surplus arguments to snprintf is harmless.
       // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
       static_cast<void>(std::snprintf(log_message.data(), log_message.size(),
                                       log_format, log.argument1, log.argument2));
       out << log_message.data();
-    }
-    else {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
-                              "Invalid UC log entry length: " + std::to_string(log.length));
     }
 
     parsed_bytes += m_config.metadata_size;

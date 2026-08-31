@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "xrtexec.hpp"
 #include "xrt/device/device.h"
 #include "core/common/bo_cache.h"
@@ -278,8 +278,12 @@ exec_cu_command::
 add(index_type idx, value_type value)
 {
   const auto skip = 1 + 1 + m_impl->ert_cu->extra_cu_masks; // header, cumask, extra cu
+  constexpr auto max_words = xrt_core::bo_cache::bo_size / sizeof(uint32_t);
+  if (skip + idx >= max_words)
+    throw std::runtime_error("exec_cu_command: register index out of range");
+
   (*m_impl)[skip+idx] = value;
-  m_impl->ert_pkt->count = std::max(m_impl->ert_pkt->count,skip+idx);
+  m_impl->ert_pkt->count = std::max(m_impl->ert_pkt->count, skip + idx);
 }
 
 exec_write_command::
@@ -312,6 +316,10 @@ void
 exec_write_command::
 add(addr_type addr, value_type value)
 {
+  constexpr auto max_words = xrt_core::bo_cache::bo_size / sizeof(uint32_t);
+  if (static_cast<size_t>(m_impl->ert_pkt->count) + 2 >= max_words)
+    throw std::runtime_error("exec_write_command: exec buffer full");
+
   (*m_impl)[++m_impl->ert_pkt->count] = addr;
   (*m_impl)[++m_impl->ert_pkt->count] = value;
 }

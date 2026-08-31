@@ -1863,9 +1863,9 @@ static int installBitstreamGuard(xrt_core::device *dev, std::FILE *flashDev,
     unsigned char buf[4096], buf1[4096], buf2[4096];
     int ret;
 
-    memset(buf, 0xff, sizeof(buf));
-    memset(buf, 0xff, sizeof(buf1));
-    memset(buf, 0xff, sizeof(buf2));
+    memset(buf, 0xff, sizeof(buf));   // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    memset(buf1, 0xff, sizeof(buf1)); // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    memset(buf2, 0xff, sizeof(buf2)); // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     memcpy(buf + bitstream_guard_offset, BITSTREAM_GUARD,
         sizeof(BITSTREAM_GUARD));
     stripe_data(buf, buf1, buf2, sizeof(buf));

@@ -472,10 +472,34 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 	const char *cu_interrupt = "cu_interrupt";
 	struct device_node *np = NULL;
 	struct device_node *parent = NULL;
+	struct device_node *fpga_np = NULL;
 	u32 *irqs = NULL;
 	int num_irq = 0;
 	int ret = 0;
 	int i;
+
+	fpga_np = of_find_node_by_name(NULL, "fpga_accelerator");
+	if (fpga_np && of_property_present(fpga_np, "interrupts-extended")) {
+		num_irq = of_irq_count(fpga_np);
+		if (num_irq > 0) {
+			irqs = kcalloc(num_irq, sizeof(*irqs), GFP_KERNEL);
+			if (!irqs) {
+				of_node_put(fpga_np);
+				return -ENOMEM;
+			}
+			for (i = 0; i < num_irq; i++)
+				irqs[i] = of_irq_get(fpga_np, i);
+			of_node_put(fpga_np);
+			ret = zocl_ert_create_intc(ZERT2DEV(zert), irqs, num_irq, 0,
+						   ERT_CU_INTC_DEV_NAME,
+						   &zert->zce_cu_intc);
+			kfree(irqs);
+			if (ret)
+				zert_err(zert, "Failed to create CU intc device: %d", ret);
+			return ret;
+		}
+	}
+	of_node_put(fpga_np);
 
 	/* TODO: We only have one AXI intc for 32 CU interrupts at the moment */
 	np = of_get_child_by_name(ZERT2DEV(zert)->of_node, cu_interrupt);
@@ -488,13 +512,15 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 	parent = of_irq_find_parent(np);
 	if (!parent) {
 		zert_err(zert, "failed to find CU intc");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	ret = of_property_read_u32(parent, "xlnx,num-intr-inputs", &num_irq);
 	if (ret < 0) {
 		zert_err(zert, "unable to read xlnx,num-intr-inputs");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	irqs = kzalloc(sizeof(u32) * num_irq, GFP_KERNEL);
@@ -512,7 +538,27 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 	kfree(irqs);
 
 out:
+	of_node_put(np);
 	return 0;
+}
+
+int zert_cu_intc_refresh(void)
+{
+	struct platform_device *pdev = zocl_find_pdev("ert_hw");
+	struct zocl_ctrl_ert *zert;
+
+	if (!pdev)
+		return -ENODEV;
+
+	zert = platform_get_drvdata(pdev);
+	if (!zert)
+		return -ENODEV;
+
+	if (zert->zce_cu_intc) {
+		zocl_ert_destroy_intc(zert->zce_cu_intc);
+		zert->zce_cu_intc = NULL;
+	}
+	return zert_cu_intc_init(zert);
 }
 
 static int zert_versal_init(struct zocl_ctrl_ert *zert)

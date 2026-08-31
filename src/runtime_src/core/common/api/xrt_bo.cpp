@@ -979,7 +979,12 @@ public:
   uint64_t
   get_address() const override
   {
-    return bo_impl::get_address() + m_offset;
+    // Compose through the parent, which may itself be a sub-buffer.  The
+    // base implementation resolves the address from the shim handle, and
+    // bo_impl(parent, size) copies that handle transitively, so it yields
+    // the root buffer's address and drops any intermediate offset.  This
+    // matches how m_hbuf and sync() already recurse through m_parent.
+    return m_parent->get_address() + m_offset;
   }
 
   void
