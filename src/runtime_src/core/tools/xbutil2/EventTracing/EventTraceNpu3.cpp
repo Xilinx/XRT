@@ -68,7 +68,7 @@ create_event_arg(const nlohmann::json& arg_data,
   event_arg_npu3 arg;
   arg.name = arg_data["name"].get<std::string>();
   arg.type = arg_data["type"].get<std::string>();
-  arg.count = std::min<uint32_t>(arg_data.value("count", 1), 256);
+  arg.count = arg_data.value("count", 1);
   arg.format = arg_data.value("format", "");
   arg.lookup = arg_data.value("lookup", "");
   arg.signed_field = arg_data.value("signed", false);
@@ -162,7 +162,8 @@ decode_event(const event_data_t& event_data) const
     
     const size_t payload_bytes = static_cast<size_t>(event_data.payload_words) * 8; //NOLINT
     const size_t payload_size = payload_bytes > event_header_bytes
-      ? payload_bytes - event_header_bytes : 0;
+      ? payload_bytes - event_header_bytes 
+      : 0;
 
     // Extract arguments from struct payload
     size_t offset = 0;
@@ -223,6 +224,7 @@ extract_arg_value(const uint8_t* payload_ptr,
       
       if (offset + type_size > payload_size)
         throw std::runtime_error("payload truncated");
+
       uint64_t value = 0;
       std::memcpy(&value, payload_ptr + offset, type_size);
       offset += type_size;
@@ -247,6 +249,7 @@ extract_arg_value(const uint8_t* payload_ptr,
     // Single value
     if (offset + type_size > payload_size)
       throw std::runtime_error("payload truncated");
+
     uint64_t value = 0;
     std::memcpy(&value, payload_ptr + offset, type_size);
     offset += type_size;
@@ -384,6 +387,7 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     const auto event_data = parse_payload(located->ptr);
     if (prev_seq)
       ss << format_sequence_gap(*prev_seq, event_data.sequence_number);
+
     prev_seq = event_data.sequence_number;
     ss << format_event(event_data);
     offset += located->size;
