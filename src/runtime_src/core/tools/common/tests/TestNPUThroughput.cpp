@@ -42,12 +42,11 @@ TestNPUThroughput::
 get_ops_throughput_from_report(const json& report, bool use_runlist) const
 {
   const auto runlist_throughput = get_throughput_from_report(report);
-  if (use_runlist) {
-    const auto recipe_runs = report.at("resources").at("runs").get<double>();
-    return runlist_throughput * recipe_runs;
-  } else {
+  if (!use_runlist)
     return runlist_throughput;
-  }
+    
+  const auto recipe_runs = report.at("resources").at("runs").get<double>();
+  return runlist_throughput * recipe_runs;
 }
 
 boost::property_tree::ptree
