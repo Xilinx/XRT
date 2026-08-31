@@ -71,8 +71,8 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
         (smi_hw.get_hardware_type(xrt_core::device_query<xq::pcie_id>(device)));
       static_region.add("aie_architecture_version", arch.value_or("N/A"));
     }
-    catch (const xq::exception&) {
-      // No PCIe identity to resolve; leave the key out rather than guess.
+    catch (...) {
+      static_region.add("aie_architecture_version", "N/A");
     }
     break;
   }
