@@ -129,6 +129,7 @@ enum class key_type
   aie_mem_info_sysfs,
 
   total_cols,
+  npu_load,
   aie_status_version,
   aie_tiles_stats,
   aie_tiles_status_info,
@@ -1729,6 +1730,16 @@ struct total_cols : request
 {
   using result_type = uint32_t;
   static const key_type key = key_type::total_cols;
+
+  virtual std::any
+  get(const device*) const override = 0;
+};
+
+// NPU utilization as a percentage (0-100), sourced from the driver
+struct npu_load : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::npu_load;
 
   virtual std::any
   get(const device*) const override = 0;

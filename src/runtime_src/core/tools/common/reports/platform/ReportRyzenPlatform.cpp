@@ -60,6 +60,11 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
     else
       _output << std::endl << boost::format("%-23s  : %s\n") % "Estimated Power" % watts;
 
+    if (auto load = pt_platform.get_optional<uint32_t>("npu_load"))
+      _output << boost::format("%-23s  : %u%%\n") % "NPU Load" % *load;
+    else
+      _output << boost::format("%-23s  : %s\n") % "NPU Load" % "N/A";
+
     auto temp_c = pt_platform.get<std::string>("thermal.temp_C", "N/A");
     _output << boost::format("%-23s  : %s\n") % "Temperature (C)" % temp_c;
   }
