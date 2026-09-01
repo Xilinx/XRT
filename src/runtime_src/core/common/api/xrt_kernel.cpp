@@ -2149,11 +2149,20 @@ public:
     // for the xclbin slot, and 8 bits reserved for bo flags.  The latter
     // flags are populated when the xrt::bo object is constructed.
 
+    if (argno < 0 || static_cast<size_t>(argno) >= args.size())
+      throw xrt_core::error(EINVAL, "No such kernel argument at index " + std::to_string(argno)
+                            + " for kernel '" + name + "'");
+
     // Last (for group id) connection of first ip in this kernel
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
+    auto memidx = ip->arg_memidx(argno);
+    if (memidx < 0)
+      throw xrt_core::error(EINVAL, "No memory group assigned for global argument at index "
+                            + std::to_string(argno) + " of kernel '" + name + "'");
+
     xcl_bo_flags grp = {0};     // xrt_mem.h
-    grp.bank = ip->arg_memidx(argno);
+    grp.bank = memidx;
     grp.slot = ip->get_slot();
 
     // This function should return uint32_t or some same symbolic type
