@@ -100,6 +100,15 @@ XRT_CORE_COMMON_EXPORT
 std::map<std::string, xrt::elf>
 get_elf_map(const xrt::hw_context& hwctx);
 
+// get_aie_coredump_elf() - Package AIE coredump for a specific faulting ELF
+//
+// Use this overload when the caller knows exactly which ELF caused the fault
+// (e.g. abort_coredump_or_noop passes the ELF of the timed-out run).
+// The UUID embedded in the coredump metadata is taken from the provided ELF.
+// The raw AIE dump blob is fetched internally from the hw_context.
+std::vector<char>
+get_aie_coredump_elf(const xrt::hw_context& hwctx, const xrt::elf& elf);
+
 // Get the configuration parameter / QoS map from the hw context.
 // The returned map contains key-value pairs
 // key: string, value: uint32_t for both QoS-related settings and

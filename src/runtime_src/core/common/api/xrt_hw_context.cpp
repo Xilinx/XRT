@@ -718,6 +718,20 @@ public:
     }
   }
 
+  std::vector<char>
+  get_aie_coredump_elf() const
+  {
+    xrt::elf elf = [this] {
+      std::lock_guard lk(m_mutex);
+      if (m_elf_map.empty())
+        throw std::runtime_error("AIE coredump ELF not available: no ELF loaded in this context");
+      return m_elf_map.begin()->second;
+    }();
+
+    return xrt_core::elf_int::make_aie_coredump_elf(
+        elf, get_aie_coredump(), m_core_device.get(), m_hdl->get_slotidx());
+  }
+
   // Returns map of kernel names to their corresponding elf files
   // registered with this hardware context
   std::map<std::string, xrt::elf>
@@ -856,6 +870,17 @@ append_dtrace_result(const xrt::hw_context& hwctx,
 {
   // Append a per-run dtrace JSON result to the hw context coalesce buffer
   hwctx.get_handle()->append_dtrace_result(key, result_json);
+}
+
+std::vector<char>
+get_aie_coredump_elf(const xrt::hw_context& hwctx, const xrt::elf& elf)
+{
+  auto* impl = hwctx.get_handle().get();
+  auto cfg_uuid = elf.get_cfg_uuid();
+  return xrt_core::elf_int::make_aie_coredump_elf(
+      elf, impl->get_aie_coredump(), impl->get_core_device().get(),
+      static_cast<uint32_t>(static_cast<xrt_core::hwctx_handle*>(hwctx)->get_slotidx()),
+      cfg_uuid ? cfg_uuid.to_string() : std::string{});
 }
 
 } // xrt_core::hw_context_int
@@ -1013,6 +1038,13 @@ hw_context::
 get_aie_coredump() const
 {
   return get_handle()->get_aie_coredump();
+}
+
+std::vector<char>
+hw_context::
+get_aie_coredump_elf() const
+{
+  return get_handle()->get_aie_coredump_elf();
 }
 
 } // xrt

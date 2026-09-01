@@ -3154,7 +3154,12 @@ public:
   }
 
   // abort_coredump_or_noop() - AIE coredump if enabled
-  // Dump core and abort, or do nothing.
+  // Write AIE coredump ELF to the configured file then abort.
+  // std::abort() ensures the OS reclaims driver resources (hw_context, hardware
+  // state) after a timeout. Users who set xrt.ini to capture AIE coredump
+  // would get coredump and don't see the timeout exception message.
+  // The timeout excpetion message is seen only w/o this xrt.ini setting
+  // This coredump functionality is not applicable to non-elf flow
   void
   abort_coredump_or_noop(ert_cmd_state state) const
   {
@@ -3167,12 +3172,22 @@ public:
 
     try {
       auto hwctx = kernel->get_hw_context();
-      auto core = hwctx.get_aie_coredump();  // may throw
+      // Use the ELF from this run's own module
+      // Each ELF has its own UUID; using the run's module ensures the
+      // correct UUID is embedded in the coredump metadata.
+      if (!m_module)
+        throw std::runtime_error("AIE coredump ELF not available: no ELF associated with this run");
+
+      auto elf = xrt::elf{xrt_core::module_int::get_elf_handle(m_module)};
+
+      auto core = xrt_core::hw_context_int::get_aie_coredump_elf(hwctx, elf);
 
       std::ofstream ostr{file, std::ios::binary};
       if (!ostr)
         throw std::runtime_error("Could not open '" + file + "' for writing");
+
       ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
+      ostr.flush();  // flush before abort — destructors do not run after std::abort()
       std::abort();
     }
     catch (const std::exception& ex) {

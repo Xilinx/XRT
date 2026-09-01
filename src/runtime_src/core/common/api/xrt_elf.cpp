@@ -5,13 +5,19 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
 
 #include "elf_int.h"
 #include "elf_patcher.h"
+#include "core/common/aiebu/src/cpp/elf/aie_elf_constants.h"
+#include "core/common/aiebu/src/cpp/include/aiebu/aiebu_assembler.h"
 #include "core/common/config_reader.h"
+#include "core/common/device.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/system.h"
 #include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/runner/capture.h"
@@ -19,6 +25,7 @@
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <elfio/elfio.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -549,6 +556,7 @@ parse_sections()
 }
 
 // Get configuration UUID from ELF
+// Returns an empty UUID if the section is absent (e.g. partial ELFs).
 xrt::uuid
 elf_impl::
 get_cfg_uuid() const
@@ -558,15 +566,12 @@ get_cfg_uuid() const
 
   auto section = m_elfio.sections[".note.xrt.UID"];
   if (!section)
-    throw std::runtime_error("ELF is missing .note.xrt.UID section\n");
+    return {};
 
   auto data = get_note(section, first_note);
   if (data.size() != uuid_size)
-    throw std::runtime_error("Invalid UUID size in .note.xrt.UID section, expected 16 bytes but got " +
-                             std::to_string(data.size()) + " bytes\n");
+    return {};
 
-  // UUID is stored as raw 16 bytes in the note section
-  // Copy directly to uuid_t (which is unsigned char[16])
   xuid_t uuid_data;
   std::memcpy(uuid_data, data.data(), uuid_size);
   return xrt::uuid(uuid_data);
@@ -1659,6 +1664,101 @@ get_filename(const xrt::elf_impl* elf_impl)
   return elf_impl
     ? elf_impl->get_filename()
     : "";
+}
+
+static aiebu::aiebu_assembler::buffer_type
+osabi_to_coredump_type(uint8_t os_abi)
+{
+  switch (os_abi) {
+  case aiebu::osabi_aie2p:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie2p;
+  case aiebu::osabi_aie2ps:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie2ps;
+  case aiebu::osabi_aie4:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie4;
+  case aiebu::osabi_aie4a:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie4a;
+  case aiebu::osabi_aie4z:
+    return aiebu::aiebu_assembler::buffer_type::coredump_aie4z;
+  default:
+    throw std::runtime_error("AIE coredump not supported for this ELF architecture");
+  }
+}
+
+std::vector<char>
+make_aie_coredump_elf(const xrt::elf& elf, const std::vector<char>& blob,
+                      const xrt_core::device* device, uint32_t slot,
+                      const std::string& uuid)
+{
+  // Fail fast: verify arch is supported before doing any device queries.
+  auto buf_type = osabi_to_coredump_type(elf.get_handle()->get_os_abi());
+
+  aiebu::aie_coredump_meta meta{};
+  meta.timestamp_ns = static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::system_clock::now().time_since_epoch()).count());
+  meta.uuid = uuid;
+
+  try {
+    boost::property_tree::ptree pt_xrt;
+    xrt_core::get_driver_info(pt_xrt);
+    std::string drv_str;
+    if (const auto drivers = pt_xrt.get_child_optional("drivers")) {
+      for (const auto& [dummy, drv] : *drivers) {
+        auto name = drv.get<std::string>("name", "");
+        auto ver  = drv.get<std::string>("version", "");
+        if (!name.empty() && !ver.empty() && ver != "unknown") {
+          if (!drv_str.empty())
+            drv_str += "; ";
+
+          drv_str += name + " " + ver;
+        }
+      }
+    }
+    meta.driver_version = drv_str;
+  }
+  catch (const std::exception&) {
+    /* leave empty if not available */
+  }
+
+  try {
+    auto data = xrt_core::device_query<xrt_core::query::aie_partition_info>(device);
+    auto islot = static_cast<int>(slot);
+
+    for (const auto& entry : data) {
+      if (std::stoi(entry.metadata.id) != islot)
+        continue;
+
+      meta.context_status = entry.is_suspended
+          ? aiebu::aie_context_status::idle
+          : aiebu::aie_context_status::running;
+      break;
+    }
+  }
+  catch (const std::exception&) {
+    /* leave as default idle if query not supported */
+  }
+
+  try {
+    auto fw = xrt_core::device_query<xrt_core::query::firmware_version>(
+        device,
+        xrt_core::query::firmware_version::firmware_type::npu_firmware);
+    meta.fw_version = std::to_string(fw.major) + "." + std::to_string(fw.minor)
+                    + "." + std::to_string(fw.patch) + "." + std::to_string(fw.build);
+  }
+  catch (const std::exception&) {
+    /* leave empty if not supported */
+  }
+
+  try {
+    meta.device_info = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+  }
+  catch (const std::exception&) {
+    /* leave empty if not supported */
+  }
+
+  aiebu::aiebu_assembler a(buf_type, blob, meta);
+  return a.get_elf();
 }
 
 } // xrt_core::elf_int
