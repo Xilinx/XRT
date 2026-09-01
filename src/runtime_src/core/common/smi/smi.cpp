@@ -303,11 +303,10 @@ is_aie2_platform(hardware_type hw)
   switch (get_family(hw)) {
   case hardware_family::phoenix:
   case hardware_family::strix:
+  case hardware_family::aie2ps:
     return true;
   case hardware_family::npu3:
     return false;
-  case hardware_family::aie2ps:
-    throw std::runtime_error("is_aie2_platform is not defined for the aie2ps family");
   case hardware_family::unknown:
     throw std::runtime_error("Unsupported hardware type");
   }
@@ -323,11 +322,10 @@ get_validate_archive_path(hardware_type hw)
   case hardware_family::phoenix:
     return "Runner/xrt_smi_phx.a";
   case hardware_family::strix:
+  case hardware_family::aie2ps:
     return "Runner/xrt_smi_strx.a";
   case hardware_family::npu3:
     return "Runner/xrt_smi_npu3.a";
-  case hardware_family::aie2ps:
-    throw std::runtime_error("No validate archive is built for the aie2ps family");
   case hardware_family::unknown:
     throw std::runtime_error("Unsupported hardware type");
   }
