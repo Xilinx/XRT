@@ -77,6 +77,8 @@ int zocl_read_sect(enum axlf_section_kind kind, void *sect,
 int zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);
 void zocl_destroy_cu_slot(struct drm_zocl_dev *zdev, u32 slot_idx);
 int zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);
+void zocl_slot_remove_xclbin_overlay(struct drm_zocl_dev *zdev,
+				     struct drm_zocl_slot *slot);
 inline bool zocl_xclbin_same_uuid(struct drm_zocl_slot *slot, xuid_t *uuid);
 int zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin,
 		   enum axlf_section_kind kind, struct drm_zocl_slot *slot);

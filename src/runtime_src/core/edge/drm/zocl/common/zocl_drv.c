@@ -1372,6 +1372,123 @@ static void zocl_cu_intc_fini(struct drm_zocl_dev *zdev)
 	zdev->cu_subdev.cu_num = 0;
 }
 
+#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+static struct notifier_block zocl_overlay_nb;
+static bool zocl_overlay_nb_registered;
+
+static bool zocl_overlay_tree_has_fpga_accel(struct device_node *np)
+{
+	struct device_node *child;
+
+	if (!np)
+		return false;
+
+	if (of_node_cmp(np->name, "fpga_accelerator") == 0 &&
+	    of_property_present(np, "interrupts-extended"))
+		return true;
+
+	for_each_child_of_node(np, child) {
+		if (zocl_overlay_tree_has_fpga_accel(child)) {
+			of_node_put(child);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static int zocl_overlay_notify(struct notifier_block *nb, unsigned long action,
+			       void *data)
+{
+	struct of_overlay_notify_data *nd = data;
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
+
+	if (!zdev || !nd)
+		return NOTIFY_DONE;
+
+	if (!zocl_overlay_tree_has_fpga_accel(nd->overlay))
+		return NOTIFY_DONE;
+
+	switch (action) {
+	case OF_OVERLAY_POST_APPLY:
+		DRM_INFO("fpga_accelerator overlay applied, refresh CU IRQs\n");
+		zocl_cu_irq_update(zdev);
+		break;
+	case OF_OVERLAY_PRE_REMOVE:
+		DRM_INFO("fpga_accelerator overlay removing, refresh CU IRQs\n");
+		zocl_cu_irq_update(zdev);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int zocl_overlay_notifier_register(void)
+{
+	int ret;
+
+	if (zocl_overlay_nb_registered)
+		return 0;
+
+	zocl_overlay_nb.notifier_call = zocl_overlay_notify;
+	ret = of_overlay_notifier_register(&zocl_overlay_nb);
+	if (ret) {
+		DRM_WARN("Failed to register DT overlay notifier: %d\n", ret);
+		return ret;
+	}
+
+	zocl_overlay_nb_registered = true;
+	return 0;
+}
+
+static void zocl_overlay_notifier_unregister(void)
+{
+	if (!zocl_overlay_nb_registered)
+		return;
+
+	of_overlay_notifier_unregister(&zocl_overlay_nb);
+	zocl_overlay_nb_registered = false;
+}
+#else
+static int zocl_overlay_notifier_register(void)
+{
+	return 0;
+}
+
+static void zocl_overlay_notifier_unregister(void)
+{
+}
+#endif
+
+void zocl_cu_irq_update(struct drm_zocl_dev *zdev)
+{
+	struct drm_zocl_slot *slot;
+	int i, ret;
+
+	if (!zdev)
+		return;
+
+	zocl_cu_intc_refresh(zdev);
+
+	for (i = 0; i < zdev->num_pr_slot; i++) {
+		slot = zdev->pr_slot[i];
+		if (!slot || !slot->slot_xclbin || !slot->ip || !slot->axlf)
+			continue;
+		if (zocl_xclbin_is_aie_only(slot->axlf))
+			continue;
+
+		mutex_lock(&slot->slot_xclbin_lock);
+		zocl_destroy_cu_slot(zdev, slot->slot_idx);
+		ret = zocl_create_cu(zdev, slot);
+		if (ret)
+			DRM_WARN("Failed to recreate CUs after IRQ update on slot %d\n",
+				 slot->slot_idx);
+		mutex_unlock(&slot->slot_xclbin_lock);
+	}
+}
+
 /*
  *
  * Initialization of Xilinx openCL DRM platform device.
@@ -1559,6 +1676,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_sched;
 
+	(void)zocl_overlay_notifier_register();
+
 	return 0;
 
 /* error out in exact reverse order of init */
@@ -1592,6 +1711,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 {
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
 	struct drm_device *drm = zdev->ddev;
+
+	zocl_overlay_notifier_unregister();
 
 	/* Cleanup of iommu domain, if exists */
 	if (zdev->domain) {
