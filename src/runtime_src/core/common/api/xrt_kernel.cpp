@@ -635,6 +635,7 @@ private:
 // then behavior is undefined.
 class ip_context
 {
+public:
   // class connectivy - Represents argument connectiviy to memory banks
   //
   // The argument connectivity is represented using a compressed bitset
@@ -645,7 +646,6 @@ class ip_context
   // @default_connection: default connectivity for an argument
   class connectivity
   {
-    static constexpr int32_t no_memidx {-1};
     static constexpr size_t max_connections {64};
     std::vector<encoded_bitset<max_connections>> connections; // indexed by argidx
     std::vector<int32_t> default_connection;                  // indexed by argidx
@@ -662,6 +662,8 @@ class ip_context
     }
 
   public:
+    static constexpr int32_t no_memidx {-1};
+
     connectivity() = default;
 
     // @xclbin: meta data
@@ -717,8 +719,6 @@ class ip_context
     }
   };
 
-
-public:
   using access_mode = xrt::kernel::cu_access_mode;
   using slot_id = xrt_core::hwctx_handle::slot_id;
 
@@ -2157,7 +2157,7 @@ public:
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
     auto memidx = ip->arg_memidx(argno);
-    if (memidx < 0)
+    if (memidx == ip_context::connectivity::no_memidx)
       throw xrt_core::error(EINVAL, "No memory group assigned for global argument at index "
                             + std::to_string(argno) + " of kernel '" + name + "'");
 
