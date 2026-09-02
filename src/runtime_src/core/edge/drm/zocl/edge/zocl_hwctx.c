@@ -6,6 +6,7 @@
 #include "zocl_util.h"
 #include "zocl_hwctx.h"
 #include "zocl_aie.h"
+#include "zocl_xclbin.h"
 #include <drm/drm_print.h>
 
 int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx *drm_hw_ctx, struct drm_file *filp, int slot_id)
@@ -86,6 +87,7 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
             zocl_destroy_aie(slot);
         zdev->slot_mask &= ~(1 << s_id);
         DRM_DEBUG("Released the slot %d", s_id);
+        zocl_slot_remove_xclbin_overlay(zdev, slot);
     }
 
 error_out:
