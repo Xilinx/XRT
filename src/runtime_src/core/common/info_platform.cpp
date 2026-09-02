@@ -166,10 +166,11 @@ void
 add_npu_load_info(const xrt_core::device* device, ptree_type& pt)
 {
   try {
-    pt.put("npu_load", xrt_core::device_query<xq::npu_load>(device));
+    const auto load = xrt_core::device_query<xq::npu_load>(device);
+    pt.put("npu_load", std::to_string(load));
   }
   catch (const xq::exception&) {
-    // Query not supported on this device
+    pt.put("npu_load", "N/A");
   }
 }
 
