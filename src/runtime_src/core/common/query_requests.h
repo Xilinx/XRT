@@ -356,6 +356,12 @@ enum class key_type
   aie_load
 };
 
+// Marker macro so downstream driver-side code (which builds against either
+// this fork or the stock upstream XRT submodule) can detect at compile time
+// whether query::aie_load is available here, and #ifdef-guard accordingly
+// rather than hard-depending on it.
+#define XRT_QUERY_HAS_AIE_LOAD 1
+
 struct pcie_vendor : request
 {
   using result_type = uint16_t;
