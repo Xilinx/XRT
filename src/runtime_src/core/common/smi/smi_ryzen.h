@@ -76,12 +76,6 @@ public:
   {
     return validate_test_desc;
   }
-
-  xrt_core::smi::subcommand
-  create_validate_subcommand() override;
-
-  xrt_core::smi::subcommand
-  create_examine_subcommand() override;
 };
 
 void
