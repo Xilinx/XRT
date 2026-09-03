@@ -61,7 +61,7 @@ jobs:
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
-        uses: actions/checkout@v3 
+        uses: actions/checkout@v4 
         with: 
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
@@ -71,7 +71,7 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Checkout private repository      
-        uses: actions/checkout@v3   
+        uses: actions/checkout@v4   
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
@@ -110,7 +110,7 @@ jobs:
           allow-unsafe-pr-checkout: true
             
       - name: Checkout private repository      
-        uses: actions/checkout@v3   
+        uses: actions/checkout@v4   
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
@@ -142,7 +142,7 @@ jobs:
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
-        uses: actions/checkout@v3 
+        uses: actions/checkout@v4 
         with: 
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
@@ -152,7 +152,7 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Checkout private repository      
-        uses: actions/checkout@v3   
+        uses: actions/checkout@v4   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
@@ -180,7 +180,7 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:    
       - name: Checkout private repository    
-        uses: actions/checkout@v3 
+        uses: actions/checkout@v4 
         with:    
           repository: actions-int/composite-workflows    
           token: ${{ secrets.ACCESS_TOKEN }}
@@ -207,7 +207,7 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:      
       - name: Checkout extraction Action repository  
-        uses: actions/checkout@v3  
+        uses: actions/checkout@v4  
         with:  
           repository: actions-int/extraction-action
           ref: 'v0.0.2' 
@@ -236,7 +236,7 @@ jobs:
         board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
     steps:      
       - name: Checkout private repository      
-        uses: actions/checkout@v3   
+        uses: actions/checkout@v4   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
@@ -275,7 +275,7 @@ jobs:
         os_list: ['centos_8.1'] 
     steps:      
       - name: Checkout private repository      
-        uses: actions/checkout@v3   
+        uses: actions/checkout@v4   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
@@ -310,7 +310,7 @@ jobs:
     if: always() 
     steps:  
       - name: Checkout test summary Action repository  
-        uses: actions/checkout@v3  
+        uses: actions/checkout@v4  
         with:  
           repository: actions-int/XOAH-URL-action
           ref: 'XOAH_URL_action' 
@@ -337,7 +337,7 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:    
       - name: Checkout private repository    
-        uses: actions/checkout@v3 
+        uses: actions/checkout@v4 
         with:    
           repository: actions-int/composite-workflows    
           token: ${{ secrets.ACCESS_TOKEN }}
