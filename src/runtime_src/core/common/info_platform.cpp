@@ -458,7 +458,6 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   {
     add_electrical_info(device, pt_platform);
     add_thermal_info(device, pt_platform);
-    add_npu_load_info(device, pt_platform);
     add_aie_load_info(device, pt_platform);
     break;
   }
