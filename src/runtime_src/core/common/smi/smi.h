@@ -207,6 +207,11 @@ public:
   // Derived classes must implement this method to define hardware-specific configuration logic.
   virtual subcommand 
   create_configure_subcommand() = 0;
+
+  // Clears the validate test list for devices that expose validate but have no runnable tests.
+  virtual void
+  clear_validate_tests()
+  {}
 };
 
 // class smi_hardware_config
@@ -286,6 +291,10 @@ public:
   XRT_CORE_COMMON_EXPORT
   static bool
   is_aie2_platform(hardware_type hw);
+
+  // True for NPU PF PCIe functions (e.g. npu3a_pf, npu7_pf).
+  static bool
+  is_pf_device(hardware_type hw);
 
   // Validate-runner archive path relative to the platform archive root.
   XRT_CORE_COMMON_EXPORT
