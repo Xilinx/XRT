@@ -251,7 +251,7 @@ get_cfg_uuid() const
     auto data = m_elf.get_cfg_uuid();
     xuid_t uuid_data;
     std::memcpy(uuid_data, data.data(), uuid_size);
-    return xrt::uuid(uuid_data);
+    return {uuid_data};
   }
   catch (const std::exception&) {
     return {};
@@ -446,7 +446,7 @@ get_custom_section(const std::string& section_name) const
     throw std::runtime_error("Cannot get custom section " + section_name +
                              " data, section not found in ELF");
 
-  return detail::span<const char>(reinterpret_cast<const char*>(sp.data()), sp.size());
+  return {reinterpret_cast<const char*>(sp.data()), sp.size()};
 }
 
 ////////////////////////////////////////////////////////////////
