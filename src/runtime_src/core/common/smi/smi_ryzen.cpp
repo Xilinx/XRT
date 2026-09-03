@@ -176,18 +176,28 @@ config_gen_npu3::create_examine_subcommand()
 }
 
 static std::shared_ptr<config_gen_ryzen>
-create_config_generator(smi_hardware_config::hardware_family family)
+create_config_generator(smi_hardware_config::hardware_type hw)
 {
-  switch (family) {
+  std::shared_ptr<config_gen_ryzen> generator;
+  switch (smi_hardware_config::get_family(hw)) {
   case smi_hardware_config::hardware_family::phoenix:
-    return std::make_shared<config_gen_phoenix>();
+    generator = std::make_shared<config_gen_phoenix>();
+    break;
   case smi_hardware_config::hardware_family::strix:
-    return std::make_shared<config_gen_strix>();
+    generator = std::make_shared<config_gen_strix>();
+    break;
   case smi_hardware_config::hardware_family::npu3:
-    return std::make_shared<config_gen_npu3>();
+    generator = std::make_shared<config_gen_npu3>();
+    break;
   default:
-    return std::make_shared<config_gen_strix>();
+    generator = std::make_shared<config_gen_strix>();
+    break;
   }
+
+  if (smi_hardware_config::is_pf_device(hw))
+    generator->clear_validate_tests();
+
+  return generator;
 }
 
 void
@@ -195,8 +205,8 @@ populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* 
 {
   smi_hardware_config smi_hrdw;
   const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
-  const auto family = smi_hrdw.get_family(pcie_id);
-  const auto generator = create_config_generator(family);
+  const auto hw = smi_hrdw.get_hardware_type(pcie_id);
+  const auto generator = create_config_generator(hw);
 
   smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
   smi_instance->add_subcommand("examine",  generator->create_examine_subcommand());

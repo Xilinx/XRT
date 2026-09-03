@@ -83,11 +83,17 @@ static const std::string test_token_failed = "FAILED";
 static const std::string test_token_passed = "PASSED";
 
 void
-doesTestExist(const std::string& userTestName, std::vector<std::shared_ptr<TestRunner>>& testNames)
+doesTestExist(const std::string& userTestName, const std::vector<std::shared_ptr<TestRunner>>& testNames)
 {
-  const auto iter = std::find_if( testNames.begin(), testNames.end(),
-    [&userTestName](const std::shared_ptr<TestRunner>& testRunner){ 
-      return userTestName == "all" || userTestName == "quick" || userTestName == testRunner->get_name();
+  if (testNames.empty())
+    throw xrt_core::error("No validate tests are available for this device");
+
+  if (userTestName == "all" || userTestName == "quick")
+    return;
+
+  const auto iter = std::find_if(testNames.begin(), testNames.end(),
+    [&userTestName](const std::shared_ptr<TestRunner>& testRunner) {
+      return userTestName == testRunner->get_name();
     });
 
   if (iter == testNames.end())

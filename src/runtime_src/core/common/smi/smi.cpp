@@ -292,6 +292,24 @@ get_aie_architecture_version(hardware_type hw)
 
 bool
 smi_hardware_config::
+is_pf_device(hardware_type hw)
+{
+  switch (hw) {
+  case hardware_type::npu3a_pf:
+  case hardware_type::npu3_B02_pf:
+  case hardware_type::npu7_pf:
+  case hardware_type::npu8_pf:
+  case hardware_type::npu9_pf:
+  case hardware_type::npu10_pf:
+  case hardware_type::npu11_pf:
+    return true;
+  default:
+    return false;
+  }
+}
+
+bool
+smi_hardware_config::
 is_aie2_platform(hardware_type hw)
 {
   switch (get_family(hw)) {
