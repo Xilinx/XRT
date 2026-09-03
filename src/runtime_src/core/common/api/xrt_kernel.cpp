@@ -635,6 +635,7 @@ private:
 // then behavior is undefined.
 class ip_context
 {
+public:
   // class connectivy - Represents argument connectiviy to memory banks
   //
   // The argument connectivity is represented using a compressed bitset
@@ -645,7 +646,6 @@ class ip_context
   // @default_connection: default connectivity for an argument
   class connectivity
   {
-    static constexpr int32_t no_memidx {-1};
     static constexpr size_t max_connections {64};
     std::vector<encoded_bitset<max_connections>> connections; // indexed by argidx
     std::vector<int32_t> default_connection;                  // indexed by argidx
@@ -662,6 +662,8 @@ class ip_context
     }
 
   public:
+    static constexpr int32_t no_memidx {-1};
+
     connectivity() = default;
 
     // @xclbin: meta data
@@ -717,8 +719,6 @@ class ip_context
     }
   };
 
-
-public:
   using access_mode = xrt::kernel::cu_access_mode;
   using slot_id = xrt_core::hwctx_handle::slot_id;
 
@@ -2149,11 +2149,20 @@ public:
     // for the xclbin slot, and 8 bits reserved for bo flags.  The latter
     // flags are populated when the xrt::bo object is constructed.
 
+    if (argno < 0 || static_cast<size_t>(argno) >= args.size())
+      throw xrt_core::error(EINVAL, "No such kernel argument at index " + std::to_string(argno)
+                            + " for kernel '" + name + "'");
+
     // Last (for group id) connection of first ip in this kernel
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
+    auto memidx = ip->arg_memidx(argno);
+    if (memidx == ip_context::connectivity::no_memidx)
+      throw xrt_core::error(EINVAL, "No memory group assigned for global argument at index "
+                            + std::to_string(argno) + " of kernel '" + name + "'");
+
     xcl_bo_flags grp = {0};     // xrt_mem.h
-    grp.bank = ip->arg_memidx(argno);
+    grp.bank = memidx;
     grp.slot = ip->get_slot();
 
     // This function should return uint32_t or some same symbolic type

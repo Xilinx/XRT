@@ -325,6 +325,7 @@ static void zocl_fini_client_hw_ctxs(struct drm_zocl_dev *zdev,
 			if (s_id != 0)
 				zocl_destroy_aie(slot);
 			zdev->slot_mask &= ~(1 << s_id);
+			zocl_slot_remove_xclbin_overlay(zdev, slot);
 		}
 	}
 	mutex_unlock(&client->lock);

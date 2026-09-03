@@ -610,6 +610,47 @@ void zocl_free_sections(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 	write_unlock(&zdev->attr_rwlock);
 }
 
+#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+/*
+ * Remove a PARTITION_METADATA overlay that was applied when this slot's
+ * xclbin was loaded. Called when the last hw_context on the slot is destroyed.
+ */
+void zocl_slot_remove_xclbin_overlay(struct drm_zocl_dev *zdev,
+				     struct drm_zocl_slot *slot)
+{
+	int err;
+
+	if (!zdev || !slot || slot->partial_overlay_id == -1)
+		return;
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	if (zocl_bitstream_is_locked(zdev, slot))
+		goto unlock;
+
+	zocl_destroy_cu_slot(zdev, slot->slot_idx);
+
+	err = of_overlay_remove(&slot->partial_overlay_id);
+	if (err < 0) {
+		DRM_WARN("%s: overlay remove failed (%d)\n", __func__, err);
+		goto refresh;
+	}
+
+	slot->partial_overlay_id = -1;
+	DRM_INFO("%s: removed xclbin DT overlay from slot %d\n",
+		 __func__, slot->slot_idx);
+
+refresh:
+	zocl_cu_intc_refresh(zdev);
+unlock:
+	mutex_unlock(&slot->slot_xclbin_lock);
+}
+#else
+void zocl_slot_remove_xclbin_overlay(struct drm_zocl_dev *zdev,
+				     struct drm_zocl_slot *slot)
+{
+}
+#endif
+
 /*
  * Load a bitstream, partial metadata or PDI to the FPGA from userspace pointer.
  *
