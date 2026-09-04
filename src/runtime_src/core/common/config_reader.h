@@ -1011,6 +1011,22 @@ get_aie_dtrace_settings_tile_based_aie_metrics()
   return value;
 }
 
+inline std::string
+get_aie_dtrace_settings_tile_based_memory_tile_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.tile_based_memory_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_dtrace_settings_memory_tile_input_ports()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.memory_tile_input_ports", "");
+  return value;
+}
+
 // AIE_trace_settings
 
 inline std::string
