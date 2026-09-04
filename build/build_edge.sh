@@ -19,7 +19,7 @@ usage()
     echo "          -cache                          path to sstate-cache"
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
-    echo "          -full, full                     Full Petalinux build which builds images along with XRT RPMs"
+    echo "          -full, full                     Full Petalinux build (images + XRT RPMs + APU packages; source Vitis first)"
     echo "          -archiver                       Generate archiver of the project. This is needed to generate LICENSE"
     echo "          -noinit                         Do not initialize Git submodules"
     echo ""
@@ -299,6 +299,19 @@ if [ -f $SETTINGS_FILE  ] && [ -z $PETALINUX ]; then
 fi
 
 source $PETALINUX/settings.sh
+
+if [[ $apu_package == 1 ]]; then
+    if [[ -z "$XILINX_VITIS" || ! -d "$XILINX_VITIS" ]]; then
+        error "-full requires XILINX_VITIS. Source Vitis settings64.sh and rerun."
+    fi
+    if [[ ! -x "$XILINX_VITIS/bin/bootgen" ]]; then
+        error "-full requires bootgen at \$XILINX_VITIS/bin/bootgen ($XILINX_VITIS/bin/bootgen not found)."
+    fi
+    if ! command -v xclbinutil >/dev/null 2>&1 && [[ ! -x "$XILINX_VITIS/bin/xclbinutil" ]]; then
+        error "-full requires xclbinutil (source Vitis so it is on PATH)."
+    fi
+    echo "Using Vitis for APU package: $XILINX_VITIS"
+fi
 
 if [[ $AARCH = $aarch64_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then
