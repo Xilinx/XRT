@@ -267,9 +267,13 @@ get_family(hardware_type hw)
   case hardware_type::aie2ps:
     return hardware_family::aie2ps;
   case hardware_type::unknown:
-  default:
     return hardware_family::unknown;
   }
+
+  // -Wreturn-type requires a statement here even though the switch covers every
+  // enumerator, because a value cast in from outside the enum matches no case.
+  // Not a default: label, which would also hide the next enumerator from -Wswitch.
+  return hardware_family::unknown;
 }
 
 std::optional<std::string>
@@ -285,9 +289,11 @@ get_aie_architecture_version(hardware_type hw)
     return "aie4";
   case hardware_family::aie2ps:
     return "aie2ps";
-  default:
+  case hardware_family::unknown:
     return std::nullopt;
   }
+
+  return std::nullopt;
 }
 
 bool
@@ -297,12 +303,15 @@ is_aie2_platform(hardware_type hw)
   switch (get_family(hw)) {
   case hardware_family::phoenix:
   case hardware_family::strix:
+  case hardware_family::aie2ps:
     return true;
   case hardware_family::npu3:
     return false;
-  default:
+  case hardware_family::unknown:
     throw std::runtime_error("Unsupported hardware type");
   }
+
+  throw std::runtime_error("Unsupported hardware type");
 }
 
 std::string
@@ -313,12 +322,15 @@ get_validate_archive_path(hardware_type hw)
   case hardware_family::phoenix:
     return "Runner/xrt_smi_phx.a";
   case hardware_family::strix:
+  case hardware_family::aie2ps:
     return "Runner/xrt_smi_strx.a";
   case hardware_family::npu3:
     return "Runner/xrt_smi_npu3.a";
-  default:
+  case hardware_family::unknown:
     throw std::runtime_error("Unsupported hardware type");
   }
+
+  throw std::runtime_error("Unsupported hardware type");
 }
 
 tuple_vector
