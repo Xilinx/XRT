@@ -277,7 +277,7 @@ public:
     return get_family(get_hardware_type(dev));
   }
 
-  // AIE architecture version string for examine JSON; nullopt when unknown.
+  // AIE architecture version string for the examine and platform reports; nullopt when unknown.
   XRT_CORE_COMMON_EXPORT
   static std::optional<std::string>
   get_aie_architecture_version(hardware_type hw);
