@@ -64,6 +64,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <cstdarg>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -1821,25 +1822,18 @@ private:
     if (!module)
       return nullptr; // applicable only for ELF flows
 
-    // Get control packet data from ELF module configuration
-    // Control packet cache is only applicable for aie2p platform
+    // Get control packet data from ELF — only applicable for aie2p platform
     auto elf_handle = xrt_core::module_int::get_elf_handle(module);
-    auto module_config = elf_handle->get_module_config(id);
-    const auto config = std::get_if<xrt::module_config_aie_gen2>(&module_config);
-    if (!config)
-      return nullptr; // not aie2p platform, no ctrlpkt cache needed
-
-    const auto& ctrl_packet = config->ctrl_packet_data;
-
-    if (ctrl_packet.size() == 0)
+    if (elf_handle->get_platform() != xrt::elf::platform::aie2p)
       return nullptr;
 
-    // Create mutable copy for buffer cache.
-    // copy_to() handles compressed sections transparently; for uncompressed
-    // ELFs this is a plain memcpy.
-    std::vector<uint8_t> ctrlpkt_data(ctrl_packet.size());
-    ctrl_packet.copy_to({ctrlpkt_data.data(), ctrlpkt_data.size()});
-    auto ctrlpkt_buf_size = ctrlpkt_data.size();
+    auto ctrlpkt_buf_size = elf_handle->get_ctrl_packet_size(id);
+    if (ctrlpkt_buf_size == 0)
+      return nullptr;
+
+    // Create mutable copy for buffer cache
+    std::vector<uint8_t> ctrlpkt_data(ctrlpkt_buf_size);
+    elf_handle->copy_ctrl_packet(id, {reinterpret_cast<std::byte*>(ctrlpkt_data.data()), ctrlpkt_buf_size});
 
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
     static auto pool_memory_size = xrt_core::config::get_run_buffer_pool_memory_mb() * bytes_per_mb;
@@ -5229,9 +5223,7 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
           << ctx_health->aie4.uc_info[i].uc_esr
           << "\n";
 
-      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary.
-      // AIEDebug handles SHF_COMPRESSED sections internally — only the specific
-      // .ctrltext section is decompressed on demand, not the entire ELF.
+      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary
       if (elf_impl_ptr) {
         aiebu::AIEDebug dbg(elf_impl_ptr->get_elfio());
         auto info = dbg.get_opcode_information(

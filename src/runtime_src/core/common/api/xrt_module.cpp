@@ -27,9 +27,9 @@
 #include "core/common/aiebu/src/cpp/dtrace/dtrace.h"
 
 #include <boost/format.hpp>
-#include <elfio/elfio.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -255,16 +255,6 @@ protected:
     return m_id;
   }
 
-  // Fill buffer object with data from buf structure
-  static void
-  fill_bo_with_data(xrt::bo& bo, const xrt::buf& buf, bool sync = true)
-  {
-    auto ptr = bo.map<uint8_t*>();
-    buf.copy_to({ptr, bo.size()});
-    if (sync)
-      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-  }
-
   // Helper function for patching buffer with argument name or index
   bool
   patch_helper(xrt::bo& bo, uint64_t patch, xrt_core::elf_patcher::buf_type type,
@@ -346,35 +336,41 @@ public:
 
 class module_run_aie_gen2 : public module_run
 {
-  // Platform-specific configuration from ELF
-  xrt::module_config_aie_gen2 m_config;
-
-  // Instruction and control packet buffers
+  // Instruction buffer — holds .ctrltext section data; patched in place
+  // before each run and synced to device.
   xrt::bo m_instr_bo;
+
+  // Optional control-packet buffer provided by the caller at construction.
+  // Patched with its device address into the instruction buffer.
   xrt::bo m_ctrlpkt_bo;
 
-  // Preemption buffers
+  // Preemption save / restore buffers — present only when the ELF has
+  // paired .preempt_save / .preempt_restore sections.
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
 
-  // Control scratch pad memory buffer
+  // Control scratch-pad memory — sized from the "scratch-pad-ctrl" dynsym;
+  // its device address is patched into the instruction buffer.
   xrt::bo m_ctrl_scratch_pad_mem;
 
-  // Map of ctrlpkt preemption buffers
-  // key : section name (.ctrlpkt.pm.*)
-  // value : xrt::bo filled with corresponding section data
+  // Preemption control-packet buffers, keyed by section name (.ctrlpkt.pm.*).
+  // Each gets its own BO; addresses are patched into the instruction buffer.
   std::map<std::string, xrt::bo> m_ctrlpkt_pm_bos;
 
-  // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
+  // PDI image buffers, keyed by PDI symbol name.
+  // Each PDI gets its own BO; addresses are patched into the instruction buffer.
   std::map<std::string, xrt::bo> m_pdi_bo_map;
 
-  // Symbol names for patching specific to aie_gen2 platform
-  static constexpr const char* Control_Packet_Symbol = "control-packet";
+  // ELF dynamic symbol names used to identify special patch targets
+  static constexpr const char* Control_Packet_Symbol    = "control-packet";
   static constexpr const char* Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 
-  ////////////////////////////////////////////////////////////////
-  // Functions that create and fill different buffers
-  ////////////////////////////////////////////////////////////////
+  // Fixed preemption scratch-pad size for AIE2P — passed to
+  // get_scratchpad_mem_buf() so the hw_context allocates enough space
+  // for save/restore context.  Hard-coded for this platform; AIE2PS/AIE4
+  // use a different (larger) value in module_run_aie_gen2_plus.
+  static constexpr size_t scratch_pad_mem_size = 512 * 1024; // 512 KB // NOLINT
+
   void
   create_ctrlpkt_buf(const xrt::bo& ctrlpkt_bo)
   {
@@ -382,25 +378,40 @@ class module_run_aie_gen2 : public module_run
       XRT_DEBUGF("ctrpkt buf is empty\n");
       return;
     }
-
-    m_ctrlpkt_bo = ctrlpkt_bo; // assign pre created buffer
-
+    m_ctrlpkt_bo = ctrlpkt_bo;
     if (is_dump_control_packet()) {
       std::string dump_file_name = "ctr_packet_pre_patch" + std::to_string(get_id()) + ".bin";
       dump_bo(m_ctrlpkt_bo, dump_file_name);
-
       std::stringstream ss;
       ss << "dumped file " << dump_file_name;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
   }
 
+  // dynsym names use hyphens (e.g. "ctrlpkt-pm-0") while the corresponding
+  // ELF section names use dots (e.g. ".ctrlpkt.pm.0").
+  static std::string
+  ctrlpkt_pm_dynsym_to_section(const std::string& dynsym)
+  {
+    std::string sec = "." + dynsym;
+    std::replace(sec.begin(), sec.end(), '-', '.');
+    return sec;
+  }
+
   void
   create_ctrlpkt_pm_bufs()
   {
-    for (const auto& [key, buf] : m_config.ctrlpkt_pm_bufs) {
-      m_ctrlpkt_pm_bos[key] = xbi::create_bo(m_hwctx, buf.size(), xbi::use_type::ctrlpkt);
-      fill_bo_with_data(m_ctrlpkt_pm_bos.at(key), buf);
+    for (const auto& dynsym : m_elf_impl->get_ctrlpkt_pm_dynsyms()) {
+      std::string sec_name = ctrlpkt_pm_dynsym_to_section(dynsym);
+
+      auto sz = m_elf_impl->get_ctrlpkt_pm_buf_size(sec_name);
+      if (sz == 0)
+        continue;
+
+      auto& bo = m_ctrlpkt_pm_bos[sec_name] =
+        xbi::create_bo(m_hwctx, sz, xbi::use_type::ctrlpkt);
+      m_elf_impl->copy_ctrlpkt_pm_buf(sec_name, {bo.map<std::byte*>(), sz});
+      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
   }
 
@@ -409,55 +420,54 @@ class module_run_aie_gen2 : public module_run
   {
     XRT_DEBUGF("-> module_run_aie_gen2::create_instruction_buf()\n");
 
-    // Get instruction buffer from config
-    size_t sz = m_config.instr_data.size();
+    // Step 1: allocate instruction BO and fill it with .ctrltext section data.
+    // All subsequent steps patch addresses into this buffer before it is synced.
+    auto sz = m_elf_impl->get_instr_buf_size(m_ctrl_code_id);
     if (sz == 0)
       throw std::runtime_error("Invalid instruction buffer size");
 
-    // Create and fill instruction buffer object
     m_instr_bo = xbi::create_bo(m_hwctx, sz, xbi::use_type::instruction);
-    fill_bo_with_data(m_instr_bo, m_config.instr_data, false /*don't sync*/);
+    m_elf_impl->copy_instr_buf(m_ctrl_code_id, {m_instr_bo.map<std::byte*>(), sz});
 
     if (is_dump_control_codes()) {
       std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
       dump_bo(m_instr_bo, dump_file_name);
-
       std::stringstream ss;
-      ss << "dumped file " << dump_file_name << " ctr_codes size: " << std::to_string(sz);
+      ss << "dumped file " << dump_file_name << " ctr_codes size: " << sz;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
 
-    // Handle preemption save/restore buffers from config
-    auto preempt_save_size = m_config.preempt_save_data.size();
-    auto preempt_restore_size = m_config.preempt_restore_data.size();
+    // Step 2: if the ELF has preemption sections, create save/restore BOs
+    // and patch the shared scratchpad memory address into both of them.
+    // The scratchpad is a hw_context-owned buffer used to spill AIE state.
+    auto preempt_save_sz    = m_elf_impl->get_preempt_save_size(m_ctrl_code_id);
+    auto preempt_restore_sz = m_elf_impl->get_preempt_restore_size(m_ctrl_code_id);
 
-    if ((preempt_save_size > 0) && (preempt_restore_size > 0)) {
-      m_preempt_save_bo = xbi::create_bo(m_hwctx, preempt_save_size, xbi::use_type::preemption);
-      fill_bo_with_data(m_preempt_save_bo, m_config.preempt_save_data, false);
+    if (preempt_save_sz > 0 && preempt_restore_sz > 0) {
+      m_preempt_save_bo = xbi::create_bo(m_hwctx, preempt_save_sz, xbi::use_type::preemption);
+      m_elf_impl->copy_preempt_save(m_ctrl_code_id, {m_preempt_save_bo.map<std::byte*>(), preempt_save_sz});
 
-      m_preempt_restore_bo = xbi::create_bo(m_hwctx, preempt_restore_size, xbi::use_type::preemption);
-      fill_bo_with_data(m_preempt_restore_bo, m_config.preempt_restore_data, false);
+      m_preempt_restore_bo = xbi::create_bo(m_hwctx, preempt_restore_sz, xbi::use_type::preemption);
+      m_elf_impl->copy_preempt_restore(m_ctrl_code_id, {m_preempt_restore_bo.map<std::byte*>(), preempt_restore_sz});
 
       if (is_dump_preemption_codes()) {
         std::string dump_file_name = "preemption_save_pre_patch" + std::to_string(get_id()) + ".bin";
         dump_bo(m_preempt_save_bo, dump_file_name);
-
         std::stringstream ss;
         ss << "dumped file " << dump_file_name;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
 
         dump_file_name = "preemption_restore_pre_patch" + std::to_string(get_id()) + ".bin";
         dump_bo(m_preempt_restore_bo, dump_file_name);
-
         ss.str("");
         ss << "dumped file " << dump_file_name;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
 
-      // Get scratchpad memory and patch preemption buffers
+      // Patch scratchpad address into both preemption buffers so the firmware
+      // knows where to save/restore AIE register state during preemption.
       const auto& scratchpad_mem =
-          xrt_core::hw_context_int::get_scratchpad_mem_buf(m_hwctx, m_config.scratch_pad_mem_size);
-
+        xrt_core::hw_context_int::get_scratchpad_mem_buf(m_hwctx, scratch_pad_mem_size);
       if (!scratchpad_mem)
         throw std::runtime_error("Failed to get scratchpad buffer from context\n");
 
@@ -470,43 +480,51 @@ class module_run_aie_gen2 : public module_run
         std::stringstream ss;
         ss << "patched preemption-codes using scratch_pad_mem at address "
            << std::hex << scratchpad_mem.address()
-           << " size "
-           << std::hex << scratchpad_mem.size();
+           << " size " << std::hex << scratchpad_mem.size();
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
 
-    // Create control scratchpad buffer and patch if symbol is present
-    if (m_config.ctrl_scratch_pad_mem_size > 0) {
-      m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, m_config.ctrl_scratch_pad_mem_size, xbi::use_type::ctrl_scratch_pad);
+    // Step 3: if the ELF references a control scratch-pad symbol, allocate a
+    // dedicated BO for it and patch its address into the instruction buffer.
+    // This is distinct from the preemption scratchpad — it is used by the
+    // firmware for internal control-code bookkeeping, not AIE register spill.
+    auto ctrl_scratch_sz = m_elf_impl->get_ctrl_scratch_pad_mem_size();
+    if (ctrl_scratch_sz > 0) {
+      m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, ctrl_scratch_sz, xbi::use_type::ctrl_scratch_pad);
       patch_helper(m_instr_bo, m_ctrl_scratch_pad_mem.address(),
                    xrt_core::elf_patcher::buf_type::ctrltext, Control_ScratchPad_Symbol, {}, false);
     }
 
-    // Patch all PDI addresses using config's pdi symbols
-    for (const auto& symbol : m_config.patch_pdi_symbols) {
-      const auto& pdi_data = m_config.elf_parent->get_pdi(symbol);
-      auto pdi_bo = xbi::create_bo(m_hwctx, pdi_data.size(), xbi::use_type::pdi);
-      fill_bo_with_data(pdi_bo, pdi_data);
-      // Move bo into map and get reference for patching
-      auto [it, inserted] = m_pdi_bo_map.emplace(symbol, std::move(pdi_bo));
+    // Step 4: allocate a PDI BO for each PDI symbol referenced by this
+    // ctrl-code and patch its device address into the instruction buffer.
+    // get_pdi_symbols() is an O(1) lookup into the pre-computed
+    // m_ctrl_pdi_map — no iteration over all groups or all patch points.
+    for (const auto& symbol : m_elf_impl->get_pdi_symbols(m_ctrl_code_id)) {
+      // Multiple relocations can reference the same PDI symbol; only
+      // create the BO once — patch_helper handles all patch sites.
+      if (m_pdi_bo_map.count(symbol))
+        continue;
 
-      // Patch instr buffer with PDI address
-      patch_helper(m_instr_bo, it->second.address(), xrt_core::elf_patcher::buf_type::ctrltext, symbol, {}, false);
+      auto pdi_sz = m_elf_impl->get_pdi_size(symbol);
+      auto pdi_bo = xbi::create_bo(m_hwctx, pdi_sz, xbi::use_type::pdi);
+      m_elf_impl->copy_pdi(symbol, {pdi_bo.map<std::byte*>(), pdi_sz});
+      pdi_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      auto [it, inserted] = m_pdi_bo_map.emplace(symbol, std::move(pdi_bo));
+      patch_helper(m_instr_bo, it->second.address(),
+                   xrt_core::elf_patcher::buf_type::ctrltext, symbol, {}, false);
     }
 
-    // Patch control packet address if present
-    if (m_ctrlpkt_bo) {
+    // Step 5: if a control-packet BO was provided by the caller, patch its
+    // device address into the instruction buffer so the firmware can locate it.
+    if (m_ctrlpkt_bo)
       patch_helper(m_instr_bo, m_ctrlpkt_bo.address(),
                    xrt_core::elf_patcher::buf_type::ctrltext, Control_Packet_Symbol, {}, false);
-    }
 
-    // Patch ctrlpkt preemption buffers using config's dynsyms
-    for (const auto& dynsym : m_config.ctrlpkt_pm_dynsyms) {
-      // Convert symbol name to section name: ctrlpkt-pm-0 -> .ctrlpkt.pm.0
-      std::string sec_name = "." + dynsym;
-      std::replace(sec_name.begin(), sec_name.end(), '-', '.');
-
+    // Step 6: patch the address of each preemption ctrl-pkt BO into the
+    // instruction buffer.  These BOs were created in create_ctrlpkt_pm_bufs().
+    for (const auto& dynsym : m_elf_impl->get_ctrlpkt_pm_dynsyms()) {
+      std::string sec_name = ctrlpkt_pm_dynsym_to_section(dynsym);
       auto bo_itr = m_ctrlpkt_pm_bos.find(sec_name);
       if (bo_itr == m_ctrlpkt_pm_bos.end())
         throw std::runtime_error("Unable to find ctrlpkt pm buffer for symbol " + dynsym);
@@ -555,7 +573,6 @@ public:
   module_run_aie_gen2(const xrt::elf& elf, const xrt::hw_context& hw_context,
                       uint32_t id, const xrt::bo& ctrlpkt_bo)
     : module_run(elf, hw_context, id)
-    , m_config(std::get<xrt::module_config_aie_gen2>(m_elf_impl->get_module_config(id)))
   {
     XRT_TRACE_POINT_SCOPE(xrt_module_run_aie_gen2);
     create_ctrlpkt_buf(ctrlpkt_bo);
@@ -687,22 +704,22 @@ public:
 
 class module_run_aie_gen2_plus : public module_run
 {
-  // Platform-specific configuration from ELF
-  xrt::module_config_aie_gen2_plus m_config;
-
-  // Instruction buffer (combined ctrlcode for all columns)
+  // Combined instruction buffer — all column ctrlcode buffers concatenated
+  // in column order, with page-aligned padding between them.  Patched in
+  // place and synced to device before each run.
   xrt::bo m_buffer;
 
-  // Map of control packet buffers
-  // key: section name (.ctrlpkt.*), value: xrt::bo
+  // Control-packet buffers, keyed by section name (.ctrlpkt.*).
+  // Each section gets its own BO; addresses are patched into m_buffer.
   std::map<std::string, xrt::bo> m_ctrlpkt_bos;
 
-  // Tuple of uC index, address, size, dtrace_addr for each column
-  // Used in ert_dpu_data payload to identify ctrlcode and dtrace buffer per column
+  // Per-column submission metadata packed into the ERT DPU payload.
+  // Each entry holds: uC index, base address in m_buffer, size, dtrace address.
   enum column_bo_index : size_t { col_ucidx = 0, col_base_addr, col_size, col_dtrace_addr };
   std::vector<std::tuple<uint16_t, uint64_t, uint64_t, uint64_t>> m_column_bo_address;
 
-  // Symbol name for control code patching
+  // Dynamic symbol name prefix used to patch per-column ctrlcode addresses
+  // into the instruction buffer.
   static constexpr const char* Control_Code_Symbol = "control-code";
 
   ////////////////////////////////////////////////////////////////
@@ -754,11 +771,15 @@ class module_run_aie_gen2_plus : public module_run
       return false;
     }
 
-    // Get dump buffer data from config
+    // Get dump buffer data from aiebu::elf.
     // Dump map is required only for jprobe; pass empty string when ELF has no .dump section.
-    const std::string map_data = (m_config.dump_buf.size() == 0)
-      ? std::string{}
-      : m_config.dump_buf.to_string();
+    auto dump_sz = m_elf_impl->get_dump_buf_size(m_ctrl_code_id);
+    std::string map_data;
+    if (dump_sz > 0) {
+      map_data.resize(dump_sz);
+      m_elf_impl->copy_dump_buf(m_ctrl_code_id,
+        {reinterpret_cast<std::byte*>(map_data.data()), dump_sz});
+    }
 
     // log level 0: error, 1: warning, 2: info
     auto log_level = static_cast<uint32_t>(xrt_core::config::get_dtrace_log_level());
@@ -844,24 +865,38 @@ class module_run_aie_gen2_plus : public module_run
   // Buffer creation and initialization functions
   ////////////////////////////////////////////////////////////////
 
-  // Create control packet buffers for all ctrlpkt sections
+  // Scratch pad size for gen2plus: 3MB for aie4 family, 0 otherwise
+  size_t
+  scratch_pad_mem_size() const
+  {
+    auto p = m_elf_impl->get_platform();
+    return (p == xrt::elf::platform::aie4  ||
+            p == xrt::elf::platform::aie4a ||
+            p == xrt::elf::platform::aie4z)
+      ? 3UL * 1024 * 1024  // NOLINT
+      : 0;
+  }
+
+  // Allocate and fill one BO per .ctrlpkt section.  The addresses of these
+  // BOs are later patched into the instruction buffer by fill_instruction_buffer().
+  // for_each_ctrlpkt() performs a single outer map lookup and iterates the inner
+  // map directly — no intermediate vector<string> is allocated.
   void
   create_ctrlpkt_bufs()
   {
-    if (m_config.ctrlpkt_bufs.empty())
-      return; // older ELFs have ctrlpkt in pad section
+    m_elf_impl->for_each_ctrlpkt(m_ctrl_code_id, [&](const std::string& name, size_t sz) {
+      if (sz == 0)
+        return;
 
-    // Create ctrlpkt bo's for all ctrlpkt sections
-    for (const auto& [name, buf] : m_config.ctrlpkt_bufs) {
-      m_ctrlpkt_bos[name] = xbi::create_bo(m_hwctx, buf.size(), xbi::use_type::ctrlpkt);
-      fill_bo_with_data(m_ctrlpkt_bos[name], buf);
-    }
+      auto& bo = m_ctrlpkt_bos[name] = xbi::create_bo(m_hwctx, sz, xbi::use_type::ctrlpkt);
+      m_elf_impl->copy_ctrlpkt(m_ctrl_code_id, name, {bo.map<std::byte*>(), sz});
+      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    });
 
     if (is_dump_control_packet()) {
       for (auto& [name, bo] : m_ctrlpkt_bos) {
         std::string dump_file_name = name + "_pre_patch" + std::to_string(get_id()) + ".bin";
         dump_bo(bo, dump_file_name);
-
         std::stringstream ss;
         ss << "dumped file " << dump_file_name;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
@@ -869,93 +904,89 @@ class module_run_aie_gen2_plus : public module_run
     }
   }
 
-  // Fill instruction buffer with column data, dump pre-patch, then patch
+  // Fill m_buffer with column ctrl-code data and apply all static patches:
+  //  1. Copy column ctrl-codes into m_buffer.
+  //  2. Patch per-column device addresses ("control-code-<n>") into m_buffer.
+  //  3. Obtain the shared scratchpad BO (aie4 family only).
+  //  4. Patch scratchpad and ctrlpkt BO addresses into m_buffer and ctrlpkt BOs.
   void
   fill_instruction_buffer()
   {
-    const auto& col_data = m_config.ctrlcodes;
-
-    // Copy all column control codes to instruction buffer
-    auto ptr = m_buffer.map<uint8_t*>();
-    auto remaining = m_buffer.size();
-    for (const auto& ctrlcode : col_data) {
-      ctrlcode.copy_to({ptr, remaining});
-      ptr += ctrlcode.size();
-      remaining -= ctrlcode.size();
+    // Step 1: copy column ctrl-codes into m_buffer consecutively.
+    auto ncols = m_elf_impl->get_column_count(m_ctrl_code_id);
+    auto ptr   = m_buffer.map<std::byte*>();
+    for (uint32_t col = 0; col < ncols; ++col) {
+      auto sz = m_elf_impl->get_ctrlcode_col_size(m_ctrl_code_id, col);
+      m_elf_impl->copy_ctrlcode_col(m_ctrl_code_id, col, {ptr, sz});
+      ptr += sz;
     }
 
-    // Dump pre-patched instruction buffer
     if (is_dump_control_codes()) {
       std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
       dump_bo(m_buffer, dump_file_name);
-
       std::stringstream ss;
-      ss << "dumped file " << dump_file_name << " ctr_codes size: " << std::to_string(m_buffer.size());
+      ss << "dumped file " << dump_file_name << " ctr_codes size: " << m_buffer.size();
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
 
-    // Patch control-code addresses in instruction buffer
+    // Step 2: patch per-column device addresses ("control-code-0", "control-code-1", ...)
+    // into m_buffer so the firmware can locate each column's instruction stream.
     size_t offset = 0;
-    for (size_t i = 0; i < col_data.size(); ++i) {
-      // Find the control-code-* sym-name and patch it in instruction buffer
+    for (uint32_t i = 0; i < ncols; ++i) {
       auto sym_name = std::string(Control_Code_Symbol) + "-" + std::to_string(i);
       auto type = xrt_core::elf_patcher::buf_type::ctrltext;
       if (patch_helper(m_buffer, m_buffer.address() + offset, type, sym_name, {}, false))
-        m_patched_args.insert(
-            xrt_core::elf_patcher::generate_key_string(sym_name, type));
-      offset += col_data[i].size();
+        m_patched_args.insert(xrt_core::elf_patcher::generate_key_string(sym_name, type));
+
+      offset += m_elf_impl->get_ctrlcode_col_size(m_ctrl_code_id, i);
     }
 
-    // create scratchpad memory buffer and patch it in ctrlpkt buffers and
-    // instruction buffer if symbol is present in ELF
+    // Step 3: obtain the shared scratchpad BO (aie4 family only; null otherwise).
     xrt::bo scratchpad_mem;
-    if (m_config.scratch_pad_mem_size > 0) {
-      scratchpad_mem = xrt_core::hw_context_int::get_scratchpad_mem_buf(m_hwctx, m_config.scratch_pad_mem_size);
+    auto sp_sz = scratch_pad_mem_size();
+    if (sp_sz > 0) {
+      scratchpad_mem = xrt_core::hw_context_int::get_scratchpad_mem_buf(m_hwctx, sp_sz);
       if (!scratchpad_mem)
         throw std::runtime_error("Failed to get scratchpad buffer from context\n");
     }
 
-    // Patch control packet addresses in instruction buffer
+    // Step 4: for each ctrlpkt BO, patch the scratchpad address into the
+    // ctrlpkt buffer (if present), then patch the ctrlpkt BO's own device
+    // address into m_buffer so the firmware can find the control packets.
     auto type = xrt_core::elf_patcher::buf_type::buf_type_count;
     for (auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
-      auto sym_name =
-          xrt_core::elf_patcher::get_symbol_name_from_section_name(name);
+      auto sym_name = xrt_core::elf_patcher::get_symbol_name_from_section_name(name);
 
-      // Patch scratchpad memory address in ctrlpkt buffer if present
       if (scratchpad_mem) {
         type = xrt_core::elf_patcher::buf_type::ctrlpkt;
         auto symbol = std::string{Scratch_Pad_Mem_Symbol} + sym_name;
         if (patch_helper(ctrlpktbo, scratchpad_mem.address(), type, symbol, {}, false))
-          m_patched_args.insert(
-              xrt_core::elf_patcher::generate_key_string(symbol, type));
+          m_patched_args.insert(xrt_core::elf_patcher::generate_key_string(symbol, type));
       }
 
       type = xrt_core::elf_patcher::buf_type::ctrltext;
       if (patch_helper(m_buffer, ctrlpktbo.address(), type, sym_name, {}, false))
-        m_patched_args.insert(
-            xrt_core::elf_patcher::generate_key_string(sym_name, type));
+        m_patched_args.insert(xrt_core::elf_patcher::generate_key_string(sym_name, type));
     }
 
-    // Patch scratchpad memory address in instruction buffer if present
+    // Patch the scratchpad address into m_buffer itself (ctrltext side).
     if (scratchpad_mem) {
       type = xrt_core::elf_patcher::buf_type::ctrltext;
       if (patch_helper(m_buffer, scratchpad_mem.address(), type, Scratch_Pad_Mem_Symbol, {}, false))
-        m_patched_args.insert(
-            xrt_core::elf_patcher::generate_key_string(Scratch_Pad_Mem_Symbol, type));
+        m_patched_args.insert(xrt_core::elf_patcher::generate_key_string(Scratch_Pad_Mem_Symbol, type));
     }
   }
 
-  // Create instruction buffer with all columns data along with pad section
   void
   create_instruction_buffer()
   {
-    const auto& data = m_config.ctrlcodes;
-
-    // Create bo with combined size of all ctrlcodes
-    size_t sz = std::accumulate(data.begin(), data.end(), static_cast<size_t>(0),
-      [](auto acc, const auto& ctrlcode) {
-        return acc + ctrlcode.size();
-      });
+    // Compute the combined size of all column ctrl-codes so that a single
+    // contiguous BO can hold them back-to-back, with each column's data
+    // at a known offset from the BO base address.
+    auto ncols = m_elf_impl->get_column_count(m_ctrl_code_id);
+    size_t sz = 0;
+    for (uint32_t col = 0; col < ncols; ++col)
+      sz += m_elf_impl->get_ctrlcode_col_size(m_ctrl_code_id, col);
 
     if (sz == 0) {
       XRT_DEBUGF("ctrlcode buf is empty\n");
@@ -963,23 +994,27 @@ class module_run_aie_gen2_plus : public module_run
     }
 
     m_buffer = xbi::create_bo(m_hwctx, sz, xbi::use_type::instruction);
-
     fill_instruction_buffer();
   }
 
-  // Fill column buffer addresses for command submission
-  // Skips empty columns (holes in the ctrlcode array).
+  // Build m_column_bo_address — the per-column metadata written into the ERT
+  // DPU payload at submission time.  Each entry records the uC (micro-controller)
+  // index, the device address of that column's ctrl-code within m_buffer, the
+  // column size, and the optional dtrace buffer address for dynamic tracing.
+  //
+  // Columns with zero size are sparse holes in the ctrl-code layout and are
+  // skipped — they require no submission entry but still advance the base address.
   void
   fill_column_bo_address()
   {
-    const auto& ctrlcodes = m_config.ctrlcodes;
-
+    auto ncols = m_elf_impl->get_column_count(m_ctrl_code_id);
     m_column_bo_address.clear();
     uint16_t ucidx = 0;
     auto base_addr = m_buffer.address();
 
-    for (const auto& ctrlcode : ctrlcodes) {
-      if (auto size = ctrlcode.size()) {
+    for (uint32_t col = 0; col < ncols; ++col) {
+      if (auto size = m_elf_impl->get_ctrlcode_col_size(m_ctrl_code_id, col)) {
+        // Look up the dtrace buffer offset for this uC index, if dtrace is active.
         uint64_t dtrace_addr = 0;
         if (m_dtrace.ctrl_bo) {
           auto it = m_dtrace.buf_offset_map.find(ucidx);
@@ -989,7 +1024,7 @@ class module_run_aie_gen2_plus : public module_run
         m_column_bo_address.emplace_back(ucidx, base_addr, size, dtrace_addr);
       }
       ++ucidx;
-      base_addr += ctrlcode.size();
+      base_addr += m_elf_impl->get_ctrlcode_col_size(m_ctrl_code_id, col);
     }
   }
 
@@ -1037,7 +1072,6 @@ class module_run_aie_gen2_plus : public module_run
 public:
   module_run_aie_gen2_plus(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id)
     : module_run(elf, hw_context, id)
-    , m_config(std::get<xrt::module_config_aie_gen2_plus>(m_elf_impl->get_module_config(id)))
   {
     XRT_TRACE_POINT_SCOPE(xrt_module_run_aie_gen2_plus);
     initialize_dtrace_buf("");  // use config path by default
@@ -1331,43 +1365,39 @@ get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type ty
   auto platform = elf_hdl->get_platform();
 
   if (platform == xrt::elf::platform::aie2p) {
-    auto module_config =
-        std::get<xrt::module_config_aie_gen2>(elf_hdl->get_module_config(ctrl_code_id));
-
     switch (type) {
-      case xrt_core::elf_patcher::buf_type::ctrltext:
-        return module_config.instr_data.size();
-      case xrt_core::elf_patcher::buf_type::ctrldata:
-        return module_config.ctrl_packet_data.size();
-      case xrt_core::elf_patcher::buf_type::preempt_save:
-        return module_config.preempt_save_data.size();
-      case xrt_core::elf_patcher::buf_type::preempt_restore:
-        return module_config.preempt_restore_data.size();
-      default:
-        throw std::runtime_error("Unknown buffer type passed");
+    case xrt_core::elf_patcher::buf_type::ctrltext:
+      return elf_hdl->get_instr_buf_size(ctrl_code_id);
+    case xrt_core::elf_patcher::buf_type::ctrldata:
+      return elf_hdl->get_ctrl_packet_size(ctrl_code_id);
+    case xrt_core::elf_patcher::buf_type::preempt_save:
+      return elf_hdl->get_preempt_save_size(ctrl_code_id);
+    case xrt_core::elf_patcher::buf_type::preempt_restore:
+      return elf_hdl->get_preempt_restore_size(ctrl_code_id);
+    default:
+      throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_legacy ||
-          platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
-          platform == xrt::elf::platform::aie4z) {
-    auto module_config =
-        std::get<xrt::module_config_aie_gen2_plus>(elf_hdl->get_module_config(ctrl_code_id));
 
-        if (type != xrt_core::elf_patcher::buf_type::ctrltext)
-      throw std::runtime_error("Info of given buffer type not available");
+  // gen2plus: only ctrltext (single column) supported
+  if (type != xrt_core::elf_patcher::buf_type::ctrltext)
+    throw std::runtime_error("Info of given buffer type not available");
 
-    const auto& col_data = module_config.ctrlcodes;
-    if (col_data.empty())
-      throw std::runtime_error{"No control code found for given id"};
-    if (col_data.size() != 1)
-      throw std::runtime_error{"Patch failed: only support patching single column"};
-    return col_data[0].size();
-  }
-  else {
-    throw std::runtime_error{"Patch failed: unsupported ELF ABI"};
-  }
+  auto ncols = elf_hdl->get_column_count(ctrl_code_id);
+  if (ncols == 0)
+    throw std::runtime_error{"No control code found for given id"};
+  if (ncols != 1)
+    throw std::runtime_error{"Patch failed: only support patching single column"};
+
+  return elf_hdl->get_ctrlcode_col_size(ctrl_code_id, 0);
 }
 
+// Copy the requested ELF buffer (identified by ctrl_code_id and buf_type)
+// into ibuf, then apply any caller-supplied argument patches in place.
+// Called from shim-level tests (xdna-driver/test/shim_test/exec_buf.h) that
+// manage their own buffer lifecycle and device sync.
+// The caller is responsible for buffer sizing (use get_patch_buf_size())
+// and sync.  Normal execution paths use module_run::patch() instead.
 void
 patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
       const std::vector<std::pair<std::string, uint64_t>>* args,
@@ -1375,63 +1405,77 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
 {
   valid_or_error(module);
   auto elf_hdl = module.get_handle()->get_elf_handle();
-  const xrt::buf* inst = nullptr;
   auto platform = elf_hdl->get_platform();
 
+  // Copy the requested ELF section into ibuf, validating the buffer is large enough.
+  size_t buf_sz = 0;
   if (platform == xrt::elf::platform::aie2p) {
-    auto module_config =
-        std::get<xrt::module_config_aie_gen2>(elf_hdl->get_module_config(ctrl_code_id));
     switch (type) {
-      case xrt_core::elf_patcher::buf_type::ctrltext:
-        inst = &module_config.instr_data;
-        break;
-      case xrt_core::elf_patcher::buf_type::ctrldata:
-        inst = &module_config.ctrl_packet_data;
-        break;
-      case xrt_core::elf_patcher::buf_type::preempt_save:
-        inst = &module_config.preempt_save_data;
-        break;
-      case xrt_core::elf_patcher::buf_type::preempt_restore:
-        inst = &module_config.preempt_restore_data;
-        break;
-      default:
-        throw std::runtime_error("Unknown buffer type passed");
+    case xrt_core::elf_patcher::buf_type::ctrltext:
+      buf_sz = elf_hdl->get_instr_buf_size(ctrl_code_id);
+      if (sz < buf_sz)
+        throw std::runtime_error{"Control code buffer passed in is too small"};
+
+      elf_hdl->copy_instr_buf(ctrl_code_id, {reinterpret_cast<std::byte*>(ibuf), buf_sz});
+      break;
+    case xrt_core::elf_patcher::buf_type::ctrldata:
+      buf_sz = elf_hdl->get_ctrl_packet_size(ctrl_code_id);
+      if (sz < buf_sz)
+        throw std::runtime_error{"Control code buffer passed in is too small"};
+
+      elf_hdl->copy_ctrl_packet(ctrl_code_id, {reinterpret_cast<std::byte*>(ibuf), buf_sz});
+      break;
+    case xrt_core::elf_patcher::buf_type::preempt_save:
+      buf_sz = elf_hdl->get_preempt_save_size(ctrl_code_id);
+      if (sz < buf_sz)
+        throw std::runtime_error{"Control code buffer passed in is too small"};
+
+      elf_hdl->copy_preempt_save(ctrl_code_id, {reinterpret_cast<std::byte*>(ibuf), buf_sz});
+      break;
+    case xrt_core::elf_patcher::buf_type::preempt_restore:
+      buf_sz = elf_hdl->get_preempt_restore_size(ctrl_code_id);
+      if (sz < buf_sz)
+        throw std::runtime_error{"Control code buffer passed in is too small"};
+
+      elf_hdl->copy_preempt_restore(ctrl_code_id, {reinterpret_cast<std::byte*>(ibuf), buf_sz});
+      break;
+    default:
+      throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_legacy ||
-           platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
-           platform == xrt::elf::platform::aie4z) {
-    auto module_config =
-        std::get<xrt::module_config_aie_gen2_plus>(elf_hdl->get_module_config(ctrl_code_id));
-    const auto& col_data = module_config.ctrlcodes;
+  else {
+    // gen2plus supports patching ctrltext only, and only for single-column ELFs.
+    if (type != xrt_core::elf_patcher::buf_type::ctrltext)
+      throw std::runtime_error{"Patch failed: unsupported buffer type for gen2plus"};
 
-    if (col_data.empty())
+    auto ncols = elf_hdl->get_column_count(ctrl_code_id);
+    if (ncols == 0)
       throw std::runtime_error{"No control code found for given id"};
-    if (col_data.size() != 1)
+
+    if (ncols != 1)
       throw std::runtime_error{"Patch failed: only support patching single column"};
 
-    inst = &col_data[0];
-  }
-  else {
-    throw std::runtime_error{"Patch failed: unsupported ELF ABI"};
+    buf_sz = elf_hdl->get_ctrlcode_col_size(ctrl_code_id, 0);
+    if (sz < buf_sz)
+      throw std::runtime_error{"Control code buffer passed in is too small"};
+
+    elf_hdl->copy_ctrlcode_col(ctrl_code_id, 0, {reinterpret_cast<std::byte*>(ibuf), buf_sz});
   }
 
-  if (sz < inst->size())
-    throw std::runtime_error{"Control code buffer passed in is too small"};
-  inst->copy_to({ibuf, sz});
-
-  // If no args to patch, we're done
+  // If no args to patch, we're done — ibuf holds the raw ELF section data.
   if (!args || args->empty())
     return;
 
-  // Get the patcher configs from module
+  // Get the patcher configs from the module — these encode the relocation
+  // sites within the buffer for each argument.
   const auto* patcher_configs = elf_hdl->get_patcher_configs(ctrl_code_id);
   if (!patcher_configs)
     throw std::runtime_error{"No patcher configs found for given id"};
 
   size_t index = 0;
   for (const auto& [arg_name, arg_addr] : *args) {
-    // Find the patcher config for this argument
+    // Look up by argument name first; fall back to positional index for
+    // callers that don't know the symbol names.
     auto key_string = xrt_core::elf_patcher::generate_key_string(arg_name, type);
     auto it = patcher_configs->find(key_string);
     if (it == patcher_configs->end()) {
@@ -1440,9 +1484,10 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
       it = patcher_configs->find(index_key);
       if (it == patcher_configs->end())
         throw std::runtime_error{"Failed to patch " + arg_name};
-    }
 
-    // Use static patch method (no state needed for shim tests)
+    }
+    // Use the static patch method — no per-run state needed here since the
+    // caller owns ibuf and handles sync themselves.
     xrt_core::elf_patcher::symbol_patcher::patch_symbol_raw(ibuf, sz, arg_addr, it->second);
     index++;
   }
