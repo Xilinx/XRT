@@ -40,6 +40,12 @@ endif
 
 ccflags-y += -Wall
 
+# ENABLE_KERNEL_DEBUG turns on UBSAN. GCC then embeds absolute
+# kernel-source paths in zocl.ko and those strings are not
+# rewritten by -ffile-prefix-map, so do_package_qa fails with [buildpaths].
+# Keep sanitizers on the in-tree kernel; disable them for this OOT module.
+UBSAN_SANITIZE := n
+
 # Version adjusted to 2.23 for master
 XRT_DRIVER_VERSION ?= 2.23.0
 
