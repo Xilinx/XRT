@@ -13,11 +13,18 @@ namespace xrt_core::smi::ryzen {
 
 // Ryzen / NPU xrt-smi JSON config generators (shared by XDNA shim, MCDM, etc.).
 class config_gen_ryzen : public xrt_core::smi::config_generator {
+protected:
   std::vector<xrt_core::smi::basic_option> validate_test_desc;
   std::vector<xrt_core::smi::basic_option> examine_report_desc;
 
 public:
   config_gen_ryzen();
+
+  void
+  clear_validate_tests() override
+  {
+    validate_test_desc.clear();
+  }
 
   virtual const std::vector<xrt_core::smi::basic_option>&
   get_validate_test_desc() const
@@ -43,16 +50,8 @@ public:
 };
 
 class config_gen_phoenix : public config_gen_ryzen {
-  std::vector<xrt_core::smi::basic_option> validate_test_desc;
-
 public:
   config_gen_phoenix();
-
-  const std::vector<xrt_core::smi::basic_option>&
-  get_validate_test_desc() const override
-  {
-    return validate_test_desc;
-  }
 };
 
 class config_gen_strix : public config_gen_ryzen {
@@ -60,7 +59,6 @@ class config_gen_strix : public config_gen_ryzen {
 
 class config_gen_npu3 : public config_gen_ryzen {
   std::vector<xrt_core::smi::basic_option> examine_report_desc;
-  std::vector<xrt_core::smi::basic_option> validate_test_desc;
 
 public:
   config_gen_npu3();
@@ -69,12 +67,6 @@ public:
   get_examine_report_desc() const override
   {
     return examine_report_desc;
-  }
-
-  const std::vector<xrt_core::smi::basic_option>&
-  get_validate_test_desc() const override
-  {
-    return validate_test_desc;
   }
 
   xrt_core::smi::subcommand
