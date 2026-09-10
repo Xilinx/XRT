@@ -14,6 +14,7 @@ config_gen_npu3_vf()
   : config_gen_npu3()
 {
   examine_report_desc = {
+    {"aie-partitions", "AIE partition information", "common"},
     {"all", "All known reports are produced", "common"},
     {"host", "Host information", "common"},
     {"platform", "Platforms flashed on the device", "common"},

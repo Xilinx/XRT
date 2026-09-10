@@ -14,6 +14,16 @@ config_gen_npu3_pf()
   : config_gen_npu3()
 {
   validate_test_desc = {};
+
+  examine_report_desc = {
+    {"all", "All known reports are produced", "common"},
+    {"host", "Host information", "common"},
+    {"platform", "Platforms flashed on the device", "common"},
+    {"telemetry", "Telemetry data for the device", "common"},
+    {"preemption", "Preemption telemetry data for the device", "common"},
+    {"clocks", "Clock frequency information", "hidden"},
+    {"debug", "Debug configuration settings for the device", "hidden"}
+  };
 }
 
 subcommand
