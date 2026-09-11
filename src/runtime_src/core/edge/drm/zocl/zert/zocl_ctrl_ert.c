@@ -474,32 +474,41 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 	struct device_node *parent = NULL;
 	struct device_node *fpga_np = NULL;
 	u32 *irqs = NULL;
+	u32 *hw_ids = NULL;
 	int num_irq = 0;
 	int ret = 0;
 	int i;
 
 	fpga_np = of_find_node_by_name(NULL, "fpga_accelerator");
-	if (fpga_np && of_property_present(fpga_np, "interrupts-extended")) {
-		num_irq = of_irq_count(fpga_np);
-		if (num_irq > 0) {
-			irqs = kcalloc(num_irq, sizeof(*irqs), GFP_KERNEL);
-			if (!irqs) {
-				of_node_put(fpga_np);
-				return -ENOMEM;
-			}
-			for (i = 0; i < num_irq; i++)
-				irqs[i] = of_irq_get(fpga_np, i);
+	if (fpga_np && (of_property_present(fpga_np, "interrupts-extended") ||
+			of_property_present(fpga_np, "interrupts"))) {
+		irqs = kcalloc(MAX_CU_NUM, sizeof(*irqs), GFP_KERNEL);
+		hw_ids = kcalloc(MAX_CU_NUM, sizeof(*hw_ids), GFP_KERNEL);
+		if (!irqs || !hw_ids) {
+			kfree(irqs);
+			kfree(hw_ids);
 			of_node_put(fpga_np);
+			return -ENOMEM;
+		}
+		num_irq = zocl_of_parse_cu_irqs(fpga_np, irqs, hw_ids, MAX_CU_NUM);
+		of_node_put(fpga_np);
+		if (num_irq > 0) {
 			ret = zocl_ert_create_intc(ZERT2DEV(zert), irqs, num_irq, 0,
 						   ERT_CU_INTC_DEV_NAME,
-						   &zert->zce_cu_intc);
+						   &zert->zce_cu_intc, hw_ids);
 			kfree(irqs);
+			kfree(hw_ids);
 			if (ret)
 				zert_err(zert, "Failed to create CU intc device: %d", ret);
 			return ret;
 		}
+		kfree(irqs);
+		kfree(hw_ids);
+		irqs = NULL;
+		hw_ids = NULL;
+	} else {
+		of_node_put(fpga_np);
 	}
-	of_node_put(fpga_np);
 
 	/* TODO: We only have one AXI intc for 32 CU interrupts at the moment */
 	np = of_get_child_by_name(ZERT2DEV(zert)->of_node, cu_interrupt);
@@ -517,6 +526,8 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 	}
 
 	ret = of_property_read_u32(parent, "xlnx,num-intr-inputs", &num_irq);
+	of_node_put(parent);
+	parent = NULL;
 	if (ret < 0) {
 		zert_err(zert, "unable to read xlnx,num-intr-inputs");
 		ret = -EINVAL;
@@ -532,7 +543,7 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 	for (i = 0; i < num_irq; i++)
 		irqs[i] = of_irq_get(np, i);
 	ret = zocl_ert_create_intc(ZERT2DEV(zert), irqs, num_irq, 0, ERT_CU_INTC_DEV_NAME,
-				   &zert->zce_cu_intc);
+				   &zert->zce_cu_intc, NULL);
 	if (ret)
 		zert_err(zert, "Failed to create CU intc device: %d", ret);
 	kfree(irqs);
@@ -621,7 +632,7 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 	/* Bring up XGQ INTC. */
 	if (irqs) {
 		ret = zocl_ert_create_intc(ZERT2DEV(zert), irqs, i, 0, ERT_XGQ_INTC_DEV_NAME,
-					   &zert->zce_xgq_intc);
+					   &zert->zce_xgq_intc, NULL);
 		if (ret)
 			zert_err(zert, "Failed to create xgq intc device: %d", ret);
 	}
@@ -686,7 +697,7 @@ static int zert_mpsoc_init(struct zocl_ctrl_ert *zert)
 	/* Bringup INTC sub-dev to handle interrupts for all CU XGQs. */
 	irq = platform_get_irq(ZERT2PDEV(zert), ERT_CQ_IRQ);
 	ret = zocl_ert_create_intc(ZERT2DEV(zert), &irq, 1, reg_start + ZERT_CQ_STATUS_REG,
-				   ERT_CSR_INTC_DEV_NAME, &zert->zce_xgq_intc);
+				   ERT_CSR_INTC_DEV_NAME, &zert->zce_xgq_intc, NULL);
 	if (ret)
 		zert_err(zert, "Failed to create xgq intc device: %d", ret);
 
