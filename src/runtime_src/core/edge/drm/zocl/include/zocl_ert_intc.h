@@ -40,6 +40,7 @@ struct zocl_ert_intc_handler {
 	struct platform_device	*zeih_pdev;
 	spinlock_t		 zeih_lock;
 	u32			 zeih_irq;
+	u32			 zeih_hw_id;
 	irq_handler_t		 zeih_cb;
 	void			*zeih_arg;
 	bool			 zeih_enabled;
@@ -73,7 +74,8 @@ static inline void zocl_ert_intc_config(struct platform_device *pdev, u32 id, bo
 
 static inline int zocl_ert_create_intc(struct device *dev, u32 *irqs, size_t num_irqs,
 				       u64 status_reg, const char *dev_name,
-				       struct platform_device **pdevp)
+				       struct platform_device **pdevp,
+				       const u32 *hw_ids)
 {
 	/* Total num of res is irqs + status reg. */
 	struct resource *res = kzalloc(sizeof(*res) * (num_irqs + 1), GFP_KERNEL);
@@ -89,7 +91,10 @@ static inline int zocl_ert_create_intc(struct device *dev, u32 *irqs, size_t num
 	fill_iomem_res(&res[i++], status_reg, sizeof(struct zocl_ert_intc_status_reg),
 		       ZEI_RES_STATUS);
 
-	ret = zlib_create_subdev(dev, dev_name, res, i, NULL, 0, pdevp);
+	ret = zlib_create_subdev(dev, dev_name, res, i,
+				 hw_ids ? (void *)hw_ids : NULL,
+				 hw_ids ? num_irqs * sizeof(*hw_ids) : 0,
+				 pdevp);
 	kfree(res);
 
 	return ret;
