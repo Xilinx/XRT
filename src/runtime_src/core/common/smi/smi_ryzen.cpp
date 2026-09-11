@@ -184,15 +184,23 @@ create_config_generator(smi_hardware_config::hardware_type hw)
     generator = std::make_shared<config_gen_phoenix>();
     break;
   case smi_hardware_config::hardware_family::strix:
+  case smi_hardware_config::hardware_family::aie2ps:
     generator = std::make_shared<config_gen_strix>();
     break;
   case smi_hardware_config::hardware_family::npu3:
     generator = std::make_shared<config_gen_npu3>();
     break;
-  default:
+  case smi_hardware_config::hardware_family::unknown:
+    // Kept on the strix config, which is what default: gave it before. Stated
+    // rather than left to default:, which would silently absorb the next family.
     generator = std::make_shared<config_gen_strix>();
     break;
   }
+
+  // The switch covers every enumerator, but a value cast in from outside the
+  // enum matches no case, so keep the strix fallback default: used to give it.
+  if (!generator)
+    generator = std::make_shared<config_gen_strix>();
 
   if (smi_hardware_config::is_pf_device(hw))
     generator->clear_validate_tests();
