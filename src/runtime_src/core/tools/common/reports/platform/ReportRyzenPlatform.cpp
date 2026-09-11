@@ -54,6 +54,10 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
     _output << boost::format("  %-23s: %s \n") % "Power Mode" % pt_status.get<std::string>("power_mode");
     _output << boost::format("  %-23s: %s \n") % "Total Columns" % pt_static_region.get<std::string>("total_columns");
 
+    const auto aie_arch = pt_static_region.get<std::string>("aie_architecture_version", "");
+    if (!aie_arch.empty())
+      _output << boost::format("  %-23s: %s \n") % "AIE Architecture" % aie_arch;
+
     auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
     if (watts != "N/A")
       _output << std::endl << boost::format("%-23s  : %s Watts\n") % "Estimated Power" % watts;

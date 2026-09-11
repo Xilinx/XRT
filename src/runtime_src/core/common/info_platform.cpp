@@ -3,6 +3,7 @@
 // Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "info_platform.h"
+#include "core/common/smi/smi.h"
 #include "query_requests.h"
 #include "sensor.h"
 #include "utils.h"
@@ -63,6 +64,16 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
     static_region.add("name", xrt_core::device_query<xq::rom_vbnv>(device));
     const auto total_cols = xrt_core::device_query_default<xq::total_cols>(device, 0);
     static_region.add("total_columns", total_cols);
+
+    try {
+      const xrt_core::smi::smi_hardware_config smi_hw;
+      const auto arch = xrt_core::smi::smi_hardware_config::get_aie_architecture_version
+        (smi_hw.get_hardware_type(xrt_core::device_query<xq::pcie_id>(device)));
+      static_region.add("aie_architecture_version", arch.value_or("N/A"));
+    }
+    catch (...) {
+      static_region.add("aie_architecture_version", "N/A");
+    }
     break;
   }
   }
