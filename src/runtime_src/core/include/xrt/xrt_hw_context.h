@@ -14,6 +14,8 @@
 #ifdef __cplusplus
 
 #include <map>
+#include <string>
+#include <vector>
 
 // Opaque handle for internal use
 namespace xrt_core {
@@ -356,6 +358,21 @@ public:
   XRT_API_EXPORT
   std::vector<char>
   get_aie_coredump() const;
+
+  /**
+   * get_aie_coredump_elf() - Returns the coredump of AIE Array as an ELF (e_type = ET_CORE).
+   * Fetches the raw AIE dump blob and packages it into a coredump ELF.
+   * The AIE architecture is derived from the ELF loaded in this context.
+   * Metadata (timestamp, firmware version, device info) is always
+   * embedded and populated internally from the hw_context and device.
+   * This function can throw.
+   *
+   * @return
+   *  ELF bytes of the ET_CORE coredump ELF
+   */
+  XRT_API_EXPORT
+  std::vector<char>
+  get_aie_coredump_elf() const;
 
 public:
   /// @cond

@@ -96,6 +96,7 @@ rh_package_list()
      python3 \
      python3-pip \
      python3-devel \
+     python3-pyyaml \
      rapidjson-devel \
      rpm-build \
      strace \
@@ -223,6 +224,7 @@ ub_package_list()
      python3-pip \
      python3-sphinx \
      python3-sphinx-rtd-theme \
+     python3-yaml \
      sphinx-common \
      strace \
      systemtap-sdt-dev \
@@ -297,6 +299,7 @@ fd_package_list()
      python3-devel \
      python3-pip \
      python3-sphinx \
+     python3-pyyaml \
      redhat-lsb \
      rapidjson-devel \
      rpm-build \
@@ -355,6 +358,7 @@ suse_package_list()
      protobuf-devel \
      python3-devel \
      python3-pip \
+     python3-PyYAML \
      rpm-build \
      strace \
      systemtap-sdt-devel \
@@ -412,6 +416,7 @@ mariner_package_list()
      python3 \
      python3-pip \
      python3-devel \
+     python3-pyyaml \
      rapidjson-devel \
      rpm-build \
      strace \
@@ -457,6 +462,7 @@ arch_package_list()
      python-sphinx \
      python-breathe \
      python-sphinx_rtd_theme \
+     python-yaml \
      rapidjson \
      strace \
      systemtap \
@@ -756,6 +762,7 @@ install_pybind11()
         # Install/upgrade pybind11 for building the XRT python bindings
         # We need 2.6.0 minimum version
         pip3 install -U pybind11
+        pip3 install PyYAML
     fi
 }
 

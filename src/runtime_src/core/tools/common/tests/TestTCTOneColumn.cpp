@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -96,6 +96,12 @@ TestTCTOneColumn::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_co
     const auto pcie_id = xrt_core::device_query<query>(dev);
     xrt_core::smi::smi_hardware_config smi_hrdw;
     const auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+    if (smi_hrdw.get_family(hardware_type) == xrt_core::smi::smi_hardware_config::hardware_family::npu3) {
+      XBValidateUtils::logger(ptree, "Details", "N/A");
+      ptree.put("status", XBValidateUtils::test_token_skipped);
+      return ptree;
+    }
+
     const bool is_strix = XBU::is_strix_hardware(hardware_type);
 
     const std::vector<std::string> artifacts = is_strix
