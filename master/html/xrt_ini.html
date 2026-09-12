@@ -73,6 +73,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration File xrt.ini</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#runtime-initialization-file-format">Runtime Initialization File Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#runtime-log-sinks-runtime-log">Runtime Log Sinks (<code class="docutils literal notranslate"><span class="pre">runtime_log</span></code>)</a></li>
 </ul>
 </li>
 </ul>
@@ -85,7 +86,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-npu.html">xrt-smi (NPU)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-alveo.html">xrt-smi (Alveo)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
@@ -162,6 +164,75 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p>Example</p>
 <div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">xrt::ini::set(&quot;Runtime.runtime_log&quot;, &quot;console&quot;);</span><span class="w"></span>
 <span class="na">xrt::ini::set(&quot;Runtime.verbosity&quot;, 5);</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="runtime-log-sinks-runtime-log">
+<h2>Runtime Log Sinks (<code class="docutils literal notranslate"><span class="pre">runtime_log</span></code>)<a class="headerlink" href="#runtime-log-sinks-runtime-log" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">runtime_log</span></code> key controls where XRT message output is sent. The following values are supported:</p>
+<table class="colwidths-given docutils align-default">
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 15%" />
+<col style="width: 65%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Value</p></th>
+<th class="head"><p>Platform</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">null</span></code> or empty</p></td>
+<td><p>All</p></td>
+<td><p>Discard all messages (silent mode)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">console</span></code></p></td>
+<td><p>All</p></td>
+<td><p>Writes messages to console (default)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">syslog</span></code></p></td>
+<td><p>All</p></td>
+<td><p>Routes to the OS-level centralized log on each platform:
+Linux uses the system syslog/journald depending on distro.
+Windows uses the Windows Application Event Log under source <code class="docutils literal notranslate"><span class="pre">AMD_XRT</span></code>.
+Using <code class="docutils literal notranslate"><span class="pre">syslog</span></code> in <code class="docutils literal notranslate"><span class="pre">xrt.ini</span></code> works on both platforms without change.</p>
+<p>On Windows, messages can be filtered in Event Viewer
+(<strong>Windows Logs → Application → Filter Current Log → Source: AMD_XRT</strong>)
+or from the command line by source and/or severity level
+(Level: <code class="docutils literal notranslate"><span class="pre">2</span></code> = Error, <code class="docutils literal notranslate"><span class="pre">3</span></code> = Warning, <code class="docutils literal notranslate"><span class="pre">4</span></code> = Information):</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># PowerShell - all XRT events</span>
+<span class="nb">Get-EventLog</span> <span class="n">-LogName</span> <span class="n">Application</span> <span class="n">-Source</span> <span class="s2">&quot;AMD_XRT&quot;</span>
+
+<span class="c"># PowerShell - errors only</span>
+<span class="nb">Get-EventLog</span> <span class="n">-LogName</span> <span class="n">Application</span> <span class="n">-Source</span> <span class="s2">&quot;AMD_XRT&quot;</span> <span class="n">-EntryType</span> <span class="n">Error</span>
+
+<span class="c"># PowerShell - errors and warnings</span>
+<span class="nb">Get-EventLog</span> <span class="n">-LogName</span> <span class="n">Application</span> <span class="n">-Source</span> <span class="s2">&quot;AMD_XRT&quot;</span> <span class="n">-EntryType</span> <span class="n">Error</span><span class="p">,</span><span class="n">Warning</span>
+</pre></div>
+</div>
+<div class="highlight-bat notranslate"><div class="highlight"><pre><span></span><span class="p">:</span><span class="c1">: Command prompt - all XRT events</span>
+wevtutil qe Application /q:<span class="s2">&quot;*[System[Provider[@Name=&#39;AMD_XRT&#39;]]]&quot;</span> /f:text
+
+<span class="p">:</span><span class="c1">: Command prompt - errors only (Level=2)</span>
+wevtutil qe Application /q:<span class="s2">&quot;*[System[Provider[@Name=&#39;AMD_XRT&#39;] and Level=2]]&quot;</span> /f:text
+
+<span class="p">:</span><span class="c1">: Command prompt - errors and warnings (Level=2 or Level=3)</span>
+wevtutil qe Application /q:<span class="s2">&quot;*[System[Provider[@Name=&#39;AMD_XRT&#39;] and (Level=2 or Level=3)]]&quot;</span> /f:text
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;filename&gt;</span></code></p></td>
+<td><p>All</p></td>
+<td><p>Write messages to the specified file path (e.g., <code class="docutils literal notranslate"><span class="pre">runtime_log</span> <span class="pre">=</span> <span class="pre">xrt_run.log</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example — redirect XRT logs to the OS system log on both Linux and Windows:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Runtime]</span><span class="w"></span>
+<span class="na">runtime_log</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">syslog</span><span class="w"></span>
+<span class="na">verbosity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">7</span><span class="w"></span>
 </pre></div>
 </div>
 <p>For a complete list of currently supported xrt.ini keys, default value, and valid key values please refer <a class="reference external" href="https://docs.amd.com/r/en-US/ug1702-vitis-accelerated-reference/xrt.ini-File">Vitis Application Acceleration Development Flow Documentation</a></p>

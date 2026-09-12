@@ -103,7 +103,13 @@ Functions</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>APIs for XRT messaging. </p>
-<p>XRT internally uses a message system that supports dispatching of messages to null, console, file, or syslog under different verbosity levels. The sink and verbosity level is controlled statically through <code><a class="el" href="namespacexrt_1_1ini.html" title="APIs for XRT configuration control.">xrt.ini</a></code> or at run-time using <code><a class="el" href="namespacexrt_1_1ini.html" title="APIs for XRT configuration control.">xrt::ini</a></code>.</p>
+<p>XRT internally uses a message system that supports dispatching of messages to different sinks under configurable verbosity levels. The sink and verbosity level is controlled statically through <code><a class="el" href="namespacexrt_1_1ini.html" title="APIs for XRT configuration control.">xrt.ini</a></code> or at run-time using <code><a class="el" href="namespacexrt_1_1ini.html" title="APIs for XRT configuration control.">xrt::ini</a></code>.</p>
+<p>Supported sinks (<code>Runtime.runtime_log</code> in <a class="el" href="namespacexrt_1_1ini.html" title="APIs for XRT configuration control.">xrt.ini</a>):</p><ul>
+<li><code>null</code> : discard all messages</li>
+<li><code>console</code> : writes to console (default)</li>
+<li><code>syslog</code> : route to OS-level centralized log (all platforms): Linux uses POSIX syslog; Windows uses the Windows Application Event Log under source "AMD_XRT"</li>
+<li><code>&lt;path&gt;</code> : write to a file at the given path (all platforms)</li>
+</ul>
 <p>The APIs in this file allow host application to use the same message dispatch mechanism as XRT is configured to use. </p>
 </div><h2 class="groupheader">Enumeration Type Documentation</h2>
 <a id="a6f303f50c0aeef482a843e18a0f24f4c"></a>

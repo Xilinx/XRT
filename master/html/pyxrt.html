@@ -81,7 +81,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-npu.html">xrt-smi (NPU)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-alveo.html">xrt-smi (Alveo)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
@@ -113,8 +114,536 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="xrt-python-bindings">
-<h1>XRT Python Bindings<a class="headerlink" href="#xrt-python-bindings" title="Permalink to this headline">¶</a></h1>
+  <section id="module-pyxrt">
+<span id="xrt-python-bindings"></span><h1>XRT Python Bindings<a class="headerlink" href="#module-pyxrt" title="Permalink to this headline">¶</a></h1>
+<p>Pybind11 module for XRT</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.bo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">bo</span></span><a class="headerlink" href="#pyxrt.bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a buffer object</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.bo.address">
+<span class="sig-name descname"><span class="pre">address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.bo" title="pyxrt.bo"><span class="pre">pyxrt.bo</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.bo.address" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the device physical address of the buffer object</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.bo.flags">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flags</span></span><a class="headerlink" href="#pyxrt.bo.flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Buffer object creation flags</p>
+<p>Members:</p>
+<blockquote>
+<div><p>normal</p>
+<p>cacheable</p>
+<p>device_only</p>
+<p>host_only</p>
+<p>p2p</p>
+<p>svm</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="pyxrt.bo.flags.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#pyxrt.bo.flags.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.bo.map">
+<span class="sig-name descname"><span class="pre">map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.bo" title="pyxrt.bo"><span class="pre">pyxrt.bo</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">memoryview</span></span></span><a class="headerlink" href="#pyxrt.bo.map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a byte accessible memory view of the buffer object</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.bo.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.bo" title="pyxrt.bo"><span class="pre">pyxrt.bo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.int8</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyxrt.bo.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read from the buffer object requested number of bytes starting from specified offset</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.bo.size">
+<span class="sig-name descname"><span class="pre">size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.bo" title="pyxrt.bo"><span class="pre">pyxrt.bo</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.bo.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the size of the buffer object</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.bo.sync">
+<span class="sig-name descname"><span class="pre">sync</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.bo.sync" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li><p>sync(self: pyxrt.bo, arg0: pyxrt.xclBOSyncDirection, arg1: int, arg2: int) -&gt; None</p></li>
+</ol>
+<p>Synchronize (DMA or cache flush/invalidation) the buffer in the requested direction</p>
+<ol class="arabic simple" start="2">
+<li><p>sync(self: pyxrt.bo, arg0: pyxrt.xclBOSyncDirection) -&gt; None</p></li>
+</ol>
+<p>Sync entire buffer content in specified direction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.bo.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.bo" title="pyxrt.bo"><span class="pre">pyxrt.bo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#pyxrt.bo.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the provided data into the buffer object starting at specified offset</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.device">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#pyxrt.device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstraction of an acceleration device</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.device.get_info">
+<span class="sig-name descname"><span class="pre">get_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.device" title="pyxrt.device"><span class="pre">pyxrt.device</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xrt_info_device" title="pyxrt.xrt_info_device"><span class="pre">pyxrt.xrt_info_device</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pyxrt.device.get_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain the device properties and sensor information</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.device.get_xclbin_uuid">
+<span class="sig-name descname"><span class="pre">get_xclbin_uuid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.device" title="pyxrt.device"><span class="pre">pyxrt.device</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyxrt.uuid" title="pyxrt.uuid"><span class="pre">pyxrt.uuid</span></a></span></span><a class="headerlink" href="#pyxrt.device.get_xclbin_uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the UUID of the xclbin currently associated with the device.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.device.load_xclbin">
+<span class="sig-name descname"><span class="pre">load_xclbin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.device.load_xclbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li><p>load_xclbin(self: pyxrt.device, xclbin_path: str) -&gt; pyxrt.uuid</p></li>
+</ol>
+<p>Deprecated compatibility shim. Load an xclbin and return its UUID; use hw_context(device, xclbin_path) for new code</p>
+<ol class="arabic simple" start="2">
+<li><p>load_xclbin(self: pyxrt.device, xclbin: xrt::xclbin) -&gt; pyxrt.uuid</p></li>
+</ol>
+<p>Deprecated compatibility shim. Load an xclbin and return its UUID; use hw_context(device, xclbin) for new code</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.device.register_xclbin">
+<span class="sig-name descname"><span class="pre">register_xclbin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self:</span> <span class="pre">pyxrt.device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xclbin:</span> <span class="pre">xrt::xclbin</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyxrt.uuid" title="pyxrt.uuid"><span class="pre">pyxrt.uuid</span></a></span></span><a class="headerlink" href="#pyxrt.device.register_xclbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register an xclbin with the device. Registration alone does not create a hardware context.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.elf">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">elf</span></span><a class="headerlink" href="#pyxrt.elf" title="Permalink to this definition">¶</a></dt>
+<dd><p>ELF representation of compiled AIE binary</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pyxrt.enumerate_devices">
+<span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">enumerate_devices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.enumerate_devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enumerate devices in system</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.ert_cmd_state">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">ert_cmd_state</span></span><a class="headerlink" href="#pyxrt.ert_cmd_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kernel execution status</p>
+<p>Members:</p>
+<blockquote>
+<div><p>ERT_CMD_STATE_NEW</p>
+<p>ERT_CMD_STATE_QUEUED</p>
+<p>ERT_CMD_STATE_COMPLETED</p>
+<p>ERT_CMD_STATE_ERROR</p>
+<p>ERT_CMD_STATE_ABORT</p>
+<p>ERT_CMD_STATE_SUBMITTED</p>
+<p>ERT_CMD_STATE_TIMEOUT</p>
+<p>ERT_CMD_STATE_NORESPONSE</p>
+<p>ERT_CMD_STATE_SKERROR</p>
+<p>ERT_CMD_STATE_SKCRASHED</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="pyxrt.ert_cmd_state.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#pyxrt.ert_cmd_state.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.hw_context">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">hw_context</span></span><a class="headerlink" href="#pyxrt.hw_context" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hardware context for associating an xclbin or ELF configuration with device resources.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.hw_context.access_mode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">access_mode</span></span><a class="headerlink" href="#pyxrt.hw_context.access_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hardware context access mode</p>
+<p>Members:</p>
+<blockquote>
+<div><p>exclusive</p>
+<p>shared</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="pyxrt.hw_context.access_mode.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#pyxrt.hw_context.access_mode.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.hw_context.add_config">
+<span class="sig-name descname"><span class="pre">add_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self:</span> <span class="pre">pyxrt.hw_context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elf:</span> <span class="pre">xrt::elf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#pyxrt.hw_context.add_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an ELF configuration object to the hardware context.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.hw_context.get_device">
+<span class="sig-name descname"><span class="pre">get_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.hw_context" title="pyxrt.hw_context"><span class="pre">pyxrt.hw_context</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">xrt::device</span></span></span><a class="headerlink" href="#pyxrt.hw_context.get_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the device from which the hardware context was created.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.hw_context.get_mode">
+<span class="sig-name descname"><span class="pre">get_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.hw_context" title="pyxrt.hw_context"><span class="pre">pyxrt.hw_context</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyxrt.hw_context.access_mode" title="pyxrt.hw_context.access_mode"><span class="pre">pyxrt.hw_context.access_mode</span></a></span></span><a class="headerlink" href="#pyxrt.hw_context.get_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the access mode of the hardware context.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.hw_context.get_xclbin">
+<span class="sig-name descname"><span class="pre">get_xclbin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.hw_context" title="pyxrt.hw_context"><span class="pre">pyxrt.hw_context</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">xrt::xclbin</span></span></span><a class="headerlink" href="#pyxrt.hw_context.get_xclbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the xclbin associated with the hardware context.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.hw_context.get_xclbin_uuid">
+<span class="sig-name descname"><span class="pre">get_xclbin_uuid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.hw_context" title="pyxrt.hw_context"><span class="pre">pyxrt.hw_context</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyxrt.uuid" title="pyxrt.uuid"><span class="pre">pyxrt.uuid</span></a></span></span><a class="headerlink" href="#pyxrt.hw_context.get_xclbin_uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the UUID of the xclbin associated with the hardware context.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.kernel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">kernel</span></span><a class="headerlink" href="#pyxrt.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a set of instances matching a specified name</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.kernel.cu_access_mode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cu_access_mode</span></span><a class="headerlink" href="#pyxrt.kernel.cu_access_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute unit access mode</p>
+<p>Members:</p>
+<blockquote>
+<div><p>exclusive</p>
+<p>shared</p>
+<p>none</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="pyxrt.kernel.cu_access_mode.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#pyxrt.kernel.cu_access_mode.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.kernel.group_id">
+<span class="sig-name descname"><span class="pre">group_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.kernel" title="pyxrt.kernel"><span class="pre">pyxrt.kernel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.kernel.group_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the memory-group identifier for a kernel argument.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pyxrt.log_message">
+<span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">log_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xrt_msg_level" title="pyxrt.xrt_msg_level"><span class="pre">pyxrt.xrt_msg_level</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#pyxrt.log_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dispatch formatted log message</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.module">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">module</span></span><a class="headerlink" href="#pyxrt.module" title="Permalink to this definition">¶</a></dt>
+<dd><p>Executable hardware module created from an ELF image.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.module.get_hw_context">
+<span class="sig-name descname"><span class="pre">get_hw_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.module" title="pyxrt.module"><span class="pre">pyxrt.module</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyxrt.hw_context" title="pyxrt.hw_context"><span class="pre">pyxrt.hw_context</span></a></span></span><a class="headerlink" href="#pyxrt.module.get_hw_context" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the hardware context associated with the module.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.program">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">program</span></span><a class="headerlink" href="#pyxrt.program" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a compiled program to be executed on the AIE. The program is an ELF file with sections and data specific to the AIE.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.program.get_partition_size">
+<span class="sig-name descname"><span class="pre">get_partition_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.program" title="pyxrt.program"><span class="pre">pyxrt.program</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.program.get_partition_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Required partition size to run the program</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.run">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">run</span></span><a class="headerlink" href="#pyxrt.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents one execution of a kernel</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.run.add_callback">
+<span class="sig-name descname"><span class="pre">add_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self:</span> <span class="pre">pyxrt.run</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg0:</span> <span class="pre">pyxrt.ert_cmd_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1:</span> <span class="pre">std::function&lt;void</span> <span class="pre">(void</span> <span class="pre">const*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ert_cmd_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">void*)&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg2:</span> <span class="pre">capsule</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#pyxrt.run.add_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a callback to be invoked when the run reaches the requested state.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.run.get_ctrl_scratchpad_bo">
+<span class="sig-name descname"><span class="pre">get_ctrl_scratchpad_bo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.run" title="pyxrt.run"><span class="pre">pyxrt.run</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">xrt::bo</span></span></span><a class="headerlink" href="#pyxrt.run.get_ctrl_scratchpad_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the control scratchpad buffer object associated with this run</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.run.set_arg">
+<span class="sig-name descname"><span class="pre">set_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.run.set_arg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li><p>set_arg(self: pyxrt.run, arg0: int, arg1: xrt::bo) -&gt; None</p></li>
+</ol>
+<p>Set a specific kernel global argument for a run</p>
+<ol class="arabic simple" start="2">
+<li><p>set_arg(self: pyxrt.run, arg0: int, arg1: int) -&gt; None</p></li>
+</ol>
+<p>Set a specific kernel scalar argument for this run</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.run.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.run" title="pyxrt.run"><span class="pre">pyxrt.run</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#pyxrt.run.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start one execution of a run</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.run.state">
+<span class="sig-name descname"><span class="pre">state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.run" title="pyxrt.run"><span class="pre">pyxrt.run</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyxrt.ert_cmd_state" title="pyxrt.ert_cmd_state"><span class="pre">pyxrt.ert_cmd_state</span></a></span></span><a class="headerlink" href="#pyxrt.run.state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the current execution state of the run.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.run.wait">
+<span class="sig-name descname"><span class="pre">wait</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.run.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li><p>wait(self: pyxrt.run) -&gt; pyxrt.ert_cmd_state</p></li>
+</ol>
+<p>Wait for the run to complete</p>
+<ol class="arabic simple" start="2">
+<li><p>wait(self: pyxrt.run, arg0: int) -&gt; pyxrt.ert_cmd_state</p></li>
+</ol>
+<p>Wait for the specified milliseconds for the run to complete</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.run.wait2">
+<span class="sig-name descname"><span class="pre">wait2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.run.wait2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li><p>wait2(self: pyxrt.run) -&gt; None</p></li>
+</ol>
+<p>Wait for the run to complete</p>
+<ol class="arabic simple" start="2">
+<li><p>wait2(self: pyxrt.run, arg0: std::chrono::duration&lt;long, std::ratio&lt;1l, 1000l&gt; &gt;) -&gt; std::cv_status</p></li>
+</ol>
+<p>Wait for the specified milliseconds for the run to complete</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.runlist">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">runlist</span></span><a class="headerlink" href="#pyxrt.runlist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ordered collection of runs executed as a unit.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.runlist.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.runlist" title="pyxrt.runlist"><span class="pre">pyxrt.runlist</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.run" title="pyxrt.run"><span class="pre">pyxrt.run</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#pyxrt.runlist.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a run to the runlist</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.runlist.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.runlist" title="pyxrt.runlist"><span class="pre">pyxrt.runlist</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#pyxrt.runlist.execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute all runs in the runlist</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.runlist.wait">
+<span class="sig-name descname"><span class="pre">wait</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.runlist.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li><p>wait(self: pyxrt.runlist) -&gt; None</p></li>
+</ol>
+<p>Wait for all runs in the runlist to complete</p>
+<ol class="arabic simple" start="2">
+<li><p>wait(self: pyxrt.runlist, timeout: std::chrono::duration&lt;long, std::ratio&lt;1l, 1000l&gt; &gt;) -&gt; std::cv_status</p></li>
+</ol>
+<p>Wait for the specified timeout for the runlist to complete</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.uuid">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">uuid</span></span><a class="headerlink" href="#pyxrt.uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>XRT UUID object to identify a compiled xclbin binary</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.uuid.to_string">
+<span class="sig-name descname"><span class="pre">to_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.uuid" title="pyxrt.uuid"><span class="pre">pyxrt.uuid</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pyxrt.uuid.to_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert XRT UUID object to string</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.xclBOSyncDirection">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">xclBOSyncDirection</span></span><a class="headerlink" href="#pyxrt.xclBOSyncDirection" title="Permalink to this definition">¶</a></dt>
+<dd><p>DMA flags used with DMA API</p>
+<p>Members:</p>
+<blockquote>
+<div><p>XCL_BO_SYNC_BO_TO_DEVICE</p>
+<p>XCL_BO_SYNC_BO_FROM_DEVICE</p>
+<p>XCL_BO_SYNC_BO_GMIO_TO_AIE</p>
+<p>XCL_BO_SYNC_BO_AIE_TO_GMIO</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="pyxrt.xclBOSyncDirection.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#pyxrt.xclBOSyncDirection.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.xclbin">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">xclbin</span></span><a class="headerlink" href="#pyxrt.xclbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents an xclbin and provides APIs to access meta data</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.get_axlf">
+<span class="sig-name descname"><span class="pre">get_axlf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin" title="pyxrt.xclbin"><span class="pre">pyxrt.xclbin</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">axlf</span></span></span><a class="headerlink" href="#pyxrt.xclbin.get_axlf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the axlf data of the xclbin</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.get_kernels">
+<span class="sig-name descname"><span class="pre">get_kernels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin" title="pyxrt.xclbin"><span class="pre">pyxrt.xclbin</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyxrt.xclbin.xclbinkernel" title="pyxrt.xclbin.xclbinkernel"><span class="pre">pyxrt.xclbin.xclbinkernel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyxrt.xclbin.get_kernels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get list of kernels from xclbin</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.get_mems">
+<span class="sig-name descname"><span class="pre">get_mems</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin" title="pyxrt.xclbin"><span class="pre">pyxrt.xclbin</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyxrt.xclbin.xclbinmem" title="pyxrt.xclbin.xclbinmem"><span class="pre">pyxrt.xclbin.xclbinmem</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyxrt.xclbin.get_mems" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get list of memory objects</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.get_uuid">
+<span class="sig-name descname"><span class="pre">get_uuid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin" title="pyxrt.xclbin"><span class="pre">pyxrt.xclbin</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyxrt.uuid" title="pyxrt.uuid"><span class="pre">pyxrt.uuid</span></a></span></span><a class="headerlink" href="#pyxrt.xclbin.get_uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the uuid of the xclbin</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.get_xsa_name">
+<span class="sig-name descname"><span class="pre">get_xsa_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin" title="pyxrt.xclbin"><span class="pre">pyxrt.xclbin</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pyxrt.xclbin.get_xsa_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get Xilinx Support Archive (XSA) name of xclbin</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinkernel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">xclbinkernel</span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinkernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a kernel in an xclbin</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinkernel.get_name">
+<span class="sig-name descname"><span class="pre">get_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin.xclbinkernel" title="pyxrt.xclbin.xclbinkernel"><span class="pre">pyxrt.xclbin.xclbinkernel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinkernel.get_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get kernel name</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinkernel.get_num_args">
+<span class="sig-name descname"><span class="pre">get_num_args</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin.xclbinkernel" title="pyxrt.xclbin.xclbinkernel"><span class="pre">pyxrt.xclbin.xclbinkernel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinkernel.get_num_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of arguments</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinmem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">xclbinmem</span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinmem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a physical device memory bank</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinmem.get_base_address">
+<span class="sig-name descname"><span class="pre">get_base_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin.xclbinmem" title="pyxrt.xclbin.xclbinmem"><span class="pre">pyxrt.xclbin.xclbinmem</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_base_address" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the base address of the memory bank</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinmem.get_index">
+<span class="sig-name descname"><span class="pre">get_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin.xclbinmem" title="pyxrt.xclbin.xclbinmem"><span class="pre">pyxrt.xclbin.xclbinmem</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the index of the memory</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinmem.get_size_kb">
+<span class="sig-name descname"><span class="pre">get_size_kb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin.xclbinmem" title="pyxrt.xclbin.xclbinmem"><span class="pre">pyxrt.xclbin.xclbinmem</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_size_kb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the size of the memory in KB</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinmem.get_tag">
+<span class="sig-name descname"><span class="pre">get_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin.xclbinmem" title="pyxrt.xclbin.xclbinmem"><span class="pre">pyxrt.xclbin.xclbinmem</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get tag name</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyxrt.xclbin.xclbinmem.get_used">
+<span class="sig-name descname"><span class="pre">get_used</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyxrt.xclbin.xclbinmem" title="pyxrt.xclbin.xclbinmem"><span class="pre">pyxrt.xclbin.xclbinmem</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_used" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get used status of the memory</p>
+</dd></dl>
+
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.xrt_info_device">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">xrt_info_device</span></span><a class="headerlink" href="#pyxrt.xrt_info_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Device feature and sensor information</p>
+<p>Members:</p>
+<blockquote>
+<div><p>bdf</p>
+<p>interface_uuid</p>
+<p>kdma</p>
+<p>max_clock_frequency_mhz</p>
+<p>m2m</p>
+<p>name</p>
+<p>nodma</p>
+<p>offline</p>
+<p>electrical</p>
+<p>thermal</p>
+<p>mechanical</p>
+<p>memory</p>
+<p>platform</p>
+<p>pcie_info</p>
+<p>host</p>
+<p>dynamic_regions</p>
+<p>vmr</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyxrt.xrt_msg_level">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyxrt.</span></span><span class="sig-name descname"><span class="pre">xrt_msg_level</span></span><a class="headerlink" href="#pyxrt.xrt_msg_level" title="Permalink to this definition">¶</a></dt>
+<dd><p>XRT log msgs level</p>
+<p>Members:</p>
+<blockquote>
+<div><p>emergency</p>
+<p>alert</p>
+<p>critical</p>
+<p>error</p>
+<p>warning</p>
+<p>notice</p>
+<p>info</p>
+<p>debug</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="pyxrt.xrt_msg_level.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#pyxrt.xrt_msg_level.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 
 

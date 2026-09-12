@@ -146,7 +146,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-npu.html">xrt-smi (NPU)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-alveo.html">xrt-smi (Alveo)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
@@ -252,13 +253,14 @@ C++ examples in this guide assume a compiler with <strong>ISO C++17</strong> or 
 <li><p>Open AMD <strong>Device</strong> and load a kernel defined either in <strong>ELF</strong>, <strong>XCLBIN</strong> or combination of both.</p></li>
 <li><p>Create <strong>Buffer</strong> objects to hold data for kernel inputs and outputs</p></li>
 <li><p>If required use the Buffer class member functions for the data transfer between host and device (before and after the kernel execution).</p></li>
-<li><p>Use <strong>Kernel</strong> and <strong>Run</strong> objects to offload and manage the compute-intensive tasks running on FPGA.</p></li>
+<li><p>Use <strong>Kernel</strong> and <strong>Run</strong> objects to offload and manage the compute-intensive tasks running on the device.</p></li>
 <li><p>Release the <strong>Buffer</strong> object and close the <strong>Device</strong>.</p></li>
 </ul>
 <p>Below we will walk through the common API usage to accomplish the above tasks.</p>
 <section id="device-and-context-npu-flow">
 <h2>Device and Context (NPU Flow)<a class="headerlink" href="#device-and-context-npu-flow" title="Permalink to this headline">¶</a></h2>
-<p>Device and Context classes provide fundamental infrastructure-related interfaces. The primary objectives of the device- and context-related APIs are:</p>
+<p>Device and Context classes provide fundamental infrastructure-related interfaces. The
+primary objectives of the device- and context-related APIs are:</p>
 <ul class="simple">
 <li><p>Open a device and create a context on the device</p></li>
 <li><p>Load a compiled kernel binary (or an elf) onto the device</p></li>
