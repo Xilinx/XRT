@@ -35,9 +35,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="aiebu" href="aiebu.html" />
-    <link rel="prev" title="xclbinutil" href="xclbintools.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -80,16 +78,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xrt_hip_runtime_api.html">XRT HIP Runtime APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">xrt-smi</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-smi-program">xrt-smi program</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-smi-validate">xrt-smi validate</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-smi-examine">xrt-smi examine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-smi-configure">xrt-smi configure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-smi-reset">xrt-smi reset</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-npu.html">xrt-smi (NPU)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-alveo.html">xrt-smi (Alveo)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
@@ -121,287 +113,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <span class="target" id="xbutil-rst"></span><section id="xrt-smi">
+  <meta http-equiv="refresh" content="0; url=xrt-smi-npu.html"><section id="xrt-smi">
 <h1>xrt-smi<a class="headerlink" href="#xrt-smi" title="Permalink to this headline">¶</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>For <em>up to date</em> xrt-smi documentation, visit <a class="reference external" href="https://ryzenai.docs.amd.com/en/latest/xrt_smi.html">NPU Management Interface — Ryzen AI Software 1.7.1 documentation</a>
-This details below describe the <strong>legacy</strong> <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code> commands and may not work with the latest xrt-smi.</p>
-</div>
-<p>For an instructive video on xrt-smi commands listed below click <a class="reference external" href="https://www.youtube.com/watch?v=nvU2ZBnAaz4">here</a>.</p>
-<p><strong>Global options</strong>: These are the global options can be used with any command.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code>: Turn on verbosity and shows more outputs whenever applicable</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--batch</span></code>: Enable batch mode</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code>: When possible, force an operation</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code> : Get help message</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--version</span></code> : Report the version of XRT and its drivers</p></li>
+<p>The <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code> documentation is now split by device family:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="xrt-smi-npu.html"><span class="doc">xrt-smi (NPU)</span></a> — Ryzen AI NPUs (Phoenix, Strix, NPU3).</p></li>
+<li><p><a class="reference internal" href="xrt-smi-alveo.html"><span class="doc">xrt-smi (Alveo)</span></a> — legacy Alveo devices.</p></li>
 </ul>
-</div></blockquote>
-<p>Currently supported <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code> commands are</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">program</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">validate</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">examine</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">configure</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">reset</span></code></p></li>
-</ul>
-</div></blockquote>
-<p><strong>Note</strong>: For applicable commands, if only one device is present on the system <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is not required. If more than one device is present in the system, <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is required.</p>
-<section id="xrt-smi-program">
-<h2>xrt-smi program<a class="headerlink" href="#xrt-smi-program" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">program</span></code> command downloads a specified xclbin binary to the programmable region on the card <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=245">program (video)</a>.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;xclbin&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--user</span></code> (or <code class="docutils literal notranslate"><span class="pre">-u</span></code>) is required to specify the .xclbin file</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;xclbin file&gt; : The xclbin file with full-path to program the device</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi program --device <span class="m">0000</span>:b3:00.1 --user ./my_kernel.xclbin
-</pre></div>
-</div>
-</section>
-<section id="xrt-smi-validate">
-<h2>xrt-smi validate<a class="headerlink" href="#xrt-smi-validate" title="Permalink to this headline">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">validate</span></code> validates the installed card by running precompiled basic tests <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=110">validate (video)</a>.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi validate <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--run<span class="p">|</span> -r<span class="o">]</span> &lt;test&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt; <span class="o">[</span>--param<span class="o">]</span> &lt;test&gt;:&lt;key&gt;:&lt;value&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to validate</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--run</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) specifies the particular test(s) to execute</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code> (<strong>default</strong>): runs all the tests listed below</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">aux-connection</span></code>: Check if auxiliary power is connected</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pcie-link</span></code>: Check if PCIE link is active</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">sc-version</span></code>: Check if SC firmware is up-to-date</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">verify</span></code>: Run ‘Hello World’ kernel test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">dma</span></code>: Run dma test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">iops</span></code>: Run test to measure performance of scheduler (number of <cite>hello world</cite> kernel execution per second)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mem-bw</span></code>: Run ‘bandwidth kernel’ and check the throughput</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">p2p</span></code>: Run peer-to-peer test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">m2m</span></code>: Run zero copy memory to memory data transfer test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">hostmem-bw</span></code>: Run ‘bandwidth kernel’ when host memory is enabled</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">bist</span></code>: Run BIST test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">vcu</span></code>: Run decoder test (only applicable for specific platform).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">quick</span></code>: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">aie-pl</span></code>: Run AIE PL test</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--param</span></code> specifies the extended parameters that can be passed to a test. Valid values:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">test</span></code>: dma</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">key</span></code>: block-size</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">value</span></code>: value in bytes</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run all the tests</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1
-
-<span class="c1"># Run &quot;DMA&quot; test, produce text output in stdout</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA
-
-<span class="c1"># Run &quot;DMA&quot; and &quot;Validate Kernel&quot; test and generates Json format</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA <span class="s2">&quot;Verify Kernel&quot;</span> --format JSON --output xyz.json
-
-<span class="c1"># Pass in a custom block size to dma test</span>
-xrt-smi validate --device <span class="m">0000</span>:b3:00.1 --run DMA --param dma:block-size:1024
-</pre></div>
-</div>
-</section>
-<section id="xrt-smi-examine">
-<h2>xrt-smi examine<a class="headerlink" href="#xrt-smi-examine" title="Permalink to this headline">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">examine</span></code>  can be used to find the details of the specific device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=80">examine (video)</a>.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi examine <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to examine</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<ul id="xbutil-report-label">
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--report</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) switch can be used to view specific report(s) of interest from the following options</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">aie</span></code>: Reports AIE kernels metadata from the .xclbin</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">aieshim</span></code>: Reports AIE shim tile status</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: All known reports are generated</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">debug-ip-status</span></code>: Reports information related to Debug-IPs inserted during the kernel compilation</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">dynamic-regions</span></code>: Information about the xclbin and the compute units (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is provided)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">electrical</span></code>: Reports  Electrical and power sensors present on the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: Asyncronus Error present on the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">firewall</span></code>: Reports the current firewall status</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code>: Reports the host configuration and drivers (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is not provided)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mailbox</span></code>: Mailbox metrics of the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mechanical</span></code>: Mechanical sensors on and surrounding the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">memory</span></code>: Reports memory topology of the XCLBIN (if XCLBIN is already loaded)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pcie-info</span></code> : Pcie information of the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">platform</span></code>: Platforms flashed on the device (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is provided)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">qspi-status</span></code>: QSPI write protection status</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">telemetry</span></code>: Telemetry data for the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">thermal</span></code>: Reports thermal sensors present on the device</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p></li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Shows ``xrt-smi examine --host``</span>
-xrt-smi examine
-
-<span class="c1"># Reports electrical information in the stdout</span>
-xrt-smi examine --device <span class="m">0000</span>:b3:00.1 --report electrical
-
-<span class="c1"># Reports &quot;electrical&quot; and &quot;firewall&quot; and dump in json format</span>
-xrt-smi examine --device <span class="m">0000</span>:b3:00.1  --report electrical firewall --format JSON --output n.json
-</pre></div>
-</div>
-</section>
-<section id="xrt-smi-configure">
-<h2>xrt-smi configure<a class="headerlink" href="#xrt-smi-configure" title="Permalink to this headline">¶</a></h2>
-<p>Command <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">configure</span></code> is used to configure specific settings based on the need of user application (requires sudo) <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=280">configure (video)</a>.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi configure <span class="o">[</span> --host-mem <span class="p">|</span> --p2p <span class="p">|</span> --performance <span class="o">]</span> <span class="o">[</span>--help<span class="o">]</span>
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to examine</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--host-mem</span></code> or <code class="docutils literal notranslate"><span class="pre">--p2p</span></code> select specific configuration</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">enable</span></code>: Enable the host-memory or p2p</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">disable</span></code>: Disable the host-memory or p2p</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--size</span></code> is used in conjuction with <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">configure</span> <span class="pre">--host-mem</span> <span class="pre">enable</span></code> to specify the host-memory size to be enabled</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;size&gt;</span></code>: Size and unit specified as a combined string</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--performance</span></code> select specific configuration for benchmarking tests</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">low</span></code>: Set performance mode to low</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">medium</span></code>: Set performance mode to medium</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">high</span></code>: Set performance mode to high</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">default</span></code>: Set performance mode to default</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Enable Host-Memory of Size 1 GB</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 1G
-
-<span class="c1"># Enable Host-Memory of size 256 MB</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 256M
-
-<span class="c1"># Disable previously enabled Host-Memory</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --host-mem disable
-
-<span class="c1"># Enable P2P</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p <span class="nb">enable</span>
-
-<span class="c1"># Disable P2P</span>
-sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p disable
-</pre></div>
-</div>
-</section>
-<section id="xrt-smi-reset">
-<h2>xrt-smi reset<a class="headerlink" href="#xrt-smi-reset" title="Permalink to this headline">¶</a></h2>
-<p>This <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">reset</span></code> command can be used to reset device <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=350">reset (video)</a>.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--type<span class="p">|</span> -t<span class="o">]</span> &lt;reset type&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to reset</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--type</span></code> (or <code class="docutils literal notranslate"><span class="pre">-t</span></code>) can be used to specify the reset type. Currently only supported reset type is</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">hot</span></code> (<strong>default</strong>): Complete reset of the device</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi reset --device <span class="m">0000</span>:65:00.1
-</pre></div>
-</div>
-</section>
 </section>
 
 
@@ -417,10 +135,7 @@ sudo xrt-smi configure --device <span class="m">0000</span>:b3:00.1 --p2p disabl
                         }
                   </style>
 				  
-				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="xclbintools.html" class="btn btn-neutral float-left" title="xclbinutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="aiebu.html" class="btn btn-neutral float-right" title="aiebu" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+				  <footer>
 
   <hr/>
 

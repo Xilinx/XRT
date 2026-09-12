@@ -128,9 +128,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aa768dd562f3d84242644134c79c83e46"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af17b3aebcbcfc41859e109515fae3557"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">operator&lt;</a> (const <a class="el" href="classxrt_1_1run.html">xrt::run</a> &amp;rhs) const</td></tr>
 <tr class="separator:af17b3aebcbcfc41859e109515fae3557"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8a86a2d453010753756d590e2032e21a"><td class="memTemplParams" colspan="2">template&lt;typename ArgType &gt; </td></tr>
-<tr class="memitem:a8a86a2d453010753756d590e2032e21a"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a> (int index, ArgType &amp;&amp;arg)</td></tr>
-<tr class="separator:a8a86a2d453010753756d590e2032e21a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a774993c3190cbb01cd2e7c7639e3eb83"><td class="memTemplParams" colspan="2">template&lt;typename ArgType &gt; </td></tr>
+<tr class="memitem:a774993c3190cbb01cd2e7c7639e3eb83"><td class="memTemplItemLeft" align="right" valign="top">std::enable_if_t&lt;!std::is_base_of_v&lt; <a class="el" href="classxrt_1_1bo.html">xrt::bo</a>, std::decay_t&lt; ArgType &gt; &gt; &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a774993c3190cbb01cd2e7c7639e3eb83">set_arg</a> (int index, ArgType &amp;&amp;arg)</td></tr>
+<tr class="separator:a774993c3190cbb01cd2e7c7639e3eb83"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a36550b92e90471536409d09ee5fc23e6"><td class="memTemplParams" colspan="2">template&lt;typename ArgType &gt; </td></tr>
+<tr class="memitem:a36550b92e90471536409d09ee5fc23e6"><td class="memTemplItemLeft" align="right" valign="top">std::enable_if_t&lt; std::is_base_of_v&lt; <a class="el" href="classxrt_1_1bo.html">xrt::bo</a>, std::decay_t&lt; ArgType &gt; &gt; &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a36550b92e90471536409d09ee5fc23e6">set_arg</a> (int index, ArgType &amp;&amp;boh)</td></tr>
+<tr class="separator:a36550b92e90471536409d09ee5fc23e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac5f4e82835cdf8f601f2ef24e3067390"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#ac5f4e82835cdf8f601f2ef24e3067390">set_arg</a> (int index, <a class="el" href="classxrt_1_1bo.html">xrt::bo</a> &amp;boh)</td></tr>
 <tr class="separator:ac5f4e82835cdf8f601f2ef24e3067390"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6452285402383d151df1fb1bc9f44227"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a6452285402383d151df1fb1bc9f44227">set_arg</a> (int index, const <a class="el" href="classxrt_1_1bo.html">xrt::bo</a> &amp;boh)</td></tr>
@@ -610,7 +613,7 @@ template&lt;typename ... Args&gt; </div>
 </div>
 </div>
 <a id="ae480cd01d778a871d421611c380d11d8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae480cd01d778a871d421611c380d11d8">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[1/6]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ae480cd01d778a871d421611c380d11d8">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[1/7]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -656,8 +659,8 @@ template&lt;typename ArgType &gt; </div>
 
 </div>
 </div>
-<a id="a8a86a2d453010753756d590e2032e21a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8a86a2d453010753756d590e2032e21a">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[2/6]</span></h2>
+<a id="a774993c3190cbb01cd2e7c7639e3eb83"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a774993c3190cbb01cd2e7c7639e3eb83">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[2/7]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -668,7 +671,7 @@ template&lt;typename ArgType &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void xrt::run::set_arg </td>
+          <td class="memname">std::enable_if_t&lt;!std::is_base_of_v&lt;<a class="el" href="classxrt_1_1bo.html">xrt::bo</a>, std::decay_t&lt;ArgType&gt; &gt; &gt; xrt::run::set_arg </td>
           <td>(</td>
           <td class="paramtype">int&#160;</td>
           <td class="paramname"><em>index</em>, </td>
@@ -691,7 +694,7 @@ template&lt;typename ArgType &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg()</a> - Set a specific kernel scalar argument for this run</p>
+<p><a class="el" href="classxrt_1_1run.html#a774993c3190cbb01cd2e7c7639e3eb83">set_arg()</a> - Set a specific kernel scalar argument for this run</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">index</td><td>Index of kernel argument to update </td></tr>
@@ -704,8 +707,55 @@ template&lt;typename ArgType &gt; </div>
 
 </div>
 </div>
+<a id="a36550b92e90471536409d09ee5fc23e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a36550b92e90471536409d09ee5fc23e6">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[3/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename ArgType &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::enable_if_t&lt;std::is_base_of_v&lt;<a class="el" href="classxrt_1_1bo.html">xrt::bo</a>, std::decay_t&lt;ArgType&gt; &gt; &gt; xrt::run::set_arg </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>index</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ArgType &amp;&amp;&#160;</td>
+          <td class="paramname"><em>boh</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1run.html#a774993c3190cbb01cd2e7c7639e3eb83">set_arg()</a> - Set a specific kernel global argument for a run</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">index</td><td>Index of kernel argument to set </td></tr>
+    <tr><td class="paramname">boh</td><td>Any <a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a> or subclass (e.g. xrt::ext::bo) argument value to set.</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>This overload catches <a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a> subclasses that would otherwise be treated as scalars by the generic template. </p>
+
+</div>
+</div>
 <a id="a132df6dc0e490371ccb15d68211f9921"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a132df6dc0e490371ccb15d68211f9921">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[3/6]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a132df6dc0e490371ccb15d68211f9921">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[4/7]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -747,7 +797,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="a6452285402383d151df1fb1bc9f44227"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6452285402383d151df1fb1bc9f44227">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[4/6]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a6452285402383d151df1fb1bc9f44227">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[5/7]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -784,7 +834,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="a00352eeb61b2c185e23c32840dfc61ea"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a00352eeb61b2c185e23c32840dfc61ea">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[5/6]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a00352eeb61b2c185e23c32840dfc61ea">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[6/7]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -821,7 +871,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="ac5f4e82835cdf8f601f2ef24e3067390"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac5f4e82835cdf8f601f2ef24e3067390">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[6/6]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac5f4e82835cdf8f601f2ef24e3067390">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[7/7]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -853,7 +903,7 @@ template&lt;typename ArgType &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg()</a> - Set a specific kernel global argument for a run</p>
+<p><a class="el" href="classxrt_1_1run.html#a774993c3190cbb01cd2e7c7639e3eb83">set_arg()</a> - Set a specific kernel global argument for a run</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">index</td><td>Index of kernel argument to set </td></tr>
@@ -937,7 +987,7 @@ template&lt;typename ArgType &gt; </div>
 <p>An iteration count of zero means that the kernel should run forever, or until explicitly stopped using <code><a class="el" href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">stop()</a></code>.</p>
 <p>This function is asynchronous, run status must be expclicit checked or <code><a class="el" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">wait()</a></code> must be used to wait for the run to complete.</p>
 <p>The kernel run object is complete only after all iterations have completed, or until run object has been explicitly stopped.</p>
-<p>Changing kernel arguments <code><a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg()</a></code> while the kernel is running has undefined behavior. To synchronize change of arguments, please use xrt::mailbox.</p>
+<p>Changing kernel arguments <code><a class="el" href="classxrt_1_1run.html#a774993c3190cbb01cd2e7c7639e3eb83">set_arg()</a></code> while the kernel is running has undefined behavior. To synchronize change of arguments, please use xrt::mailbox.</p>
 <p>Currently autostart is only supported for kernels with one compute unit which must be opened in exclusive mode. </p>
 
 </div>

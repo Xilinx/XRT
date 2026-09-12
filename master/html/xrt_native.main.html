@@ -96,7 +96,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-npu.html">xrt-smi (NPU)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi-alveo.html">xrt-smi (Alveo)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aiebu.html">aiebu</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
@@ -212,7 +213,7 @@ The device memory group depends on connectivity. If the buffer as a kernel argum
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>device</strong> – The device on which to allocate this buffer </p></li>
-<li><p><strong>userptr</strong> – Pointer to aligned user memory </p></li>
+<li><p><strong>userptr</strong> – Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </p></li>
 <li><p><strong>sz</strong> – Size of buffer </p></li>
 <li><p><strong>flags</strong> – Specify type of buffer </p></li>
 <li><p><strong>grp</strong> – Device memory group to allocate buffer in</p></li>
@@ -231,7 +232,7 @@ The device memory group depends on connectivity. If the buffer as a kernel argum
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>device</strong> – The device on which to allocate this buffer </p></li>
-<li><p><strong>userptr</strong> – Pointer to aligned user memory </p></li>
+<li><p><strong>userptr</strong> – Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </p></li>
 <li><p><strong>sz</strong> – Size of buffer </p></li>
 <li><p><strong>grp</strong> – Device memory group to allocate buffer in</p></li>
 </ul>
@@ -317,7 +318,7 @@ The device memory group depends on connectivity. If the buffer as a kernel argum
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>hwctx</strong> – The hardware context in which to allocate this buffer </p></li>
-<li><p><strong>userptr</strong> – Pointer to aligned user memory </p></li>
+<li><p><strong>userptr</strong> – Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </p></li>
 <li><p><strong>sz</strong> – Size of buffer </p></li>
 <li><p><strong>flags</strong> – Specify type of buffer </p></li>
 <li><p><strong>grp</strong> – Device memory group to allocate buffer in</p></li>
@@ -336,7 +337,7 @@ The device memory group depends on connectivity. If the buffer as a kernel argum
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>hwctx</strong> – The hardware context in which to allocate this buffer </p></li>
-<li><p><strong>userptr</strong> – Pointer to aligned user memory </p></li>
+<li><p><strong>userptr</strong> – Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </p></li>
 <li><p><strong>sz</strong> – Size of buffer </p></li>
 <li><p><strong>grp</strong> – Device memory group to allocate buffer in</p></li>
 </ul>
@@ -489,6 +490,25 @@ An exported buffer can be imported on another device by this process or another 
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Exported buffer handle</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo14get_allocationEv">
+<span id="_CPPv3N3xrt2bo14get_allocationEv"></span><span id="_CPPv2N3xrt2bo14get_allocationEv"></span><span id="xrt::bo::get_allocation"></span><span class="target" id="classxrt_1_1bo_1a6fb87cf515361360fd2d0de098977c43"></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo"><span class="n"><span class="pre">bo</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_allocation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo14get_allocationEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1a6fb87cf515361360fd2d0de098977c43"><span class="std std-ref">get_allocation()</span></a> - Get the underlying allocation for this buffer</p>
+<p>
+Use this when you need to export a sub-buffer:<ol class="lowerroman simple">
+<li><p>Call <a class="reference internal" href="#classxrt_1_1bo_1a6fb87cf515361360fd2d0de098977c43"><span class="std std-ref">get_allocation()</span></a> to obtain the backing buffer.</p></li>
+<li><p>Export the backing buffer via <a class="reference internal" href="#classxrt_1_1bo_1a798fa816135d3dcf58bf4d909b43d518"><span class="std std-ref">export_buffer()</span></a>.</p></li>
+<li><p>Transfer the export handle, sub-buffer offset and sub-buffer size to the remote side via an IPC mechanism.</p></li>
+<li><p>On the remote side, import the backing buffer and recreate the sub-buffer using the received offset and size. </p></li>
+</ol>
+</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>For a regular buffer, returns this buffer itself. For a sub-buffer, returns the backing buffer that owns the actual DRM allocation, unwinding any chain of nested sub-buffers.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -693,6 +713,20 @@ Copy full content of specified src buffer object to this buffer object </p>
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt2boD0Ev">
 <span id="_CPPv3N3xrt2boD0Ev"></span><span id="_CPPv2N3xrt2boD0Ev"></span><span id="xrt::bo::~bo"></span><span class="target" id="classxrt_1_1bo_1ace557ba711faf3962a16f25b6761d56c"></span><span class="sig-name descname"><span class="n"><span class="pre">~bo</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2boD0Ev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1bo_1ace557ba711faf3962a16f25b6761d56c"><span class="std std-ref">~bo()</span></a> - Destructor for bo object </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK3xrt2boltERKN3xrt2boE">
+<span id="_CPPv3NK3xrt2boltERKN3xrt2boE"></span><span id="_CPPv2NK3xrt2boltERKN3xrt2boE"></span><span id="xrt::bo::lt-operator__xrt::boCRC"></span><span class="target" id="classxrt_1_1bo_1a57c37ed7012074d275d4a9c60415443f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">&lt;</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo"><span class="n"><span class="pre">bo</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">rhs</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt2boltERKN3xrt2boE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator &lt; () - Weak ordering</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>rhs</strong> – Object to compare with </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>True if object is ordered less that compared with other </p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -921,18 +955,18 @@ Get the xclbin section of the xclbin currently loaded on the device. The functio
 <p>These values correspond to the ELF header e_ident[EI_OSABI] field and identify which AIE architecture the ELF was compiled for. </p>
 <p><em>Values:</em></p>
 <dl class="cpp enumerator">
-<dt class="sig sig-object cpp" id="_CPPv4N3xrt3elf8platform6aie2psE">
-<span id="_CPPv3N3xrt3elf8platform6aie2psE"></span><span id="_CPPv2N3xrt3elf8platform6aie2psE"></span><span class="target" id="classxrt_1_1elf_1a20caa24c37352f11c7038108e2ecd7caa8f2f24f016f1a6517ad35388900f5fff"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">aie2ps</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3elf8platform6aie2psE" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt3elf8platform5aie2pE">
 <span id="_CPPv3N3xrt3elf8platform5aie2pE"></span><span id="_CPPv2N3xrt3elf8platform5aie2pE"></span><span class="target" id="classxrt_1_1elf_1a20caa24c37352f11c7038108e2ecd7caa924275106f7a846db8fccc5660b00752"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">aie2p</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3elf8platform5aie2pE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp enumerator">
-<dt class="sig sig-object cpp" id="_CPPv4N3xrt3elf8platform12aie2ps_groupE">
-<span id="_CPPv3N3xrt3elf8platform12aie2ps_groupE"></span><span id="_CPPv2N3xrt3elf8platform12aie2ps_groupE"></span><span class="target" id="classxrt_1_1elf_1a20caa24c37352f11c7038108e2ecd7caac397ba67e56fe937901b9456dcf25f11"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">aie2ps_group</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3elf8platform12aie2ps_groupE" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3elf8platform13aie2ps_legacyE">
+<span id="_CPPv3N3xrt3elf8platform13aie2ps_legacyE"></span><span id="_CPPv2N3xrt3elf8platform13aie2ps_legacyE"></span><span class="target" id="classxrt_1_1elf_1a20caa24c37352f11c7038108e2ecd7caa2fc0ad31bafe3fb5671f073840a79b59"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">aie2ps_legacy</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3elf8platform13aie2ps_legacyE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3elf8platform6aie2psE">
+<span id="_CPPv3N3xrt3elf8platform6aie2psE"></span><span id="_CPPv2N3xrt3elf8platform6aie2psE"></span><span class="target" id="classxrt_1_1elf_1a20caa24c37352f11c7038108e2ecd7caa8f2f24f016f1a6517ad35388900f5fff"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">aie2ps</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3elf8platform6aie2psE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp enumerator">
@@ -1481,6 +1515,17 @@ Creates a hw context using the xclbin provided. This function uses the new exper
 <dd><p><a class="reference internal" href="#classxrt_1_1hw__context_1a6298ff7ba9c2818a3de4cfc0da32102a"><span class="std std-ref">get_aie_coredump()</span></a> - Returns the coredump of AIE Array if available. Coredump represents memory/register dump of AIE tiles in this ctx. This function can throw. </p>
 </dd></dl>
 
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK3xrt10hw_context20get_aie_coredump_elfEv">
+<span id="_CPPv3NK3xrt10hw_context20get_aie_coredump_elfEv"></span><span id="_CPPv2NK3xrt10hw_context20get_aie_coredump_elfEv"></span><span id="xrt::hw_context::get_aie_coredump_elfC"></span><span class="target" id="classxrt_1_1hw__context_1a018a4d7553dfc52e60fb708ba9694ad9"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">char</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_aie_coredump_elf</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt10hw_context20get_aie_coredump_elfEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1hw__context_1a018a4d7553dfc52e60fb708ba9694ad9"><span class="std std-ref">get_aie_coredump_elf()</span></a> - Returns the coredump of AIE Array as an ELF (e_type = ET_CORE). Fetches the raw AIE dump blob and packages it into a coredump ELF. The AIE architecture is derived from the ELF loaded in this context. Metadata (timestamp, firmware version, device info) is always embedded and populated internally from the <a class="reference internal" href="#classxrt_1_1hw__context"><span class="std std-ref">hw_context</span></a> and device. This function can throw.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>ELF bytes of the ET_CORE coredump ELF </p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 </dd></dl>
 
@@ -1797,7 +1842,14 @@ Blocks the current thread until an interrupt is received from the IP, or until a
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt7messageE">
 <span id="_CPPv3N3xrt7messageE"></span><span id="_CPPv2N3xrt7messageE"></span><span id="xrt::message"></span><span class="target" id="namespacexrt_1_1message"></span><span class="k"><span class="pre">namespace</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">message</span></span></span><a class="headerlink" href="#_CPPv4N3xrt7messageE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>APIs for XRT messaging. </p>
-<p>XRT internally uses a message system that supports dispatching of messages to null, console, file, or syslog under different verbosity levels. The sink and verbosity level is controlled statically through <code class="docutils literal notranslate"><a class="reference internal" href="#namespacexrt_1_1ini"><span class="std std-ref"><span class="pre">xrt.ini</span></span></a></code> or at run-time using <code class="docutils literal notranslate"><a class="reference internal" href="#namespacexrt_1_1ini"><span class="std std-ref"><span class="pre">xrt::ini</span></span></a></code>.</p>
+<p>XRT internally uses a message system that supports dispatching of messages to different sinks under configurable verbosity levels. The sink and verbosity level is controlled statically through <code class="docutils literal notranslate"><a class="reference internal" href="#namespacexrt_1_1ini"><span class="std std-ref"><span class="pre">xrt.ini</span></span></a></code> or at run-time using <code class="docutils literal notranslate"><a class="reference internal" href="#namespacexrt_1_1ini"><span class="std std-ref"><span class="pre">xrt::ini</span></span></a></code>.</p>
+<p>Supported sinks (<code class="docutils literal notranslate"><span class="pre">Runtime.runtime_log</span></code> in <a class="reference internal" href="#namespacexrt_1_1ini"><span class="std std-ref">xrt.ini</span></a>):<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">null</span></code> : discard all messages</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">console</span></code> : writes to console (default)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">syslog</span></code> : route to OS-level centralized log (all platforms): Linux uses POSIX syslog; Windows uses the Windows Application Event Log under source “AMD_XRT”</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;path&gt;</span></code> : write to a file at the given path (all platforms)</p></li>
+</ul>
+</p>
 <p>The APIs in this file allow host application to use the same message dispatch mechanism as XRT is configured to use. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-enums">Enums</p>
@@ -2013,6 +2065,20 @@ Use with <code class="docutils literal notranslate"><span class="pre">read_regis
 <dd><p><a class="reference internal" href="#classxrt_1_1kernel_1af6084b7955eeace29fca2d6678b3b886"><span class="std std-ref">get_xclbin()</span></a> - Return the xclbin containing the kernel </p>
 </dd></dl>
 
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6kernelltERKN3xrt6kernelE">
+<span id="_CPPv3NK3xrt6kernelltERKN3xrt6kernelE"></span><span id="_CPPv2NK3xrt6kernelltERKN3xrt6kernelE"></span><span id="xrt::kernel::lt-operator__xrt::kernelCRC"></span><span class="target" id="classxrt_1_1kernel_1a7eea308a69a934b29114441ca2217c77"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">&lt;</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6kernelE" title="xrt::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">rhs</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6kernelltERKN3xrt6kernelE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator &lt; () - Weak ordering</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>rhs</strong> – Object to compare with </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>True if object is ordered less that compared with other </p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 </dd></dl>
 
@@ -2090,7 +2156,7 @@ Use with <code class="docutils literal notranslate"><span class="pre">read_regis
 An iteration count of zero means that the kernel should run forever, or until explicitly stopped using <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1ae133bb9766ad5daac80bbad0bc748720"><span class="std std-ref"><span class="pre">stop()</span></span></a></code>.</p>
 <p>This function is asynchronous, run status must be expclicit checked or <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1afaf1ff8225e15d8802401982f62321e5"><span class="std std-ref"><span class="pre">wait()</span></span></a></code> must be used to wait for the run to complete.</p>
 <p>The kernel run object is complete only after all iterations have completed, or until run object has been explicitly stopped.</p>
-<p>Changing kernel arguments <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1a8a86a2d453010753756d590e2032e21a"><span class="std std-ref"><span class="pre">set_arg()</span></span></a></code> while the kernel is running has undefined behavior. To synchronize change of arguments, please use xrt::mailbox.</p>
+<p>Changing kernel arguments <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1a774993c3190cbb01cd2e7c7639e3eb83"><span class="std std-ref"><span class="pre">set_arg()</span></span></a></code> while the kernel is running has undefined behavior. To synchronize change of arguments, please use xrt::mailbox.</p>
 <p>Currently autostart is only supported for kernels with one compute unit which must be opened in exclusive mode. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -2258,9 +2324,9 @@ The function is called when the run object changes state to argument state or an
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4I0EN3xrt3run7set_argEviRR7ArgType">
-<span id="_CPPv3I0EN3xrt3run7set_argEiRR7ArgType"></span><span id="_CPPv2I0EN3xrt3run7set_argEiRR7ArgType"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArgType</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classxrt_1_1run_1a8a86a2d453010753756d590e2032e21a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_arg</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">index</span></span>, <a class="reference internal" href="#_CPPv4I0EN3xrt3run7set_argEviRR7ArgType" title="xrt::run::set_arg::ArgType"><span class="n"><span class="pre">ArgType</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">arg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN3xrt3run7set_argEviRR7ArgType" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1run_1a8a86a2d453010753756d590e2032e21a"><span class="std std-ref">set_arg()</span></a> - Set a specific kernel scalar argument for this run</p>
+<dt class="sig sig-object cpp" id="_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tIXntNSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEEiRR7ArgType">
+<span id="_CPPv3I0EN3xrt3run7set_argEiRR7ArgType"></span><span id="_CPPv2I0EN3xrt3run7set_argEiRR7ArgType"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArgType</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classxrt_1_1run_1a774993c3190cbb01cd2e7c7639e3eb83"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">enable_if_t</span></span><span class="p"><span class="pre">&lt;</span></span><span class="o"><span class="pre">!</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">is_base_of_v</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo"><span class="n"><span class="pre">bo</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">decay_t</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tIXntNSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEEiRR7ArgType" title="xrt::run::set_arg::ArgType"><span class="n"><span class="pre">ArgType</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_arg</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">index</span></span>, <a class="reference internal" href="#_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tIXntNSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEEiRR7ArgType" title="xrt::run::set_arg::ArgType"><span class="n"><span class="pre">ArgType</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">arg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tIXntNSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEEiRR7ArgType" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a774993c3190cbb01cd2e7c7639e3eb83"><span class="std std-ref">set_arg()</span></a> - Set a specific kernel scalar argument for this run</p>
 <p>
 Use this API to explicit set or change a kernel argument prior to starting kernel execution. After setting arguments, the kernel can be started using <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1ada025d6709796a6ea20182e5b720a96b"><span class="std std-ref"><span class="pre">start()</span></span></a></code> on the run object.</p>
 <p>See also <code class="docutils literal notranslate"><span class="pre">operator()</span></code> to set all arguments and start kernel. </p>
@@ -2275,9 +2341,25 @@ Use this API to explicit set or change a kernel argument prior to starting kerne
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tINSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEiRR7ArgType">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArgType</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classxrt_1_1run_1a36550b92e90471536409d09ee5fc23e6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">enable_if_t</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">is_base_of_v</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo"><span class="n"><span class="pre">bo</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">decay_t</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tINSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEiRR7ArgType" title="xrt::run::set_arg::ArgType"><span class="n"><span class="pre">ArgType</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_arg</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">index</span></span>, <a class="reference internal" href="#_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tINSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEiRR7ArgType" title="xrt::run::set_arg::ArgType"><span class="n"><span class="pre">ArgType</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">boh</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN3xrt3run7set_argENSt11enable_if_tINSt12is_base_of_vIN3xrt2boENSt7decay_tI7ArgTypeEEEEEEiRR7ArgType" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a774993c3190cbb01cd2e7c7639e3eb83"><span class="std std-ref">set_arg()</span></a> - Set a specific kernel global argument for a run</p>
+<p>
+This overload catches <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> subclasses that would otherwise be treated as scalars by the generic template. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> – Index of kernel argument to set </p></li>
+<li><p><strong>boh</strong> – Any <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> or subclass (e.g. xrt::ext::bo) argument value to set.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt3run7set_argEiRN3xrt2boE">
 <span id="_CPPv3N3xrt3run7set_argEiRN3xrt2boE"></span><span id="_CPPv2N3xrt3run7set_argEiRN3xrt2boE"></span><span id="xrt::run::set_arg__i.xrt::boR"></span><span class="target" id="classxrt_1_1run_1ac5f4e82835cdf8f601f2ef24e3067390"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_arg</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">index</span></span>, <span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo"><span class="n"><span class="pre">bo</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">boh</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run7set_argEiRN3xrt2boE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1run_1a8a86a2d453010753756d590e2032e21a"><span class="std std-ref">set_arg()</span></a> - Set a specific kernel global argument for a run</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a774993c3190cbb01cd2e7c7639e3eb83"><span class="std std-ref">set_arg()</span></a> - Set a specific kernel global argument for a run</p>
 <p>
 Use this API to explicit set or change a kernel argument prior to starting kernel execution. After setting arguments, the kernel can be started using <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1ada025d6709796a6ea20182e5b720a96b"><span class="std std-ref"><span class="pre">start()</span></span></a></code> on the run object.</p>
 <p>See also <code class="docutils literal notranslate"><span class="pre">operator()</span></code> to set all arguments and start kernel. </p>

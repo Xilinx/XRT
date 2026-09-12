@@ -151,6 +151,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a57adfdd61a2c128b354d049eb2fa42c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a798fa816135d3dcf58bf4d909b43d518"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1bo.html#a3dd2f51560ba83e0a8794cdde49e3d21">export_handle</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a798fa816135d3dcf58bf4d909b43d518">export_buffer</a> ()</td></tr>
 <tr class="separator:a798fa816135d3dcf58bf4d909b43d518"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6fb87cf515361360fd2d0de098977c43"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1bo.html">bo</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a6fb87cf515361360fd2d0de098977c43">get_allocation</a> ()</td></tr>
+<tr class="separator:a6fb87cf515361360fd2d0de098977c43"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1c360b1550ef213cc59d5920b0febf5e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1bo_1_1async__handle.html">async_handle</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a1c360b1550ef213cc59d5920b0febf5e">async</a> (xclBOSyncDirection dir, size_t sz, size_t offset)</td></tr>
 <tr class="separator:a1c360b1550ef213cc59d5920b0febf5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7d4aea62bbe1c6ac33f71d2ccf84b06f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1bo_1_1async__handle.html">async_handle</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a7d4aea62bbe1c6ac33f71d2ccf84b06f">async</a> (xclBOSyncDirection dir)</td></tr>
@@ -183,6 +185,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a83a679dcf2268388d6dee2c932189ab4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace557ba711faf3962a16f25b6761d56c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#ace557ba711faf3962a16f25b6761d56c">~bo</a> ()</td></tr>
 <tr class="separator:ace557ba711faf3962a16f25b6761d56c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a57c37ed7012074d275d4a9c60415443f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a57c37ed7012074d275d4a9c60415443f">operator&lt;</a> (const <a class="el" href="classxrt_1_1bo.html">xrt::bo</a> &amp;rhs) const</td></tr>
+<tr class="separator:a57c37ed7012074d275d4a9c60415443f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a> represents a buffer object that can be used as kernel argument </p>
@@ -320,7 +324,7 @@ Public Member Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">device</td><td>The device on which to allocate this buffer </td></tr>
-    <tr><td class="paramname">userptr</td><td>Pointer to aligned user memory </td></tr>
+    <tr><td class="paramname">userptr</td><td>Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </td></tr>
     <tr><td class="paramname">sz</td><td>Size of buffer </td></tr>
     <tr><td class="paramname">flags</td><td>Specify type of buffer </td></tr>
     <tr><td class="paramname">grp</td><td>Device memory group to allocate buffer in</td></tr>
@@ -372,7 +376,7 @@ Public Member Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">device</td><td>The device on which to allocate this buffer </td></tr>
-    <tr><td class="paramname">userptr</td><td>Pointer to aligned user memory </td></tr>
+    <tr><td class="paramname">userptr</td><td>Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </td></tr>
     <tr><td class="paramname">sz</td><td>Size of buffer </td></tr>
     <tr><td class="paramname">grp</td><td>Device memory group to allocate buffer in</td></tr>
   </table>
@@ -605,7 +609,7 @@ Public Member Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">hwctx</td><td>The hardware context in which to allocate this buffer </td></tr>
-    <tr><td class="paramname">userptr</td><td>Pointer to aligned user memory </td></tr>
+    <tr><td class="paramname">userptr</td><td>Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </td></tr>
     <tr><td class="paramname">sz</td><td>Size of buffer </td></tr>
     <tr><td class="paramname">flags</td><td>Specify type of buffer </td></tr>
     <tr><td class="paramname">grp</td><td>Device memory group to allocate buffer in</td></tr>
@@ -657,7 +661,7 @@ Public Member Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">hwctx</td><td>The hardware context in which to allocate this buffer </td></tr>
-    <tr><td class="paramname">userptr</td><td>Pointer to aligned user memory </td></tr>
+    <tr><td class="paramname">userptr</td><td>Pointer to 4K aligned user memory allocated using OS provided aligned allocator. A readonly pointer may be obtained via a readonly mmap of a file opened in readonly mode. </td></tr>
     <tr><td class="paramname">sz</td><td>Size of buffer </td></tr>
     <tr><td class="paramname">grp</td><td>Device memory group to allocate buffer in</td></tr>
   </table>
@@ -1083,6 +1087,31 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a6fb87cf515361360fd2d0de098977c43"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6fb87cf515361360fd2d0de098977c43">&#9670;&nbsp;</a></span>get_allocation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classxrt_1_1bo.html">bo</a> xrt::bo::get_allocation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1bo.html#a6fb87cf515361360fd2d0de098977c43">get_allocation()</a> - Get the underlying allocation for this buffer</p>
+<dl class="section return"><dt>Returns</dt><dd>For a regular buffer, returns this buffer itself. For a sub-buffer, returns the backing buffer that owns the actual DRM allocation, unwinding any chain of nested sub-buffers.</dd></dl>
+<p>Use this when you need to export a sub-buffer:</p><ol type="1">
+<li>Call <a class="el" href="classxrt_1_1bo.html#a6fb87cf515361360fd2d0de098977c43">get_allocation()</a> to obtain the backing buffer.</li>
+<li>Export the backing buffer via <a class="el" href="classxrt_1_1bo.html#a798fa816135d3dcf58bf4d909b43d518">export_buffer()</a>.</li>
+<li>Transfer the export handle, sub-buffer offset and sub-buffer size to the remote side via an IPC mechanism.</li>
+<li>On the remote side, import the backing buffer and recreate the sub-buffer using the received offset and size. </li>
+</ol>
+
+</div>
+</div>
 <a id="a57adfdd61a2c128b354d049eb2fa42c8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a57adfdd61a2c128b354d049eb2fa42c8">&#9670;&nbsp;</a></span>get_flags()</h2>
 
@@ -1247,6 +1276,40 @@ template&lt;typename MapType &gt; </div>
 </table>
 </div><div class="memdoc">
 <p>operator bool() - Check if bo handle is valid </p>
+
+</div>
+</div>
+<a id="a57c37ed7012074d275d4a9c60415443f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a57c37ed7012074d275d4a9c60415443f">&#9670;&nbsp;</a></span>operator&lt;()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool xrt::bo::operator&lt; </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classxrt_1_1bo.html">xrt::bo</a> &amp;&#160;</td>
+          <td class="paramname"><em>rhs</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>operator &lt; () - Weak ordering</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">rhs</td><td>Object to compare with </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>True if object is ordered less that compared with other </dd></dl>
 
 </div>
 </div>

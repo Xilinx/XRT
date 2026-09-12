@@ -115,6 +115,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a7babb100b77b633996f2db4f257277a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af6084b7955eeace29fca2d6678b3b886"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1xclbin.html">xrt::xclbin</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1kernel.html#af6084b7955eeace29fca2d6678b3b886">get_xclbin</a> () const</td></tr>
 <tr class="separator:af6084b7955eeace29fca2d6678b3b886"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7eea308a69a934b29114441ca2217c77"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1kernel.html#a7eea308a69a934b29114441ca2217c77">operator&lt;</a> (const <a class="el" href="classxrt_1_1kernel.html">xrt::kernel</a> &amp;rhs) const</td></tr>
+<tr class="separator:a7eea308a69a934b29114441ca2217c77"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A kernel object represents a set of instances matching a specified name. The kernel is created by finding matching kernel instances in the currently loaded xclbin.</p>
@@ -426,6 +428,40 @@ template&lt;typename ... Args&gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Run object representing this kernel function invocation </dd></dl>
+
+</div>
+</div>
+<a id="a7eea308a69a934b29114441ca2217c77"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7eea308a69a934b29114441ca2217c77">&#9670;&nbsp;</a></span>operator&lt;()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool xrt::kernel::operator&lt; </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classxrt_1_1kernel.html">xrt::kernel</a> &amp;&#160;</td>
+          <td class="paramname"><em>rhs</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>operator &lt; () - Weak ordering</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">rhs</td><td>Object to compare with </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>True if object is ordered less that compared with other </dd></dl>
 
 </div>
 </div>

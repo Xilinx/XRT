@@ -157,6 +157,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a44ecdf6cc4a715b1cf6adf5ecaa98524"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6298ff7ba9c2818a3de4cfc0da32102a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; char &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1hw__context.html#a6298ff7ba9c2818a3de4cfc0da32102a">get_aie_coredump</a> () const</td></tr>
 <tr class="separator:a6298ff7ba9c2818a3de4cfc0da32102a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a018a4d7553dfc52e60fb708ba9694ad9"><td class="memItemLeft" align="right" valign="top">std::vector&lt; char &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1hw__context.html#a018a4d7553dfc52e60fb708ba9694ad9">get_aie_coredump_elf</a> () const</td></tr>
+<tr class="separator:a018a4d7553dfc52e60fb708ba9694ad9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="a3d091f32c0ccc4ea692c9eb29f93b145"></a>
@@ -908,6 +910,25 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p><a class="el" href="classxrt_1_1hw__context.html#a6298ff7ba9c2818a3de4cfc0da32102a">get_aie_coredump()</a> - Returns the coredump of AIE Array if available. Coredump represents memory/register dump of AIE tiles in this ctx. This function can throw. </p>
+
+</div>
+</div>
+<a id="a018a4d7553dfc52e60fb708ba9694ad9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a018a4d7553dfc52e60fb708ba9694ad9">&#9670;&nbsp;</a></span>get_aie_coredump_elf()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;char&gt; xrt::hw_context::get_aie_coredump_elf </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1hw__context.html#a018a4d7553dfc52e60fb708ba9694ad9">get_aie_coredump_elf()</a> - Returns the coredump of AIE Array as an ELF (e_type = ET_CORE). Fetches the raw AIE dump blob and packages it into a coredump ELF. The AIE architecture is derived from the ELF loaded in this context. Metadata (timestamp, firmware version, device info) is always embedded and populated internally from the <a class="el" href="classxrt_1_1hw__context.html">hw_context</a> and device. This function can throw.</p>
+<dl class="section return"><dt>Returns</dt><dd>ELF bytes of the ET_CORE coredump ELF </dd></dl>
 
 </div>
 </div>

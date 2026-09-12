@@ -9,7 +9,7 @@ var searchData=
   ['aie_6',['aie',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aaee998746ac0f9a4a542ba851c5d67041',1,'xrt::info']]],
   ['aie2p_7',['aie2p',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caa924275106f7a846db8fccc5660b00752',1,'xrt::elf']]],
   ['aie2ps_8',['aie2ps',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caa8f2f24f016f1a6517ad35388900f5fff',1,'xrt::elf']]],
-  ['aie2ps_5fgroup_9',['aie2ps_group',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caac397ba67e56fe937901b9456dcf25f11',1,'xrt::elf']]],
+  ['aie2ps_5flegacy_9',['aie2ps_legacy',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caa2fc0ad31bafe3fb5671f073840a79b59',1,'xrt::elf']]],
   ['aie4_10',['aie4',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caafef83cb1bb9cc1e3dc04f8345e1d74ab',1,'xrt::elf']]],
   ['aie4a_11',['aie4a',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caa562ed4779836e2771f299282c5315423',1,'xrt::elf']]],
   ['aie4z_12',['aie4z',['../classxrt_1_1elf.html#a20caa24c37352f11c7038108e2ecd7caaf911bec001593beccb28c97b86613f4e',1,'xrt::elf']]],
