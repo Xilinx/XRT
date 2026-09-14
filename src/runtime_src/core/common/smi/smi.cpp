@@ -290,11 +290,19 @@ get_aie_architecture_version(hardware_type hw)
   }
 }
 
-bool
+smi_hardware_config::npu3_variant
 smi_hardware_config::
-is_pf_device(hardware_type hw)
+get_npu3_variant(hardware_type hw)
 {
   switch (hw) {
+  case hardware_type::npu3a_vf:
+  case hardware_type::npu3_B03_vf:
+  case hardware_type::npu7_vf:
+  case hardware_type::npu8_vf:
+  case hardware_type::npu9_vf:
+  case hardware_type::npu10_vf:
+  case hardware_type::npu11_vf:
+    return npu3_variant::vf;
   case hardware_type::npu3a_pf:
   case hardware_type::npu3_B02_pf:
   case hardware_type::npu7_pf:
@@ -302,9 +310,9 @@ is_pf_device(hardware_type hw)
   case hardware_type::npu9_pf:
   case hardware_type::npu10_pf:
   case hardware_type::npu11_pf:
-    return true;
+    return npu3_variant::pf;
   default:
-    return false;
+    return npu3_variant::classic;
   }
 }
 

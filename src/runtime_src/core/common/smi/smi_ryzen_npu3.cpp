@@ -3,50 +3,49 @@
 
 #define XRT_CORE_COMMON_SOURCE
 
-#include "core/common/smi/smi_ryzen.h"
 #include "core/common/smi/smi_ryzen_npu3.h"
-#include "core/common/smi/smi_ryzen_pf.h"
-#include "core/common/smi/smi_ryzen_strix.h"
-#include "core/common/smi/smi_ryzen_vf.h"
-
-#include "core/common/query_requests.h"
 
 using namespace xrt_core::smi;
 
 namespace xrt_core::smi::ryzen {
 
-config_gen_phoenix::
-config_gen_phoenix()
+config_gen_npu3::
+config_gen_npu3()
 {
   examine_report_desc = {
     {"aie-partitions", "AIE partition information", "common"},
     {"all", "All known reports are produced", "common"},
-    {"host", "Host information (default)", "common"},
+    {"host", "Host information", "common"},
     {"platform", "Platforms flashed on the device", "common"},
-    {"telemetry", "Telemetry data for the device", "hidden"},
-    {"preemption", "Preemption telemetry data for the device", "hidden"},
+    {"telemetry", "Telemetry data for the device", "common"},
+    {"preemption", "Preemption telemetry data for the device", "common"},
     {"clocks", "Clock frequency information", "hidden"},
     {"debug", "Debug configuration settings for the device", "hidden"}
   };
 
   validate_test_desc = {
     {"all", "All applicable validate tests will be executed (default)", "common"},
+    {"runlist-latency", "Run end-to-end latency test using runlist", "hidden"},
+    {"runlist-throughput", "Run end-to-end throughput test using runlist", "hidden"},
     {"df-bw", "Run bandwidth test on data fabric", "hidden"},
+    {"shim-dma-bw", "Run 2xRead/1xWrite bandwidth test for SHIM DMA", "hidden"},
     {"latency", "Run end-to-end latency test", "common"},
-    {"tct-all-col", "Measure average TCT processing time for all columns", "hidden"},
-    {"tct-one-col", "Measure average TCT processing time for one column", "hidden"},
     {"throughput", "Run end-to-end throughput test", "common"},
+    {"tct-one-col", "Measure average TCT processing time for one column", "hidden"},
+    {"tct-all-col", "Measure average TCT processing time for all columns", "hidden"},
+    {"gemm", "Measure the TOPS value of GEMM INT8operations", "common"},
+    {"sanity", "Run a small model and validate sanity of the device", "hidden"},
+    {"preemption-overhead", "Measure preemption overhead at noop and memtile levels", "hidden"}
   };
 }
 
 subcommand
-config_gen_ryzen::create_validate_subcommand()
+config_gen_npu3::create_validate_subcommand()
 {
   std::map<std::string, std::shared_ptr<option>> validate_suboptions;
   validate_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
-  validate_suboptions.emplace("format", std::make_shared<option>("format", "f", "Report output format. Valid values are:\n"
-                                "\tJSON        - Latest JSON schema\n"
-                                "\tJSON-2020.2 - JSON 2020.2 schema (legacy)", "common", "JSON", "string"));
+  validate_suboptions.emplace("json", std::make_shared<option>("json", "", "JSON ABI version for file output. Valid values are:\n"
+                                "\tdefault - Latest JSON schema (default)", "common", "default", "string"));
   validate_suboptions.emplace("output", std::make_shared<option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   validate_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   validate_suboptions.emplace("run", std::make_shared<listable_description_option>("run", "r", "Run a subset of the test suite. Valid options are:\n",
@@ -59,13 +58,12 @@ config_gen_ryzen::create_validate_subcommand()
 }
 
 subcommand
-config_gen_ryzen::create_examine_subcommand()
+config_gen_npu3::create_examine_subcommand()
 {
   std::map<std::string, std::shared_ptr<option>> examine_suboptions;
   examine_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
-  examine_suboptions.emplace("format", std::make_shared<option>("format", "f", "Report output format. Valid values are:\n"
-                                "\tJSON        - Latest JSON schema\n"
-                                "\tJSON-2020.2 - JSON 2020.2 schema (legacy)", "common", "JSON", "string"));
+  examine_suboptions.emplace("json", std::make_shared<option>("json", "", "JSON ABI version for file output. Valid values are:\n"
+                                "\tdefault - Latest JSON schema (default)", "common", "default", "string"));
   examine_suboptions.emplace("output", std::make_shared<option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   examine_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   examine_suboptions.emplace("watch", std::make_shared<option>("watch", "", "Refresh interval in seconds between examine updates. Exit with Ctrl+C.", "hidden", "0", "string"));
@@ -78,7 +76,7 @@ config_gen_ryzen::create_examine_subcommand()
 }
 
 subcommand
-config_gen_ryzen::create_configure_subcommand()
+config_gen_npu3::create_configure_subcommand()
 {
   std::map<std::string, std::shared_ptr<option>> configure_suboptions;
   configure_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
@@ -90,59 +88,6 @@ config_gen_ryzen::create_configure_subcommand()
   configure_suboptions.emplace("auto-coredump", std::make_shared<option>("auto-coredump", "", "Enable|disable automatic coredump on error", "hidden", "", "string", true));
 
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
-}
-
-static std::shared_ptr<config_gen_ryzen>
-create_config_generator(smi_hardware_config::hardware_type hw)
-{
-  switch (smi_hardware_config::get_family(hw)) {
-  case smi_hardware_config::hardware_family::phoenix:
-    return std::make_shared<config_gen_phoenix>();
-  case smi_hardware_config::hardware_family::strix:
-    return std::make_shared<config_gen_strix>();
-  case smi_hardware_config::hardware_family::npu3:
-    switch (smi_hardware_config::get_npu3_variant(hw)) {
-    case smi_hardware_config::npu3_variant::vf:
-      return std::make_shared<config_gen_npu3_vf>();
-    case smi_hardware_config::npu3_variant::pf:
-      return std::make_shared<config_gen_npu3_pf>();
-    case smi_hardware_config::npu3_variant::classic:
-      return std::make_shared<config_gen_npu3>();
-    }
-  default:
-    return std::make_shared<config_gen_strix>();
-  }
-}
-
-void
-populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* device)
-{
-  smi_hardware_config smi_hrdw;
-  const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
-  const auto hw = smi_hrdw.get_hardware_type(pcie_id);
-  const auto generator = create_config_generator(hw);
-
-  smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
-  smi_instance->add_subcommand("examine",  generator->create_examine_subcommand());
-  smi_instance->add_subcommand("configure",  generator->create_configure_subcommand());
-}
-
-std::string
-get_smi_config(const xrt_core::device* device)
-{
-  auto smi_instance = xrt_core::smi::instance();
-
-  populate_smi_instance(smi_instance, device);
-
-  return smi_instance->build_json();
-}
-
-xrt_core::smi::tuple_vector
-get_subcommands_list(const xrt_core::device* device)
-{
-  auto smi_instance = xrt_core::smi::instance();
-  populate_smi_instance(smi_instance, device);
-  return smi_instance->get_subcommands_list();
 }
 
 } // namespace xrt_core::smi::ryzen
