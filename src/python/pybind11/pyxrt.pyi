@@ -119,6 +119,16 @@ info: xrt_msg_level
 debug: xrt_msg_level
 
 
+class xrt_error_class(IntEnum):
+    """XRT error class categories"""
+    first_entry: xrt_error_class
+    system: xrt_error_class
+    aie: xrt_error_class
+    hardware: xrt_error_class
+    unknown: xrt_error_class
+    last_entry: xrt_error_class
+
+
 # =============================================================================
 # Global Functions
 # =============================================================================
@@ -293,6 +303,20 @@ class hw_context:
         """Get the access mode of the hardware context."""
         ...
 
+    def reset_array(self) -> None:
+        """Reset the AIE array associated with this hardware context."""
+        ...
+
+
+class autostart:
+    """Iteration count for auto-restart kernel execution."""
+
+    iterations: int
+
+    def __init__(self, iterations: SupportsInt = 0) -> None:
+        """Construct with iteration count (0 means run until explicitly stopped)."""
+        ...
+
 
 class device:
     """Abstraction of an acceleration device."""
@@ -399,8 +423,18 @@ class run:
         """
         ...
     
+    @overload
     def start(self) -> None:
         """Start one execution of a run."""
+        ...
+
+    @overload
+    def start(self, autostart: autostart) -> None:
+        """Start auto-restart execution for the specified iteration count.
+
+        Args:
+            autostart: Auto-restart iteration configuration.
+        """
         ...
     
     @overload
@@ -468,7 +502,30 @@ class run:
             Current execution state.
         """
         ...
-    
+
+    def return_code(self) -> int:
+        """Get the return code from a PS kernel run.
+
+        Returns:
+            Return code from the PS kernel. Always 0 for non-PS kernels.
+        """
+        ...
+
+    def stop(self) -> None:
+        """Stop the run at the next safe iteration.
+
+        Waits for the current iteration to finish before returning.
+        """
+        ...
+
+    def abort(self) -> ert_cmd_state:
+        """Abort a scheduled run command.
+
+        Returns:
+            Final state of the aborted command.
+        """
+        ...
+
     def add_callback(
         self,
         state: ert_cmd_state,
@@ -481,6 +538,39 @@ class run:
             state: The state to trigger the callback on.
             callback: The callback function.
             data: User data to pass to the callback.
+        """
+        ...
+
+    def get_ctrl_scratchpad_bo(self) -> bo:
+        """Get the control scratchpad buffer object associated with this run.
+
+        Returns:
+            Buffer object containing the control scratchpad memory.
+        """
+        ...
+
+    @overload
+    def __call__(self, autostart: autostart, *args: Union[bo, int, None]) -> run:
+        """Set kernel arguments and start auto-restart execution.
+
+        Args:
+            autostart: Auto-restart iteration configuration.
+            *args: Kernel arguments (buffer objects, integers, or None for streams).
+
+        Returns:
+            This run object.
+        """
+        ...
+
+    @overload
+    def __call__(self, *args: Union[bo, int, None]) -> run:
+        """Set kernel arguments and start (or restart) this run.
+
+        Args:
+            *args: Kernel arguments (buffer objects, integers, or None for streams).
+
+        Returns:
+            This run object.
         """
         ...
 
@@ -538,11 +628,25 @@ class kernel:
         """
         ...
     
-    def __call__(self, *args: Union[bo, int]) -> run:
+    @overload
+    def __call__(self, autostart: autostart, *args: Union[bo, int, None]) -> run:
+        """Execute the kernel in auto-restart mode.
+
+        Args:
+            autostart: Auto-restart iteration configuration.
+            *args: Kernel arguments (buffer objects, integers, or None for streams).
+
+        Returns:
+            A run object representing the auto-restart kernel execution.
+        """
+        ...
+
+    @overload
+    def __call__(self, *args: Union[bo, int, None]) -> run:
         """Execute the kernel with the given arguments.
         
         Args:
-            *args: Kernel arguments (buffer objects or integers).
+            *args: Kernel arguments (buffer objects, integers, or None for streams).
             
         Returns:
             A run object representing the kernel execution.
@@ -580,6 +684,13 @@ class bo:
     host_only: flags
     p2p: flags
     svm: flags
+
+    class async_handle:
+        """Handle for an asynchronous buffer object operation."""
+
+        def wait(self) -> None:
+            """Wait for the asynchronous operation to complete."""
+            ...
     
     @overload
     def __init__(
@@ -1311,7 +1422,7 @@ class graph:
 
 
 class _aie_bo(bo):
-    """AIE buffer object supporting GMIO synchronous transfers."""
+    """AIE buffer object supporting GMIO synchronous and asynchronous transfers."""
 
     @overload
     def __init__(
@@ -1329,12 +1440,12 @@ class _aie_bo(bo):
 
     @overload
     def __init__(
-        self, ctx: hw_context, size: SupportsInt, flags: bo.flags, group: SupportsInt
+        self, hwctx: hw_context, size: SupportsInt, flags: bo.flags, group: SupportsInt
     ) -> None:
         """Create a buffer object with specified properties in a hardware context.
 
         Args:
-            ctx: The hardware context to allocate the buffer in.
+            hwctx: The hardware context to allocate the buffer in.
             size: Size of the buffer in bytes.
             flags: Buffer creation flags.
             group: Memory bank group ID.
@@ -1342,13 +1453,33 @@ class _aie_bo(bo):
         ...
 
     @overload
-    def __init__(self, ctx: hw_context, size: SupportsInt, group: SupportsInt) -> None:
+    def __init__(self, hwctx: hw_context, size: SupportsInt, group: SupportsInt) -> None:
         """Create a buffer object with default flags in a hardware context.
 
         Args:
-            ctx: The hardware context to allocate the buffer in.
+            hwctx: The hardware context to allocate the buffer in.
             size: Size of the buffer in bytes.
             group: Memory bank group ID.
+        """
+        ...
+
+    @overload
+    def sync(self, direction: xclBOSyncDirection, size: SupportsInt, offset: SupportsInt) -> None:
+        """Synchronize (DMA or cache flush/invalidation) the buffer.
+
+        Args:
+            direction: Direction of synchronization.
+            size: Number of bytes to sync.
+            offset: Offset in the buffer.
+        """
+        ...
+
+    @overload
+    def sync(self, direction: xclBOSyncDirection) -> None:
+        """Sync entire buffer content in specified direction.
+
+        Args:
+            direction: Direction of synchronization.
         """
         ...
 
@@ -1376,8 +1507,471 @@ class _aie_bo(bo):
         """
         ...
 
+    def async_(
+        self, port: str, direction: xclBOSyncDirection, size: SupportsInt, offset: SupportsInt
+    ) -> bo.async_handle:
+        """Asynchronously transfer buffer data with a named GMIO port.
+
+        Args:
+            port: GMIO port name.
+            direction: Transfer direction.
+            size: Number of bytes to transfer.
+            offset: Byte offset within the buffer.
+
+        Returns:
+            Async handle; call wait() to block until the transfer completes.
+        """
+        ...
+
+
+class _aie_access_mode(IntEnum):
+    """AIE array access mode."""
+    exclusive: _aie_access_mode
+    primary: _aie_access_mode
+    shared: _aie_access_mode
+
+
+class _aie_profiling:
+    """AIE performance profiling using PLIO and GMIO objects."""
+
+    class profiling_option(IntEnum):
+        """AIE profiling measurement options."""
+        io_total_stream_running_to_idle_cycles: _aie_profiling.profiling_option
+        io_stream_start_to_bytes_transferred_cycles: _aie_profiling.profiling_option
+        io_stream_start_difference_cycles: _aie_profiling.profiling_option
+        io_stream_running_event_count: _aie_profiling.profiling_option
+
+    def __init__(self, hwctx: hw_context) -> None:
+        """Create a profiling object for an AIE hardware context.
+
+        Args:
+            hwctx: The hardware context.
+        """
+        ...
+
+    def start(
+        self,
+        option: profiling_option,
+        port1: str,
+        port2: str,
+        value: int,
+    ) -> int:
+        """Configure performance counters and start profiling.
+
+        Args:
+            option: Profiling measurement option.
+            port1: Primary GMIO or PLIO port name.
+            port2: Secondary port name.
+            value: Byte threshold for byte-based options.
+
+        Returns:
+            Profiling handle, or -1 if counter resources are exhausted.
+        """
+        ...
+
+    def read(self) -> int:
+        """Read the current performance counter value.
+
+        Returns:
+            Counter value since start() was called.
+        """
+        ...
+
+    def stop(self) -> None:
+        """Stop profiling and release hardware counter resources."""
+        ...
+
+
+class _aie_device(device):
+    """Represents an AIE-extended device."""
+
+    class thermal_type(IntEnum):
+        """AIE thermal parameter type."""
+        temperature: _aie_device.thermal_type
+
+    # Class-level enum value aliases
+    temperature: thermal_type
+
+    @overload
+    def __init__(self, index: SupportsInt) -> None:
+        """Open a device by index with primary AIE access.
+
+        Args:
+            index: Device index (0-based).
+        """
+        ...
+
+    @overload
+    def __init__(self, index: SupportsInt, access_mode: _aie_access_mode) -> None:
+        """Open a device by index with specified AIE access mode.
+
+        Args:
+            index: Device index (0-based).
+            access_mode: AIE array access mode.
+        """
+        ...
+
+    def reset_array(self) -> None:
+        """Reset the AIE array."""
+        ...
+
+    def get_thermal(self, thermal: thermal_type) -> float:
+        """Read a thermal value from the AIE device.
+
+        Args:
+            thermal: Thermal parameter to read.
+
+        Returns:
+            Thermal value in degrees Celsius.
+        """
+        ...
+
+    def set_thermal_threshold(self, thermal: thermal_type, value: int) -> None:
+        """Set a thermal threshold on the AIE device.
+
+        Args:
+            thermal: Thermal parameter to set.
+            value: Threshold value.
+        """
+        ...
+
+    def read_aie_mem(
+        self,
+        pid: int,
+        context_id: int,
+        col: int,
+        row: int,
+        offset: int,
+        size: int,
+    ) -> bytes:
+        """Read bytes from an AIE tile's L1/L2 memory.
+
+        Args:
+            pid: Process ID of the process that opened the hw_context.
+            context_id: Context ID corresponding to the AIE tile.
+            col: Column number of the AIE tile.
+            row: Row number of the AIE tile.
+            offset: Memory offset to read from.
+            size: Number of bytes to read.
+
+        Returns:
+            Bytes read from AIE tile memory.
+        """
+        ...
+
+    def write_aie_mem(
+        self,
+        pid: int,
+        context_id: int,
+        col: int,
+        row: int,
+        offset: int,
+        data: bytes,
+    ) -> int:
+        """Write bytes to an AIE tile's L1/L2 memory.
+
+        Args:
+            pid: Process ID of the process that opened the hw_context.
+            context_id: Context ID corresponding to the AIE tile.
+            col: Column number of the AIE tile.
+            row: Row number of the AIE tile.
+            offset: Memory offset to write to.
+            data: Bytes to write.
+
+        Returns:
+            Number of bytes written.
+        """
+        ...
+
+    def read_aie_reg(
+        self,
+        pid: int,
+        context_id: int,
+        col: int,
+        row: int,
+        reg_addr: int,
+    ) -> int:
+        """Read a register from an AIE tile.
+
+        Args:
+            pid: Process ID of the process that opened the hw_context.
+            context_id: Context ID corresponding to the AIE tile.
+            col: Column number of the AIE tile.
+            row: Row number of the AIE tile.
+            reg_addr: Register address offset.
+
+        Returns:
+            32-bit register value.
+        """
+        ...
+
+    def write_aie_reg(
+        self,
+        pid: int,
+        context_id: int,
+        col: int,
+        row: int,
+        reg_addr: int,
+        reg_val: int,
+    ) -> bool:
+        """Write a value to an AIE tile register.
+
+        Args:
+            pid: Process ID of the process that opened the hw_context.
+            context_id: Context ID corresponding to the AIE tile.
+            col: Column number of the AIE tile.
+            row: Row number of the AIE tile.
+            reg_addr: Register address offset.
+            reg_val: 32-bit value to write.
+
+        Returns:
+            True on success.
+        """
+        ...
+
 
 class aie:
     """AIE-specific XRT functionality."""
 
+    access_mode = _aie_access_mode
     bo = _aie_bo
+    profiling = _aie_profiling
+    device = _aie_device
+
+    # Class-level enum value aliases
+    exclusive: _aie_access_mode
+    primary: _aie_access_mode
+    shared: _aie_access_mode
+
+
+# =============================================================================
+# Experimental APIs
+# =============================================================================
+
+class ip:
+    """Experimental custom IP register-level access."""
+
+    class interrupt:
+        """Experimental IP interrupt event handle."""
+
+        def enable(self) -> None:
+            """Enable IP interrupt notification from the IP."""
+            ...
+
+        def disable(self) -> None:
+            """Disable IP interrupt notification from the IP."""
+            ...
+
+        @overload
+        def wait(self) -> None:
+            """Block until an interrupt is received from the IP."""
+            ...
+
+        @overload
+        def wait(self, timeout: int) -> int:
+            """Wait up to timeout milliseconds for an IP interrupt.
+
+            Args:
+                timeout: Timeout in milliseconds.
+
+            Returns:
+                0 if interrupt received; 1 if timeout expired.
+            """
+            ...
+
+    @overload
+    def __init__(self) -> None:
+        """Create an empty ip handle."""
+        ...
+
+    @overload
+    def __init__(self, ctx: hw_context, name: str) -> None:
+        """Create an IP object from a hardware context and IP name.
+
+        Args:
+            ctx: The hardware context.
+            name: IP name as it appears in IP_LAYOUT.
+        """
+        ...
+
+    def write_register(self, offset: int, data: int) -> None:
+        """Write a 32-bit value to a register at the given offset.
+
+        Args:
+            offset: Byte offset from the IP base address.
+            data: 32-bit value to write.
+        """
+        ...
+
+    def read_register(self, offset: int) -> int:
+        """Read a 32-bit value from a register at the given offset.
+
+        Args:
+            offset: Byte offset from the IP base address.
+
+        Returns:
+            32-bit register value.
+        """
+        ...
+
+    def create_interrupt_notify(self) -> ip.interrupt:
+        """Create an interrupt notification handle for this IP.
+
+        Returns:
+            Interrupt handle with notification enabled.
+        """
+        ...
+
+
+class mailbox:
+    """Experimental kernel mailbox for reading/writing kernel arguments."""
+
+    def __init__(self, run: run) -> None:
+        """Construct a mailbox from a run associated with a mailbox-enabled kernel.
+
+        Args:
+            run: Run object for a kernel that supports mailbox access.
+        """
+        ...
+
+    def read(self) -> None:
+        """Request the kernel to update the mailbox copy of arguments."""
+        ...
+
+    def write(self) -> None:
+        """Request the kernel to copy mailbox arguments to the kernel."""
+        ...
+
+    def get_arg(self, index: SupportsInt) -> bytes:
+        """Get the mailbox copy of a kernel argument as bytes.
+
+        Args:
+            index: Kernel argument index.
+
+        Returns:
+            Raw bytes of the mailbox argument copy.
+        """
+        ...
+
+    @overload
+    def set_arg(self, index: SupportsInt, bo: bo) -> None:
+        """Set a buffer object argument in the mailbox."""
+        ...
+
+    @overload
+    def set_arg(self, index: SupportsInt, value: SupportsInt) -> None:
+        """Set a scalar argument in the mailbox."""
+        ...
+
+    @overload
+    def set_arg(self, name: str, value: SupportsInt) -> None:
+        """Set a named scalar argument in the mailbox."""
+        ...
+
+    @overload
+    def set_arg(self, name: str, bo: bo) -> None:
+        """Set a named buffer object argument in the mailbox."""
+        ...
+
+
+class async_error:
+    """Experimental XRT asynchronous error retrieval."""
+
+    @overload
+    def __init__(self, device: device, error_class: xrt_error_class) -> None:
+        """Get the last asynchronous error of the given class from a device.
+
+        Args:
+            device: Device to query.
+            error_class: Error class to retrieve.
+        """
+        ...
+
+    @overload
+    def __init__(self, error_code: int, timestamp: int) -> None:
+        """Construct an error from an error code and timestamp."""
+        ...
+
+    def get_timestamp(self) -> int:
+        """Get the timestamp for this error."""
+        ...
+
+    def get_error_code(self) -> int:
+        """Get the underlying XRT error code."""
+        ...
+
+    def to_string(self) -> str:
+        """Convert the error to a formatted string."""
+        ...
+
+
+# =============================================================================
+# profile submodule - Experimental user-defined profiling markers
+# =============================================================================
+
+class _profile_user_range:
+    """Experimental user-defined time range for profiling."""
+
+    @overload
+    def __init__(self) -> None:
+        """Create a user range; call start() to begin timing."""
+        ...
+
+    @overload
+    def __init__(self, label: str) -> None:
+        """Create a user range and start timing immediately."""
+        ...
+
+    @overload
+    def __init__(self, label: str, tooltip: str) -> None:
+        """Create a user range with label and tooltip, and start timing."""
+        ...
+
+    @overload
+    def start(self, label: str) -> None:
+        """Mark the start of a user-defined profiling range."""
+        ...
+
+    @overload
+    def start(self, label: str, tooltip: str) -> None:
+        """Mark the start of a user-defined profiling range with tooltip."""
+        ...
+
+    def end(self) -> None:
+        """Mark the end of a user-defined profiling range."""
+        ...
+
+
+class _profile_user_event:
+    """Experimental user-defined event marker for profiling."""
+
+    def __init__(self) -> None:
+        """Create a user event marker."""
+        ...
+
+    @overload
+    def mark(self) -> None:
+        """Mark the current time."""
+        ...
+
+    @overload
+    def mark(self, label: str) -> None:
+        """Mark the current time with a label."""
+        ...
+
+    @overload
+    def mark_time_ns(self, time_ns: SupportsInt) -> None:
+        """Mark a custom time in nanoseconds since application start."""
+        ...
+
+    @overload
+    def mark_time_ns(self, time_ns: SupportsInt, label: str) -> None:
+        """Mark a custom time in nanoseconds with a label."""
+        ...
+
+
+class profile:
+    """Experimental user-defined profiling markers for XRT trace visualization."""
+
+    user_range = _profile_user_range
+    user_event = _profile_user_event
