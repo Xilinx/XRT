@@ -87,6 +87,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	struct drm_zocl_slot *slot = NULL;
 	uint32_t flags = 0;
 	bool dt_overlay = false;
+	bool dt_overlay_dirty = false;
 	uint8_t hw_gen = axlf_obj->hw_gen;
 
 	/* Download the XCLBIN from user space to kernel space and validate */
@@ -194,13 +195,24 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (xrt_xclbin_get_section_num(axlf, PARTITION_METADATA) &&
 	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
 	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		bool pl_load = !zocl_xclbin_is_aie_only(axlf);
+
 		/*
 		 * Perform dtbo overlay for both static and rm region
 		 * axlf should have dtbo in PARTITION_METADATA section and
 		 * bitstream in BITSTREAM section.
+		 *
+		 * Suppress our overlay notifier, it would retake
+		 * slot_xclbin_lock. Only a PL load applies an overlay.
 		 */
+		if (pl_load) {
+			WRITE_ONCE(zdev->overlay_self_task, current);
+			dt_overlay_dirty = true;
+		}
 		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA,
 				    slot);
+		if (pl_load)
+			WRITE_ONCE(zdev->overlay_self_task, NULL);
 		if (ret)
 			goto out0;
 		dt_overlay = true;
@@ -354,6 +366,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	goto done;
 
 out0:
+	/* The old overlay or PL may be gone, drop the stale CUs and IRQ routing. */
+	if (dt_overlay_dirty) {
+		zocl_destroy_cu_slot(zdev, slot->slot_idx);
+		zocl_cu_intc_refresh(zdev);
+	}
+
 	DRM_ERROR("%s: failed to load xclbin %pUb to slot %d ret: %d\n",
 			__func__, zocl_xclbin_get_uuid(slot), slot_id, ret);
 

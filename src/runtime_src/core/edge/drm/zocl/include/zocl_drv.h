@@ -34,6 +34,7 @@
 #include <drm/drm_gem_cma_helper.h>
 #endif
 #include <linux/poll.h>
+#include <linux/sched.h>
 #include "zocl_util.h"
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"

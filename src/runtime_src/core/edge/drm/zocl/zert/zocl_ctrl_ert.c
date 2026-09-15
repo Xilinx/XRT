@@ -480,8 +480,7 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 	int i;
 
 	fpga_np = of_find_node_by_name(NULL, "fpga_accelerator");
-	if (fpga_np && (of_property_present(fpga_np, "interrupts-extended") ||
-			of_property_present(fpga_np, "interrupts"))) {
+	if (fpga_np && of_property_present(fpga_np, "interrupts-extended")) {
 		irqs = kcalloc(MAX_CU_NUM, sizeof(*irqs), GFP_KERNEL);
 		hw_ids = kcalloc(MAX_CU_NUM, sizeof(*hw_ids), GFP_KERNEL);
 		if (!irqs || !hw_ids) {
