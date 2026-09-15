@@ -247,6 +247,8 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		mutex_init(&zocl_slot->aie_lock);
 
 		zocl_slot->slot_idx = i;
+		/* 0 is a valid overlay id, so this slot needs the sentinel too */
+		zocl_slot->partial_overlay_id = -1;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -1341,25 +1343,24 @@ int zocl_of_parse_cu_irqs(struct device_node *np, u32 *virqs, u32 *hw_ids, int m
 		}
 
 		/*
-		 * axi_intc: <hwirq flags> → args[0]
-		 * imux/GIC: <0 hwirq flags> → args[1]
-		 * hw_id is the xclbin IP_INTERRUPT_ID for axi_intc; GIC SPI
-		 * numbers will not match that ID.
+		 * Only an AXI INTC specifier carries the xclbin
+		 * IP_INTERRUPT_ID: <hwirq flags>, where hwirq is the intc
+		 * input line that KDS reports as intr_id. A GIC or imux
+		 * specifier holds an SPI from an unrelated numbering space,
+		 * so fall back to list position for those, which is what
+		 * of_irq_get() indexing did before.
 		 */
-		if (oirq.args_count >= 3)
-			hw_id = oirq.args[1];
-		else if (oirq.args_count >= 1)
+		if (of_property_present(oirq.np, "xlnx,num-intr-inputs") &&
+		    oirq.args_count >= 1) {
 			hw_id = oirq.args[0];
-		else {
-			of_node_put(oirq.np);
-			continue;
-		}
-
-		if (hw_id >= MAX_CU_NUM) {
-			DRM_WARN("CU IRQ specifier %d: hw id %u exceeds %d, skip\n",
-				 i, hw_id, MAX_CU_NUM);
-			of_node_put(oirq.np);
-			continue;
+			if (hw_id >= MAX_CU_NUM) {
+				DRM_WARN("CU IRQ specifier %d: hw id %u exceeds %d, skip\n",
+					 i, hw_id, MAX_CU_NUM);
+				of_node_put(oirq.np);
+				continue;
+			}
+		} else {
+			hw_id = n;
 		}
 
 		for (j = 0; j < n; j++) {
@@ -1397,8 +1398,7 @@ static int zocl_cu_intc_setup(struct drm_zocl_dev *zdev, struct platform_device 
 	int index, irq, ret, n = 0;
 
 	fpga_np = of_find_node_by_name(NULL, "fpga_accelerator");
-	if (fpga_np && (of_property_present(fpga_np, "interrupts-extended") ||
-			of_property_present(fpga_np, "interrupts"))) {
+	if (fpga_np && of_property_present(fpga_np, "interrupts-extended")) {
 		n = zocl_of_parse_cu_irqs(fpga_np, zdev->cu_subdev.irq, hw_ids,
 					  MAX_CU_NUM);
 		if (n < 0)
@@ -1492,6 +1492,16 @@ static int zocl_overlay_notify(struct notifier_block *nb, unsigned long action,
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 
 	if (!zdev || !nd)
+		return NOTIFY_DONE;
+
+	/*
+	 * This notifier exists to catch overlays applied out of band, e.g. by
+	 * fpgautil. When the overlay is our own the calling path already
+	 * refreshes CU IRQs once the tree has settled, and it is holding
+	 * slot_xclbin_lock while the OF core calls us, so re-entering
+	 * zocl_cu_irq_update() here would deadlock against it.
+	 */
+	if (atomic_read(&zdev->overlay_self_op))
 		return NOTIFY_DONE;
 
 	if (!zocl_overlay_tree_has_fpga_accel(nd->overlay))

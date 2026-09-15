@@ -629,18 +629,30 @@ void zocl_slot_remove_xclbin_overlay(struct drm_zocl_dev *zdev,
 
 	zocl_destroy_cu_slot(zdev, slot->slot_idx);
 
+	atomic_inc(&zdev->overlay_self_op);
 	err = of_overlay_remove(&slot->partial_overlay_id);
+	atomic_dec(&zdev->overlay_self_op);
 	if (err < 0) {
+		/*
+		 * The tree is unchanged, so there is nothing to re-probe.
+		 * Refreshing would only destroy live CU handlers for no gain.
+		 */
 		DRM_WARN("%s: overlay remove failed (%d)\n", __func__, err);
-		goto refresh;
+		goto unlock;
 	}
 
 	slot->partial_overlay_id = -1;
 	DRM_INFO("%s: removed xclbin DT overlay from slot %d\n",
 		 __func__, slot->slot_idx);
 
-refresh:
-	zocl_cu_intc_refresh(zdev);
+	/*
+	 * The CU INTC is device-global but only slot 0 ever owns CUs: PL
+	 * xclbins always land there and AIE-only xclbins create none. A
+	 * refresh on behalf of any other slot can only tear down slot 0's
+	 * handlers, which nothing on this path would re-register.
+	 */
+	if (slot->slot_idx == 0)
+		zocl_cu_intc_refresh(zdev);
 unlock:
 	mutex_unlock(&slot->slot_xclbin_lock);
 }
