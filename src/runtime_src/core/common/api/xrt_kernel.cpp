@@ -1462,6 +1462,12 @@ public:
   is_output() const
   { return arg.dir == direction::output; }
 
+  bool
+  is_buffer() const
+  {
+    return arg.type == xarg::argtype::global || arg.type == xarg::argtype::constant;
+  }
+
   xarg::argtype
   type() const
   { return arg.type; }
@@ -2151,7 +2157,7 @@ public:
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
     auto memidx = ip->arg_memidx(argno);
-    if (memidx == ip_context::connectivity::no_memidx)
+    if (memidx == ip_context::connectivity::no_memidx && args[argno].is_buffer())
       throw xrt_core::error(EINVAL, "No memory group assigned for global argument at index "
                             + std::to_string(argno) + " of kernel '" + name + "'");
 
