@@ -3037,7 +3037,7 @@ public:
     // The cached command header is used for all subsequent starts
     pkt->header = m_header;
     pkt->state = ERT_CMD_STATE_NEW;
-    
+
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
 
     // XDP profiling hook - called immediately before run is submitted
