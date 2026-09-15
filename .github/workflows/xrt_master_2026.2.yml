@@ -24,15 +24,24 @@ jobs:
           - os: rhel8.10      
             packageType: rpm
             os_ver: rhel_8.10  
-          - os: rhel10.0      
+          - os: rhel10.0
             packageType: rpm
-            os_ver: rhel_10.0      
+            os_ver: rhel_10.0
+          - os: rhel9.8
+            packageType: rpm
+            os_ver: rhel_9.8
+          - os: rhel10.2
+            packageType: rpm
+            os_ver: rhel_10.2
           - os: hip      
             packageType: deb
             os_ver: ubuntu_22.04
-          - os: ubuntu2404      
+          - os: ubuntu2404
             packageType: deb
-            os_ver: ubuntu_24.04  
+            os_ver: ubuntu_24.04
+          - os: ubuntu2604
+            packageType: deb
+            os_ver: ubuntu_26.04
           - os: npu      
             packageType: deb
             os_ver: ubuntu_22.04    
