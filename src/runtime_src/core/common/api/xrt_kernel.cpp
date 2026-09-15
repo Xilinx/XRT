@@ -3037,8 +3037,11 @@ public:
     // The cached command header is used for all subsequent starts
     pkt->header = m_header;
     pkt->state = ERT_CMD_STATE_NEW;
-
+    
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
+
+    // XDP profiling hook - called immediately before run is submitted
+    xrt_core::xdp::run_start(this);
   }
 
   // start() - start the run object (execbuf)
@@ -3049,9 +3052,6 @@ public:
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
 
     prep_start();
-
-    // XDP profiling hook - called immediately before run is submitted
-    xrt_core::xdp::run_start(this);
 
     // log kernel start info
     // This is in critical path, we need to reduce log overhead
