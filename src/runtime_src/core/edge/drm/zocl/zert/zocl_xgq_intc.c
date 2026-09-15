@@ -52,6 +52,7 @@ static int zintc_probe(struct platform_device *pdev)
 {
 	int i;
 	struct zocl_irq_intc *zintc;
+	const u32 *hw_ids;
 	int num_irqs = platform_irq_count(pdev);
 
 	if (num_irqs <= 0) {
@@ -66,21 +67,28 @@ static int zintc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	zintc->zei_pdev = pdev;
 	zintc->zei_num_irqs = num_irqs;
+	spin_lock_init(&zintc->zei_lock);
 	platform_set_drvdata(pdev, zintc);
+
+	/*
+	 * Resource order is compact. Hardware interrupt ID is in platform data
+	 * when present (sparse DT); otherwise id == index.
+	 */
+	hw_ids = dev_get_platdata(&pdev->dev);
 
 	/* Ready to turn on interrupts! */
 	for (i = 0; i < num_irqs; i++) {
-		/*
-		 * The irq resources ordering is important.
-		 * Later on, use the resource index to add a handler.
-		 */
 		struct zocl_ert_intc_handler *h = &zintc->zei_handler[i];
 		struct resource *res = platform_get_resource(ZINTC2PDEV(zintc), IORESOURCE_IRQ, i);
-		u32 irq = res->start;
+
+		if (!res) {
+			zintc_err(zintc, "missing IRQ resource %d", i);
+			return -EINVAL;
+		}
 
 		h->zeih_pdev = pdev;
-		h->zeih_irq = irq;
-		BUG_ON(irq < 0);
+		h->zeih_irq = res->start;
+		h->zeih_hw_id = hw_ids ? hw_ids[i] : (u32)i;
 		spin_lock_init(&h->zeih_lock);
 	}
 
@@ -104,6 +112,18 @@ static int zintc_remove(struct platform_device *pdev)
  * Interfaces exposed to other subdev drivers.
  */
 
+static struct zocl_ert_intc_handler *
+zintc_find_handler(struct zocl_irq_intc *zintc, u32 id)
+{
+	int i;
+
+	for (i = 0; i < zintc->zei_num_irqs; i++) {
+		if (zintc->zei_handler[i].zeih_hw_id == id)
+			return &zintc->zei_handler[i];
+	}
+	return NULL;
+}
+
 static int zocl_irq_intc_add(struct platform_device *pdev, u32 id, irq_handler_t cb, void *arg)
 {
 	unsigned long irqflags;
@@ -111,10 +131,10 @@ static int zocl_irq_intc_add(struct platform_device *pdev, u32 id, irq_handler_t
 	struct zocl_ert_intc_handler *h;
 	int ret = 0;
 
-	if (id >= zintc->zei_num_irqs)
+	h = zintc_find_handler(zintc, id);
+	if (!h)
 		return -EINVAL;
 
-	h = &zintc->zei_handler[id];
 	spin_lock_irqsave(&zintc->zei_lock, irqflags);
 
 	if (h->zeih_cb) {
@@ -122,13 +142,22 @@ static int zocl_irq_intc_add(struct platform_device *pdev, u32 id, irq_handler_t
 		goto unlock_and_out;
 	}
 
-	ret = request_irq(h->zeih_irq, zintc_isr, 0, ZINTC_DRV_NAME, h);
+	/*
+	 * devm so that any handler still registered when this device goes
+	 * away is released by devres. zei_handler[] is itself devm memory
+	 * allocated earlier in probe, so devres unwinds in the right order:
+	 * the IRQs go first, then the array they point into. Without this a
+	 * CU INTC torn down while CUs are live leaves the IRQ core holding
+	 * dev_id pointers into freed memory.
+	 */
+	ret = devm_request_irq(&pdev->dev, h->zeih_irq, zintc_isr, 0,
+			       ZINTC_DRV_NAME, h);
 	if (ret) {
 		zintc_err(zintc, "failed to add isr for IRQ: %d: %d", h->zeih_irq, ret);
 		goto unlock_and_out;
 	}
 
-	zintc_info(zintc, "managing IRQ %d", h->zeih_irq);
+	zintc_info(zintc, "managing IRQ %d (hw id %u)", h->zeih_irq, h->zeih_hw_id);
 	h->zeih_cb = cb;
 	h->zeih_arg = arg;
 	h->zeih_enabled = true;
@@ -145,14 +174,15 @@ static void zocl_irq_intc_remove(struct platform_device *pdev, u32 id)
 	struct zocl_irq_intc *zintc = platform_get_drvdata(pdev);
 	struct zocl_ert_intc_handler *h;
 
-	BUG_ON(id >= zintc->zei_num_irqs);
-	h = &zintc->zei_handler[id];
+	h = zintc_find_handler(zintc, id);
+	if (!h)
+		return;
+
 	spin_lock_irqsave(&zintc->zei_lock, irqflags);
 
 	/* Free irq only if its not already freed */
-       if (h->zeih_enabled == true)
-               free_irq(h->zeih_irq, h);
-
+	if (h->zeih_enabled == true)
+		devm_free_irq(&pdev->dev, h->zeih_irq, h);
 
 	h->zeih_cb = NULL;
 	h->zeih_arg = NULL;
@@ -167,8 +197,10 @@ static void zocl_irq_intc_config(struct platform_device *pdev, u32 id, bool enab
 	struct zocl_irq_intc *zintc = platform_get_drvdata(pdev);
 	struct zocl_ert_intc_handler *h;
 
-	BUG_ON(id >= zintc->zei_num_irqs);
-	h = &zintc->zei_handler[id];
+	h = zintc_find_handler(zintc, id);
+	if (!h)
+		return;
+
 	spin_lock_irqsave(&zintc->zei_lock, irqflags);
 
 	if (enabled)

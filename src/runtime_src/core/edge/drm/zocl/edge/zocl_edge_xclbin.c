@@ -198,9 +198,16 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 * Perform dtbo overlay for both static and rm region
 		 * axlf should have dtbo in PARTITION_METADATA section and
 		 * bitstream in BITSTREAM section.
+		 *
+		 * Our overlay notifier runs synchronously inside
+		 * of_overlay_fdt_apply() and would deadlock retaking
+		 * slot_xclbin_lock, which we already hold. Suppress it; the
+		 * CU IRQ refresh below covers this path.
 		 */
+		atomic_inc(&zdev->overlay_self_op);
 		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA,
 				    slot);
+		atomic_dec(&zdev->overlay_self_op);
 		if (ret)
 			goto out0;
 		dt_overlay = true;
