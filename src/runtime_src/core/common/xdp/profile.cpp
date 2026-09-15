@@ -536,7 +536,7 @@ register_callbacks(void* handle)
     using rsctype = void (*)(void*, const char*);
     
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
-    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushDeviceAIEHalt"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceAIEHalt"));
     run_start_cb = reinterpret_cast<rsctype>(xrt_core::dlsym(handle, "aieHaltRunStart"));
   #else
     (void)handle;
