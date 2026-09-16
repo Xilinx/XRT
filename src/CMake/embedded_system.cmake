@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #
 # This cmake file is for embedded system. Only support cross compile aarch64
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
@@ -67,6 +68,9 @@ message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 include (CMake/lint.cmake)
 
 add_subdirectory(runtime_src)
+
+# --- Python bindings ---
+xrt_add_subdirectory(python)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
