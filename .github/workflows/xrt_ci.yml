@@ -43,13 +43,21 @@ jobs:
             packageType: rpm  
           - os: rhel8.10      
             packageType: rpm
-          - os: rhel10.0      
-            packageType: rpm   
-          - os: hip      
-            packageType: deb  
-          - os: npu      
+          - os: rhel10.0
+            packageType: rpm
+          - os: rhel9.8
+            packageType: rpm
+          - os: rhel10.2
+            packageType: rpm
+          - os: hip
             packageType: deb
-          - os: npu2404      
+          - os: ubuntu2404
+            packageType: deb
+          - os: ubuntu2604
+            packageType: deb
+          - os: npu
+            packageType: deb
+          - os: npu2404
             packageType: deb     
         
     runs-on: [self-hosted, Ubuntu-22.04]
