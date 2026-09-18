@@ -19,6 +19,7 @@
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
 #include <iostream>
+#include <set>
 #include <vector>
 
 namespace XUtil = XclBinUtilities;
@@ -150,7 +151,26 @@ validateSigningDigestAlgorithm(const std::string& digestAlgorithm)
   OpenSSL_add_all_digests();
 
   if (EVP_get_digestbyname(digestAlgorithm.c_str()) == nullptr) {
-    auto errMsg = boost::format("ERROR: Invalid digest algorithm: '%s'") % digestAlgorithm;
+    // Enumerate names and aliases accepted by the same lookup used for signing.
+    std::set<std::string> digestNames;
+    EVP_MD_do_all_sorted(
+      [](const EVP_MD*, const char* name, const char*, void* context) {
+        if (name && EVP_get_digestbyname(name))
+          static_cast<std::set<std::string>*>(context)->insert(name);
+      },
+      &digestNames);
+
+    std::string supportedDigests;
+    for (const auto& name : digestNames) {
+      if (!supportedDigests.empty())
+        supportedDigests += ", ";
+      supportedDigests += name;
+    }
+
+    auto errMsg = boost::format(
+      "ERROR: Invalid digest algorithm: '%s'\n"
+      "Supported digest names: %s")
+      % digestAlgorithm % supportedDigests;
     throw std::runtime_error(errMsg.str());
   }
 #endif
