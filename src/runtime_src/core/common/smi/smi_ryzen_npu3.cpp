@@ -25,14 +25,10 @@ config_gen_npu3()
 
   validate_test_desc = {
     {"all", "All applicable validate tests will be executed (default)", "common"},
-    {"runlist-latency", "Run end-to-end latency test using runlist", "hidden"},
-    {"runlist-throughput", "Run end-to-end throughput test using runlist", "hidden"},
     {"df-bw", "Run bandwidth test on data fabric", "hidden"},
     {"shim-dma-bw", "Run 2xRead/1xWrite bandwidth test for SHIM DMA", "hidden"},
     {"latency", "Run end-to-end latency test", "common"},
     {"throughput", "Run end-to-end throughput test", "common"},
-    {"tct-one-col", "Measure average TCT processing time for one column", "hidden"},
-    {"tct-all-col", "Measure average TCT processing time for all columns", "hidden"},
     {"gemm", "Measure the TOPS value of GEMM INT8operations", "common"},
     {"sanity", "Run a small model and validate sanity of the device", "hidden"},
     {"preemption-overhead", "Measure preemption overhead at noop and memtile levels", "hidden"}
