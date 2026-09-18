@@ -629,18 +629,22 @@ void zocl_slot_remove_xclbin_overlay(struct drm_zocl_dev *zdev,
 
 	zocl_destroy_cu_slot(zdev, slot->slot_idx);
 
+	WRITE_ONCE(zdev->overlay_self_task, current);
 	err = of_overlay_remove(&slot->partial_overlay_id);
+	WRITE_ONCE(zdev->overlay_self_task, NULL);
 	if (err < 0) {
+		/* Tree unchanged, nothing to re-probe. */
 		DRM_WARN("%s: overlay remove failed (%d)\n", __func__, err);
-		goto refresh;
+		goto unlock;
 	}
 
 	slot->partial_overlay_id = -1;
 	DRM_INFO("%s: removed xclbin DT overlay from slot %d\n",
 		 __func__, slot->slot_idx);
 
-refresh:
-	zocl_cu_intc_refresh(zdev);
+	/* CU INTC is device global, only slot 0 owns CUs. */
+	if (slot->slot_idx == 0)
+		zocl_cu_intc_refresh(zdev);
 unlock:
 	mutex_unlock(&slot->slot_xclbin_lock);
 }

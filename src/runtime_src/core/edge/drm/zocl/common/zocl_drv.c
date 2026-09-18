@@ -27,6 +27,8 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/irq.h>
+#include <linux/irqdomain.h>
 #include <linux/poll.h>
 #include <linux/spinlock.h>
 #include "zocl_drv.h"
@@ -245,6 +247,8 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		mutex_init(&zocl_slot->aie_lock);
 
 		zocl_slot->slot_idx = i;
+		/* 0 is a valid overlay id */
+		zocl_slot->partial_overlay_id = -1;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -1313,32 +1317,112 @@ static const struct of_device_id zocl_drm_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, zocl_drm_of_match);
 
+int zocl_of_parse_cu_irqs(struct device_node *np, u32 *virqs, u32 *hw_ids, int max)
+{
+	int i, n = 0;
+	int count;
+
+	if (!np || !virqs || !hw_ids || max <= 0)
+		return -EINVAL;
+
+	count = of_irq_count(np);
+	if (count <= 0)
+		return 0;
+
+	for (i = 0; i < count && n < max; i++) {
+		struct of_phandle_args oirq;
+		unsigned int virq;
+		u32 hw_id;
+		int j, ret;
+		bool dup = false;
+
+		ret = of_irq_parse_one(np, i, &oirq);
+		if (ret) {
+			DRM_WARN("CU IRQ specifier %d: parse failed (%d)\n", i, ret);
+			continue;
+		}
+
+		/*
+		 * Only an AXI INTC specifier carries intr_id; else use list
+		 * position, which is an ID only for a dense list.
+		 */
+		if (of_property_present(oirq.np, "xlnx,num-intr-inputs") &&
+		    oirq.args_count >= 1)
+			hw_id = oirq.args[0];
+		else
+			hw_id = i;
+
+		if (hw_id >= MAX_CU_NUM) {
+			DRM_WARN("CU IRQ specifier %d: hw id %u exceeds %d, skip\n",
+				 i, hw_id, MAX_CU_NUM);
+			of_node_put(oirq.np);
+			continue;
+		}
+
+		for (j = 0; j < n; j++) {
+			if (hw_ids[j] == hw_id) {
+				DRM_WARN("CU IRQ specifier %d: duplicate hw id %u, skip\n",
+					 i, hw_id);
+				dup = true;
+				break;
+			}
+		}
+		if (dup) {
+			of_node_put(oirq.np);
+			continue;
+		}
+
+		virq = irq_create_of_mapping(&oirq);
+		of_node_put(oirq.np);
+		if (!virq) {
+			DRM_WARN("CU IRQ specifier %d: map hw id %u failed\n", i, hw_id);
+			continue;
+		}
+
+		virqs[n] = virq;
+		hw_ids[n] = hw_id;
+		n++;
+	}
+
+	return n;
+}
+
 static int zocl_cu_intc_setup(struct drm_zocl_dev *zdev, struct platform_device *pdev)
 {
 	struct device_node *fpga_np;
-	int index, irq, ret;
+	u32 hw_ids[MAX_CU_NUM];
+	int index, irq, ret, n = 0;
 
 	fpga_np = of_find_node_by_name(NULL, "fpga_accelerator");
-	for (index = 0; index < MAX_CU_NUM; index++) {
-		if (fpga_np && of_property_present(fpga_np, "interrupts-extended"))
-			irq = of_irq_get(fpga_np, index);
-		else
+	if (fpga_np && of_property_present(fpga_np, "interrupts-extended")) {
+		n = zocl_of_parse_cu_irqs(fpga_np, zdev->cu_subdev.irq, hw_ids,
+					  MAX_CU_NUM);
+		if (n < 0)
+			n = 0;
+		for (index = 0; index < n; index++)
+			DRM_DEBUG("CU hw_id %u IRQ %u\n", hw_ids[index],
+				  zdev->cu_subdev.irq[index]);
+	} else {
+		for (index = 0; index < MAX_CU_NUM; index++) {
 			irq = platform_get_irq(pdev, index);
-		if (irq < 0)
-			break;
-		DRM_DEBUG("CU(%d) IRQ %d\n", index, irq);
-		zdev->cu_subdev.irq[index] = irq;
+			if (irq < 0)
+				break;
+			DRM_DEBUG("CU(%d) IRQ %d\n", index, irq);
+			zdev->cu_subdev.irq[index] = irq;
+			hw_ids[index] = index;
+			n++;
+		}
 	}
 	if (fpga_np)
 		of_node_put(fpga_np);
 
-	zdev->cu_subdev.cu_num = index;
+	zdev->cu_subdev.cu_num = n;
 	if (!zdev->cu_subdev.cu_num)
 		return 0;
 
 	ret = zocl_ert_create_intc(&pdev->dev, zdev->cu_subdev.irq,
 				   zdev->cu_subdev.cu_num, 0,
-				   ERT_CU_INTC_DEV_NAME, &zdev->cu_intc);
+				   ERT_CU_INTC_DEV_NAME, &zdev->cu_intc, hw_ids);
 	if (ret)
 		DRM_ERROR("Failed to create cu intc device, ret %d\n", ret);
 	return ret;
@@ -1406,6 +1490,10 @@ static int zocl_overlay_notify(struct notifier_block *nb, unsigned long action,
 	if (!zdev || !nd)
 		return NOTIFY_DONE;
 
+	/* Our own overlay: caller holds slot_xclbin_lock and refreshes itself. */
+	if (READ_ONCE(zdev->overlay_self_task) == current)
+		return NOTIFY_DONE;
+
 	if (!zocl_overlay_tree_has_fpga_accel(nd->overlay))
 		return NOTIFY_DONE;
 
@@ -1465,28 +1553,27 @@ static void zocl_overlay_notifier_unregister(void)
 void zocl_cu_irq_update(struct drm_zocl_dev *zdev)
 {
 	struct drm_zocl_slot *slot;
-	int i, ret;
+	int ret;
 
 	if (!zdev)
 		return;
 
 	zocl_cu_intc_refresh(zdev);
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
-		slot = zdev->pr_slot[i];
-		if (!slot || !slot->slot_xclbin || !slot->ip || !slot->axlf)
-			continue;
-		if (zocl_xclbin_is_aie_only(slot->axlf))
-			continue;
+	/* Only slot 0 can hold PL CUs. */
+	slot = zdev->pr_slot[0];
+	if (!slot)
+		return;
 
-		mutex_lock(&slot->slot_xclbin_lock);
+	mutex_lock(&slot->slot_xclbin_lock);
+	if (slot->slot_xclbin && slot->ip && slot->axlf &&
+	    !zocl_xclbin_is_aie_only(slot->axlf)) {
 		zocl_destroy_cu_slot(zdev, slot->slot_idx);
 		ret = zocl_create_cu(zdev, slot);
 		if (ret)
-			DRM_WARN("Failed to recreate CUs after IRQ update on slot %d\n",
-				 slot->slot_idx);
-		mutex_unlock(&slot->slot_xclbin_lock);
+			DRM_WARN("Failed to recreate CUs after IRQ update on slot 0\n");
 	}
+	mutex_unlock(&slot->slot_xclbin_lock);
 }
 
 /*

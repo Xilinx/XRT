@@ -488,7 +488,7 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 
 	/* Bringup INTC sub-dev to handle interrupts for this XGQ. */
 	ret = zocl_ert_create_intc(ZCHAN2DEV(chan), &irq, 1, 0,
-				   ERT_XGQ_INTC_DEV_NAME, &chan->intc_pdev);
+				   ERT_XGQ_INTC_DEV_NAME, &chan->intc_pdev, NULL);
 	if (ret) {
 		zchan_err(chan, "Failed to create xgq intc device: %d", ret);
 		goto err_intc;
