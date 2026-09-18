@@ -141,6 +141,21 @@ getXclBinPKCSStats( const std::string& _xclBinFile,
 }
 
 
+void
+validateSigningDigestAlgorithm(const std::string& digestAlgorithm)
+{
+#ifdef _WIN32
+  throw std::runtime_error("ERROR: signXclBinImage not implemented on windows");
+#else
+  OpenSSL_add_all_digests();
+
+  if (EVP_get_digestbyname(digestAlgorithm.c_str()) == nullptr) {
+    auto errMsg = boost::format("ERROR: Invalid digest algorithm: '%s'") % digestAlgorithm;
+    throw std::runtime_error(errMsg.str());
+  }
+#endif
+}
+
 void signXclBinImage(const std::string& _fileOnDisk,
                      const std::string& _sPrivateKey,
                      const std::string& _sCertificate,

@@ -329,8 +329,13 @@ int main_(int argc, const char** argv) {
   if (!sPrivateKey.empty() && sOutputFile.empty())
     throw std::runtime_error("ERROR: Private key specified, but no output file defined.");
 
+  // Signing requries both private key and certificate
   if (sCertificate.empty() && !sOutputFile.empty() && !sPrivateKey.empty())
     throw std::runtime_error("ERROR: Private key specified, but no certificate defined.");
+
+  // Reject unsupported signing digests
+  if (!sPrivateKey.empty())
+    validateSigningDigestAlgorithm(sDigestAlgorithm);
 
   // Report option conflicts
   if ((!sSignature.empty() && !sPrivateKey.empty()))

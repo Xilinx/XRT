@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 import os
 import subprocess
+import tempfile
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------
@@ -38,6 +39,70 @@ def main():
   cmd = [xclbinutil, "--input", "signed_empty.xclbin", "--certificate", "certificate.der", "--validate-signature", "--force"]
   execCmd(step, cmd)
 
+
+  # ----------------------------------------------------------------------
+  # Regression: an invalid digest must not create or overwrite the output.
+  # Use a fresh directory so previous test runs cannot affect the assertions.
+  with tempfile.TemporaryDirectory(prefix="digest-regression-", dir=".") as testDir:
+    output = os.path.join(testDir, "signed.xclbin")
+
+    cmd = [
+      xclbinutil,
+      "--input", "unsigned_empty.xclbin",
+      "--private-key", "private.key",
+      "--certificate", "certificate.cer",
+      "--digest-algorithm", "bogus_digest_algo",
+      "--output", output,
+    ]
+
+    step = "7) Reject an invalid digest without creating output"
+    checkInvalidDigest(step, cmd)
+
+    if os.path.lexists(output):
+      raise Exception("Invalid digest created an output file")
+
+    step = "8) Reject an invalid digest without overwriting existing output"
+    # create a dummy output
+    originalContents = b"Existing output must remain unchanged.\n"
+    with open(output, "wb") as stream:
+      stream.write(originalContents)
+
+    checkInvalidDigest(step, cmd + ["--force"])
+
+    with open(output, "rb") as stream:
+      if stream.read() != originalContents:
+        raise Exception("Invalid digest changed the existing output file")
+
+
+    # ----------------------------------------------------------------------
+    # Verify excplit supported digest algorithms
+    for digest in ("sha256", "sha512"):
+      signedOutput = os.path.join(testDir, "signed_" + digest + ".xclbin")
+
+      step = "8) Sign the xclbin using " + digest
+      cmd = [
+        xclbinutil,
+        "--input", "unsigned_empty.xclbin",
+        "--private-key", "private.key",
+        "--certificate", "certificate.cer",
+        "--digest-algorithm", digest,
+        "--output", signedOutput,
+      ]
+      execCmd(step, cmd)
+
+      step = "9) Verify the signed xclbin using " + digest
+      cmd = [
+        xclbinutil,
+        "--input", signedOutput,
+        "--certificate", "certificate.cer",
+        "--validate-signature",
+      ]
+      outputText = execCmd(step, cmd)
+
+      if ("Signed xclbin archive verification [SUCCESSFUL]" not in outputText
+          or "Signed xclbin archive verification [FAILED]" in outputText):
+        raise Exception("Signature verification failed for " + digest)
+
   # If the code gets this far, all is good.
   return False
 
@@ -54,6 +119,37 @@ def execCmd(pretty_name, cmd):
 
   if errorCode != 0:
     raise Exception("Operation failed with the return code: " + str(errorCode))
+
+  return (
+    o.decode("utf-8", errors="replace")
+    + e.decode("utf-8", errors="replace")
+  )
+
+
+def checkInvalidDigest(pretty_name, cmd):
+  print(pretty_name)
+  print(' '.join(cmd))
+
+  proc = subprocess.Popen(
+    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  stdout, stderr = proc.communicate()
+
+  outputText = (
+    stdout.decode("utf-8", errors="replace")
+    + stderr.decode("utf-8", errors="replace")
+  )
+  print(outputText)
+
+  if proc.returncode == 0:
+    raise Exception("Invalid digest unexpectedly succeeded")
+
+  expectedError = "ERROR: Invalid digest algorithm: 'bogus_digest_algo'"
+  if expectedError not in outputText:
+    raise Exception("Command failed without the expected digest error")
+
+  if ("Successfully wrote" in outputText
+      or "Signature calculated and added successfully" in outputText):
+    raise Exception("Invalid digest produced a success message")
 
 # -- Start executing the script functions
 if __name__ == '__main__':
