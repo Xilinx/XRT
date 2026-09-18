@@ -569,19 +569,19 @@ copyBufferToFile(const std::string& file_path, const char* buf, uint64_t size)
 
 static void
 libdfxConfig(std::string& xclbin_dir_path, const axlf *top,
-	     const axlf_section_header *bit_header, const axlf_section_header *overlay_header)
+	     const axlf_section_header *image_header, const char *image_filename,
+	     const axlf_section_header *overlay_header)
 {
-  // create a temp directory to extract bitstream and dtbo
+  // create a temp directory to extract PL image (bitstream or PDI) and dtbo
   char dir[] = "/tmp/xclbin.XXXXXX";
   char *tmpdir = mkdtemp(dir);
   if (tmpdir == nullptr)
     throw std::runtime_error("Failed to create tmp directory for xclbin files extraction");
 
   xclbin_dir_path = tmpdir;
-  // create a file with BITSTREAM section
-  const std::string bit_file_path = xclbin_dir_path + "/xclbin.bit";
-  auto bit_buffer = reinterpret_cast<const char *>(top) + bit_header->m_sectionOffset;
-  copyBufferToFile(bit_file_path, bit_buffer, bit_header->m_sectionSize);
+  const std::string image_file_path = xclbin_dir_path + "/" + image_filename;
+  auto image_buffer = reinterpret_cast<const char *>(top) + image_header->m_sectionOffset;
+  copyBufferToFile(image_file_path, image_buffer, image_header->m_sectionSize);
 
   // create a file with OVERLAY(dtbo) section
   const std::string overlay_file_path = xclbin_dir_path + "/xclbin.dtbo";
@@ -608,10 +608,16 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
 {
   static const std::string fpga_device = "/dev/fpga0";
 
-  // check BITSTREAM section
-  const axlf_section_header *bit_header = xclbin::get_axlf_section(top, axlf_section_kind::BITSTREAM);
-  if (!bit_header)
-    throw std::runtime_error("No BITSTREAM section in xclbin");
+  // Prefer BITSTREAM (ZynqMP) or PDI (Versal) PL image section
+  const axlf_section_header *bit_header =
+    xclbin::get_axlf_section(top, axlf_section_kind::BITSTREAM);
+  const axlf_section_header *pdi_header =
+    xclbin::get_axlf_section(top, axlf_section_kind::PDI);
+  const axlf_section_header *image_header = bit_header ? bit_header : pdi_header;
+  const char *image_filename = bit_header ? "xclbin.bit" : "xclbin.pdi";
+
+  if (!image_header)
+    throw std::runtime_error("No BITSTREAM or PDI section in xclbin");
 
   //check if xclbin is already loaded
   try {
@@ -628,9 +634,9 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
   libdfxHelper(core_dev, dtbo_path, fd);
 
   std::string xclbin_dir_path;
-  libdfxConfig(xclbin_dir_path, top, bit_header, overlay_header);
+  libdfxConfig(xclbin_dir_path, top, image_header, image_filename, overlay_header);
 
-  // call libdfx api to load bitstream and dtbo
+  // call libdfx api to load PL image and dtbo
   int dtbo_id = dfx_cfg_init(xclbin_dir_path.c_str(), fpga_device.c_str(), 0);
   if (dtbo_id <= 0) {
     libdfxClean(xclbin_dir_path);
@@ -695,7 +701,7 @@ xclLoadAxlf(const axlf *buffer)
   /*
    * If its non-PR-platform and enable_flat=true in xrt.ini, download the full
    * bitstream. But if OVERLAY section is present in xclbin, userspace apis are
-   * used to download full bitstream
+   * used to download the PL image (bitstream or PDI) and dtbo
    */
   else if (is_flat_enabled && !overlay_header) {
     if (!ZYNQ::shim::handleCheck(this)) {
@@ -710,7 +716,7 @@ xclLoadAxlf(const axlf *buffer)
   }
 
 #if defined(XRT_ENABLE_LIBDFX)
-  // if OVERLAY section is present use libdfx apis to load bitstream and dtbo(overlay)
+  // if OVERLAY section is present use libdfx apis to load PL image and dtbo
   if(overlay_header) {
     try {
       // if xclbin is already loaded ret val is '1', dont call ioctl in this case
@@ -1190,7 +1196,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
   /*
    * If its non-PR-platform and enable_flat=true in xrt.ini, download the full
    * bitstream. But if OVERLAY section is present in xclbin, userspace apis are
-   * used to download full bitstream
+   * used to download the PL image (bitstream or PDI) and dtbo
    */
   else if (is_flat_enabled && !overlay_header) {
     if (!ZYNQ::shim::handleCheck(this)) {
@@ -1205,7 +1211,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
   }
 
 #if defined(XRT_ENABLE_LIBDFX)
-  // if OVERLAY section is present use libdfx apis to load bitstream and dtbo(overlay)
+  // if OVERLAY section is present use libdfx apis to load PL image and dtbo
   if(overlay_header) {
     try {
       // if xclbin is already loaded ret val is '1', dont call ioctl in this case

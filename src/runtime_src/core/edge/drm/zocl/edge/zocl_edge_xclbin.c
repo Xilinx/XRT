@@ -228,9 +228,17 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			goto out0;
 		}
 
-		ret = zocl_load_sect(zdev, axlf, xclbin, PDI, slot);
-		if (ret)
-			goto out0;
+		if (axlf_obj->za_dtbo_path_len) {
+			/*
+			 * PL image and dtbo were already loaded by libdfx
+			 * in userspace (PDI/OVERLAY xclbin path).
+			 */
+			DRM_INFO("Skipping kernel PDI load; device programmed via libdfx\n");
+		} else {
+			ret = zocl_load_sect(zdev, axlf, xclbin, PDI, slot);
+			if (ret)
+				goto out0;
+		}
 
 		/* Mark AIE out of reset state after load PDI */
 		if (slot->aie) {
@@ -340,11 +348,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 		/*
 		 * Refresh CU IRQ routing when this xclbin applied a DT overlay
-		 * or when fpga_accelerator was applied earlier (e.g. fpgautil)
+		 * (including libdfx userspace dtbo via za_dtbo_path_len), or
+		 * when fpga_accelerator was applied earlier (e.g. fpgautil)
 		 * and a plain xclbin is loaded without PARTITION_METADATA.
 		 */
 		fpga_np = of_find_node_by_name(NULL, "fpga_accelerator");
-		if (dt_overlay || (fpga_np &&
+		if (dt_overlay || axlf_obj->za_dtbo_path_len || (fpga_np &&
 		    of_property_present(fpga_np, "interrupts-extended")))
 			zocl_cu_intc_refresh(zdev);
 		if (fpga_np)
