@@ -75,11 +75,11 @@ def main():
 
 
     # ----------------------------------------------------------------------
-    # Verify excplit supported digest algorithms
-    for digest in ("sha256", "sha512"):
+    # Verify explicit supported digest algorithms
+    for index, digest in enumerate(("sha256", "sha512"), start=1):
       signedOutput = os.path.join(testDir, "signed_" + digest + ".xclbin")
 
-      step = "8) Sign the xclbin using " + digest
+      step = f"9.{index}) Sign the xclbin using {digest}"
       cmd = [
         xclbinutil,
         "--input", "unsigned_empty.xclbin",
@@ -90,7 +90,7 @@ def main():
       ]
       execCmd(step, cmd)
 
-      step = "9) Verify the signed xclbin using " + digest
+      step = f"10.{index}) Verify the signed xclbin using {digest}"
       cmd = [
         xclbinutil,
         "--input", signedOutput,

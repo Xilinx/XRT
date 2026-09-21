@@ -150,8 +150,9 @@ validateSigningDigestAlgorithm(const std::string& digestAlgorithm)
 #else
   OpenSSL_add_all_digests();
 
+  // Error out if user specified digest algorithm is not valid
   if (EVP_get_digestbyname(digestAlgorithm.c_str()) == nullptr) {
-    // Enumerate names and aliases accepted by the same lookup used for signing.
+    // Enumerate digest names accepted by the same lookup used for signing
     std::set<std::string> digestNames;
     EVP_MD_do_all_sorted(
       [](const EVP_MD*, const char* name, const char*, void* context) {

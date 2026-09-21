@@ -333,7 +333,8 @@ int main_(int argc, const char** argv) {
   if (sCertificate.empty() && !sOutputFile.empty() && !sPrivateKey.empty())
     throw std::runtime_error("ERROR: Private key specified, but no certificate defined.");
 
-  // Reject unsupported signing digests
+  // Signing also requires a valid digest algorithm (by default sha512)
+  // Reject unsupported signing digest
   if (!sPrivateKey.empty())
     validateSigningDigestAlgorithm(sDigestAlgorithm);
 
