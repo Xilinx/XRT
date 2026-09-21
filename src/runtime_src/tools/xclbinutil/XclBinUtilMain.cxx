@@ -253,7 +253,7 @@ int main_(int argc, const char** argv) {
       std::cout << "\n";
       std::cout << "    <file>    - The name of the input/output file to use.\n";
       std::cout << "\n";
-      std::cout << "  Used By: --add_section and --dump_section\n";
+      std::cout << "  Used By: --add-section and --dump-section\n";
       std::cout << "  Example: xclbinutil --add-section BITSTREAM:RAW:mybitstream.bit\n";
       std::cout << std::endl;
 
