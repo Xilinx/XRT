@@ -512,11 +512,24 @@ xclLoadXclBin(const xclBin *buffer)
 #if defined(XRT_ENABLE_LIBDFX)
 namespace libdfx {
 
+// configfs directory holding the overlays applied to the live device tree
+static const std::string dtbo_dir_path = "/sys/kernel/config/device-tree/overlays/";
+
+// remove an overlay applied by libdfx from the live device tree
+static void
+libdfxRemoveOverlay(const std::string& dtbo_path)
+{
+  if (dtbo_path.empty())
+    return;
+
+  if (rmdir((dtbo_dir_path + dtbo_path).c_str()))
+    xclLog(XRT_WARNING, "%s: unable to remove dtbo '%s'", __func__, dtbo_path.c_str());
+}
+
 static void
 libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path, int& fd)
 {
   uint32_t slot_id = 0;
-  static const std::string dtbo_dir_path = "/configfs/device-tree/overlays/";
 
   // root privileges are needed for loading and unloading dtbo and bitstream
   if (getuid() && geteuid())
@@ -531,8 +544,13 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
     dtbo_path = xrt_core::device_query<xrt_core::query::dtbo_path>(core_dev, slot_id);
   }
   catch(const std::exception &e) {
-    const std::string errmsg{"Query for dtbo path failed: "};
-    throw std::runtime_error(errmsg + e.what());
+    /*
+     * The sysfs node is gone along with the devices of an overlay that was
+     * already removed. Fall back to the scan below, which drops whatever
+     * libdfx left behind.
+     */
+    xclLog(XRT_WARNING, "%s: query for dtbo path failed: %s", __func__, e.what());
+    dtbo_path.clear();
   }
   if (!dtbo_path.empty()) {
     // remove existing libdfx node
@@ -602,34 +620,25 @@ libdfxClean(const std::string& file_path)
   }
 }
 
-static int
+static void
 libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
-	       const axlf_section_header *overlay_header, int& fd, int flags, std::string& dtbo_path)
+	       const axlf_section_header *overlay_header, int& fd, std::string& dtbo_path)
 {
   static const std::string fpga_device = "/dev/fpga0";
 
-  // Prefer BITSTREAM (ZynqMP) or PDI (Versal) PL image section
+  // Prefer BITSTREAM (ZynqMP), then PDI or partial PDI (Versal)
   const axlf_section_header *bit_header =
     xclbin::get_axlf_section(top, axlf_section_kind::BITSTREAM);
   const axlf_section_header *pdi_header =
     xclbin::get_axlf_section(top, axlf_section_kind::PDI);
-  const axlf_section_header *image_header = bit_header ? bit_header : pdi_header;
+  const axlf_section_header *partial_pdi_header =
+    xclbin::get_axlf_section(top, axlf_section_kind::BITSTREAM_PARTIAL_PDI);
+  const axlf_section_header *image_header =
+    bit_header ? bit_header : (pdi_header ? pdi_header : partial_pdi_header);
   const char *image_filename = bit_header ? "xclbin.bit" : "xclbin.pdi";
 
   if (!image_header)
-    throw std::runtime_error("No BITSTREAM or PDI section in xclbin");
-
-  //check if xclbin is already loaded
-  try {
-    if (core_dev->get_xclbin_uuid() == xrt::uuid(top->m_header.uuid) && !(flags & DRM_ZOCL_FORCE_PROGRAM)) {
-      xclLog(XRT_WARNING, "%s: skipping as xclbin is already loaded", __func__);
-      return 1;
-    }
-  }
-  catch(const std::exception &e) {
-    // can happen when no bitstream is loaded and xclbinid sysfs is not created
-    // do nothing
-  }
+    throw std::runtime_error("No BITSTREAM, PDI, or BITSTREAM_PARTIAL_PDI section in xclbin");
 
   libdfxHelper(core_dev, dtbo_path, fd);
 
@@ -674,8 +683,6 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
     dtbo_path.clear();
     throw std::runtime_error("Cannot create file descriptor with device " + zocl_drm_device);
   }
-
-  return 0;
 }
 
 }
@@ -719,9 +726,7 @@ xclLoadAxlf(const axlf *buffer)
   // if OVERLAY section is present use libdfx apis to load PL image and dtbo
   if(overlay_header) {
     try {
-      // if xclbin is already loaded ret val is '1', dont call ioctl in this case
-      if (libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, flags, dtbo_path))
-        return 0;
+      libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, dtbo_path);
     }
     catch(const std::exception& e){
       xclLog(XRT_ERROR, "%s: loading xclbin with OVERLAY section failed: %s", __func__,e.what());
@@ -1214,9 +1219,15 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
   // if OVERLAY section is present use libdfx apis to load PL image and dtbo
   if(overlay_header) {
     try {
-      // if xclbin is already loaded ret val is '1', dont call ioctl in this case
-      if (libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, flags, dtbo_path))
-        return 0;
+      /*
+       * The overlay this shim applied stays in the live device tree as long
+       * as a context is open on it, so further contexts on the same xclbin
+       * reuse it instead of programming the device again.
+       */
+      if (m_libdfx_hwctx_cnt > 0 && m_libdfx_uuid == xrt::uuid(buffer->m_header.uuid))
+        dtbo_path = m_libdfx_dtbo_path;
+      else
+        libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, dtbo_path);
     }
     catch(const std::exception& e){
       xclLog(XRT_ERROR, "%s: loading xclbin with OVERLAY section failed: %s", __func__,e.what());
@@ -1307,6 +1318,13 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
   if (ret)
     return -errno;
 
+  // remember the overlay to remove when the last context on it is destroyed
+  if (!dtbo_path.empty()) {
+    m_libdfx_dtbo_path = dtbo_path;
+    m_libdfx_uuid = xrt::uuid(top->m_header.uuid);
+  }
+  m_libdfx_hwctx_cnt++;
+
   auto core_device = xrt_core::get_userpf_device(handle);
 
   bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
@@ -1388,6 +1406,19 @@ destroy_hw_context(xrt_core::hwctx_handle::slot_id slot)
     auto ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_DESTROY_HW_CTX, &hw_ctx);
     if (ret)
       throw xrt_core::system_error(errno, "Failed to destroy hardware context");
+
+#if defined(XRT_ENABLE_LIBDFX)
+    /*
+     * zocl has released the slot, take the libdfx overlay out of the live
+     * device tree so that the next xclbin applies its own one. Done after the
+     * ioctl as removing the overlay tears down the devices it describes.
+     */
+    if (m_libdfx_hwctx_cnt && --m_libdfx_hwctx_cnt == 0) {
+      libdfx::libdfxRemoveOverlay(m_libdfx_dtbo_path);
+      m_libdfx_dtbo_path.clear();
+      m_libdfx_uuid = {};
+    }
+#endif
   }
 }
 
