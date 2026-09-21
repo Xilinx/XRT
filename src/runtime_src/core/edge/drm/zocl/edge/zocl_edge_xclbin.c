@@ -88,6 +88,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	uint32_t flags = 0;
 	bool dt_overlay = false;
 	bool dt_overlay_dirty = false;
+	/* Userspace libdfx already programmed the device and applied its dtbo */
+	bool programmed_by_libdfx = axlf_obj->za_dtbo_path_len;
 	uint8_t hw_gen = axlf_obj->hw_gen;
 
 	/* Download the XCLBIN from user space to kernel space and validate */
@@ -251,13 +253,22 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	} else if ((axlf_obj->za_flags & DRM_ZOCL_PLATFORM_FLAT) &&
 		   axlf_head.m_header.m_mode == XCLBIN_FLAT) {
-		/*
-		 * Load full bitstream, enabled in xrt runtime config
-		 * and xclbin has full bitstream and its not hw emulation
-		 */
-		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM, slot);
-		if (ret)
-			goto out0;
+		if (programmed_by_libdfx) {
+			/*
+			 * PL image and dtbo were already loaded by libdfx
+			 * in userspace (BITSTREAM/DTBO xclbin path).
+			 */
+			DRM_INFO("Skipping kernel BITSTREAM load; device programmed via libdfx\n");
+		} else {
+			/*
+			 * Load full bitstream, enabled in xrt runtime config
+			 * and xclbin has full bitstream and its not hw emulation
+			 */
+			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM,
+					    slot);
+			if (ret)
+				goto out0;
+		}
 	} else {
 
 		if (!(axlf_obj->za_flags & DRM_ZOCL_PLATFORM_PR)) {
@@ -273,23 +284,34 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 				zocl_cleanup_aie(slot);
 			}
 
-			/*
-			 * Make sure we load PL bitstream first,
-			 * if there is one, before loading AIE PDI.
-			 */
-			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM,
-					    slot);
-			if (ret)
-				goto out0;
+			if (programmed_by_libdfx) {
+				/*
+				 * PL image and dtbo were already loaded by
+				 * libdfx in userspace (BITSTREAM_PARTIAL_PDI
+				 * or PDI with DTBO/OVERLAY xclbin path).
+				 */
+				DRM_INFO("Skipping kernel PL/PDI load; device programmed via libdfx\n");
+			} else {
+				/*
+				 * Make sure we load PL bitstream first,
+				 * if there is one, before loading AIE PDI.
+				 */
+				ret = zocl_load_sect(zdev, axlf, xclbin,
+						    BITSTREAM, slot);
+				if (ret)
+					goto out0;
 
-			ret = zocl_load_sect(zdev, axlf, xclbin,
-			    BITSTREAM_PARTIAL_PDI, slot);
-			if (ret)
-				goto out0;
+				ret = zocl_load_sect(zdev, axlf, xclbin,
+						    BITSTREAM_PARTIAL_PDI,
+						    slot);
+				if (ret)
+					goto out0;
 
-			ret = zocl_load_sect(zdev, axlf, xclbin, PDI, slot);
-			if (ret)
-				goto out0;
+				ret = zocl_load_sect(zdev, axlf, xclbin,
+						    PDI, slot);
+				if (ret)
+					goto out0;
+			}
 		}
 	}
 

@@ -386,6 +386,15 @@ private:
   bool hw_context_enable = false;
 
   /*
+   * DT overlay applied by libdfx for the xclbin of the open hw_contexts. It
+   * is removed from the live device tree once the last context is destroyed,
+   * several contexts can share one overlay.
+   */
+  std::string m_libdfx_dtbo_path;
+  xrt::uuid m_libdfx_uuid;
+  unsigned int m_libdfx_hwctx_cnt = 0;
+
+  /*
    * Mapped CU register space for xclRegRead/Write(). We support at most
    * 128 CUs and each map is of 64k bytes. Does not support debug IP access.
    */
