@@ -111,11 +111,7 @@ void insertTargetMode(const std::string & _sTarget, std::vector<std::string> & _
     modeValue = bDfxEnable ? "hw_pr" : "flat";
   else if (_sTarget == "hw_emu")
     modeValue = bDfxEnable ? "hw_emu_pr" : "hw_emu";
-  else if (_sTarget == "sw_emu") {
-    if (bDfxEnable)
-      throw std::runtime_error("ERROR: Target 'sw_emu' does not support the dfx_enable value of 'TRUE'");
-    modeValue = "sw_emu";
-  } else {
+  else {
     std::string errMsg = "ERROR: Unknown target option: '" + _sTarget + "'";
     throw std::runtime_error(errMsg);
   }
@@ -184,7 +180,7 @@ int main_(int argc, const char** argv) {
       ("remove-section", boost::program_options::value<decltype(sectionsToRemove)>(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the signature from the xclbin image.")
       ("replace-section", boost::program_options::value<decltype(sectionsToReplace)>(&sectionsToReplace)->multitoken(), "Section to replace. ")
-      ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: hw, hw_emu, and sw_emu.")
+      ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: hw and hw_emu.")
       ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validates the signature for the given xclbin archive.")
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
@@ -257,7 +253,7 @@ int main_(int argc, const char** argv) {
       std::cout << "\n";
       std::cout << "    <file>    - The name of the input/output file to use.\n";
       std::cout << "\n";
-      std::cout << "  Used By: --add_section and --dump_section\n";
+      std::cout << "  Used By: --add-section and --dump-section\n";
       std::cout << "  Example: xclbinutil --add-section BITSTREAM:RAW:mybitstream.bit\n";
       std::cout << std::endl;
 
