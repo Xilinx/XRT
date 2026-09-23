@@ -166,7 +166,7 @@ int main_(int argc, const char** argv) {
       ("digest-algorithm", boost::program_options::value<decltype(sDigestAlgorithm)>(&sDigestAlgorithm), "Digest algorithm. Default: sha512")
       ("dump-section", boost::program_options::value<decltype(sectionsToDump)>(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
       ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
-      ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
+      ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set via --add-signature) in the xclbin image.")
       ("help,h", "Print help messages")
       ("info", boost::program_options::value<decltype(sInfoFile)>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.  Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
       ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Reads xclbin into memory.")
@@ -178,7 +178,7 @@ int main_(int argc, const char** argv) {
       ("quiet,q", boost::program_options::bool_switch(&bQuiet),     "Minimize reporting information.")
       ("remove-key", boost::program_options::value<decltype(keysToRemove)>(&keysToRemove)->multitoken(), "Removes the given user key from the xclbin archive." )
       ("remove-section", boost::program_options::value<decltype(sectionsToRemove)>(&sectionsToRemove)->multitoken(), "Section name to remove.")
-      ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the signature from the xclbin image.")
+      ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the user defined signature (if set via --add-signature) from the xclbin image.")
       ("replace-section", boost::program_options::value<decltype(sectionsToReplace)>(&sectionsToReplace)->multitoken(), "Section to replace. ")
       ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: hw and hw_emu.")
       ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validates the signature for the given xclbin archive.")
@@ -325,8 +325,14 @@ int main_(int argc, const char** argv) {
   if (!sPrivateKey.empty() && sOutputFile.empty())
     throw std::runtime_error("ERROR: Private key specified, but no output file defined.");
 
+  // Signing requires both private key and certificate
   if (sCertificate.empty() && !sOutputFile.empty() && !sPrivateKey.empty())
     throw std::runtime_error("ERROR: Private key specified, but no certificate defined.");
+
+  // Signing also requires a valid digest algorithm (by default sha512)
+  // Reject unsupported signing digest
+  if (!sPrivateKey.empty())
+    validateSigningDigestAlgorithm(sDigestAlgorithm);
 
   // Report option conflicts
   if ((!sSignature.empty() && !sPrivateKey.empty()))

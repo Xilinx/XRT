@@ -19,6 +19,7 @@
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
 #include <iostream>
+#include <set>
 #include <vector>
 
 namespace XUtil = XclBinUtilities;
@@ -26,6 +27,7 @@ namespace XUtil = XclBinUtilities;
 #ifndef _WIN32
   #include <openssl/cms.h>
   #include <openssl/pem.h>
+  #include <openssl/evp.h>
   #include <openssl/err.h>
   #include <openssl/x509v3.h>
 #endif
@@ -140,6 +142,41 @@ getXclBinPKCSStats( const std::string& _xclBinFile,
   ifXclBin.close();
 }
 
+
+void
+validateSigningDigestAlgorithm(const std::string& digestAlgorithm)
+{
+#ifdef _WIN32
+  throw std::runtime_error("ERROR: signXclBinImage not implemented on windows");
+#else
+  OpenSSL_add_all_digests();
+
+  // Error out if user specified digest algorithm is not valid
+  if (EVP_get_digestbyname(digestAlgorithm.c_str()) == nullptr) {
+    // Enumerate digest names accepted by the same lookup used for signing
+    std::set<std::string> digestNames;
+    EVP_MD_do_all_sorted(
+      [](const EVP_MD*, const char* name, const char*, void* context) {
+        if (name && EVP_get_digestbyname(name))
+          static_cast<std::set<std::string>*>(context)->insert(name);
+      },
+      &digestNames);
+
+    std::string supportedDigests;
+    for (const auto& name : digestNames) {
+      if (!supportedDigests.empty())
+        supportedDigests += ", ";
+      supportedDigests += name;
+    }
+
+    auto errMsg = boost::format(
+      "ERROR: Invalid digest algorithm: '%s'\n"
+      "Supported digest names: %s")
+      % digestAlgorithm % supportedDigests;
+    throw std::runtime_error(errMsg.str());
+  }
+#endif
+}
 
 void signXclBinImage(const std::string& _fileOnDisk,
                      const std::string& _sPrivateKey,
