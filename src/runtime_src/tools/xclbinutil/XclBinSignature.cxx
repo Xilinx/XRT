@@ -27,6 +27,7 @@ namespace XUtil = XclBinUtilities;
 #ifndef _WIN32
   #include <openssl/cms.h>
   #include <openssl/pem.h>
+  #include <openssl/evp.h>
   #include <openssl/err.h>
   #include <openssl/x509v3.h>
 #endif
