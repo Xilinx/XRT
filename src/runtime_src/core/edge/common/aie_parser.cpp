@@ -480,7 +480,7 @@ get_external_buffers(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwc
       port_config.port_name = port.second.get<std::string>("portName");
       std::string direction = port.second.get<std::string>("direction");
       port_config.direction = direction.compare("s2mm") ? 1 : 0;
-      port_config.shim_column = port.second.get<int>("shim_column");
+      port_config.shim_column = port.second.get<int>("shim_column") + start_col;
       port_config.channel_number = port.second.get<int>("channel_number");
       port_config.task_repetition = port.second.get<int>("task_repetition");
       port_config.enable_task_complete_token = port.second.get<int>("enable_task_complete_token");
