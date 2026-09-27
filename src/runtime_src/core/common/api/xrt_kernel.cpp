@@ -547,7 +547,7 @@ struct device_type
   explicit
   device_type(std::shared_ptr<xrt_core::device> cdev)
     : core_device(std::move(cdev))
-    , exec_buffer_cache(core_device->get_device_handle(), cache_size)
+    , exec_buffer_cache(core_device, cache_size)
     , uid(create_uid())
   {
     XRT_DEBUGF("device_type::device_type(%d)\n", uid);
