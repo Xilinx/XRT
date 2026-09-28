@@ -6,6 +6,7 @@
 #include "XBUtilitiesCore.h"
 
 #include "common/error.h"
+#include "common/info_platform.h"
 #include "common/info_vmr.h"
 #include "common/utils.h"
 #include "common/message.h"
@@ -157,7 +158,7 @@ XBUtilities::get_available_bdfs(bool inUserDomain)
         pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
         break;
       case xrt_core::query::device_class::type::ryzen:
-        pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        pt_dev.put("name", xrt_core::platform::get_device_name(device.get()));
         break;
       }
     }
@@ -197,7 +198,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
         break;
       case xrt_core::query::device_class::type::ryzen:
-        pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        pt_dev.put("name", xrt_core::platform::get_device_name(device.get()));
         break;
       }
 
