@@ -320,7 +320,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       return pcie_id.device_id == phoenix_device_id || pcie_id.device_id == strix_device_id;
     }
     catch (const std::exception&) {
-      return false;
+      // Skip on any error. e.g. device_query not supported
+      return true;
     }
   }
 
