@@ -67,7 +67,7 @@ XclBin::initializeHeader(axlf& _xclBinHeader)
   _xclBinHeader = { 0 };
 
   std::string sMagic = "xclbin2";
-  // C++ automatically converts m_matic (char array) to char*
+  // C++ automatically converts m_magic (char array) to char*
   XUtil::safeStringCopy(_xclBinHeader.m_magic, sMagic, sizeof(_xclBinHeader.m_magic));
   _xclBinHeader.m_signature_length = -1;  // Initialize to 0xFFs
   memset(_xclBinHeader.reserved, 0xFF, sizeof(_xclBinHeader.reserved));
@@ -919,7 +919,7 @@ XclBin::updateHeaderFromSection(Section* _pSection)
       }
     }
 
-    // Preserve the existing header VBNV when metadata provides no value.
+    // Preserve the existing Platform VBNV in xclbin header when metadata provides no vbnv
     if (!sPlatformVBNV.empty()) {
       XUtil::safeStringCopy(
         reinterpret_cast<char*>(m_xclBinHeader.m_header.m_platformVBNV),
