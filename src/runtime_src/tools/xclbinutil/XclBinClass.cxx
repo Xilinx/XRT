@@ -902,8 +902,11 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
 
     // Feature ROM VBNV
+    // Save the current platform vbnv in the xclbin header
+    const std::string existingPlatformVBNV =
+      reinterpret_cast<const char*>(m_xclBinHeader.m_header.m_platformVBNV);
+    std::cout << "existingPlatformVBNV is " << existingPlatformVBNV << std::endl;
     auto sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
-    XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
 
     // Examine OLD names -- // This code can be removed AFTER v++ has been updated to use the new format
     {
@@ -915,8 +918,20 @@ XclBin::updateHeaderFromSection(Section* _pSection)
       // Feature ROM VBNV
       if (sPlatformVBNV.empty()) {
         sPlatformVBNV = featureRom.get<std::string>("vbnv_name", "");
-        XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
       }
+    }
+
+    // Preserve the existing header VBNV when metadata provides no value.
+    if (sPlatformVBNV.empty()) {
+      std::cout << "there is no vbnv info in BUILD_METADATA" << std::endl;
+      sPlatformVBNV = existingPlatformVBNV;
+    }
+
+    if (sPlatformVBNV != existingPlatformVBNV) {
+      XUtil::safeStringCopy(
+        (char*)&m_xclBinHeader.m_header.m_platformVBNV,
+        sPlatformVBNV,
+        sizeof(axlf_header::m_platformVBNV));
     }
 
     XUtil::TRACE_PrintTree("Build MetaData To Be examined", pt);
