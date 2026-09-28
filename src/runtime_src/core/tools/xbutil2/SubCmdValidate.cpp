@@ -9,6 +9,7 @@
 #include "core/common/utils.h"
 #include "core/common/query_requests.h"
 #include "core/common/archive.h"
+#include "core/common/info_platform.h"
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/Report.h"
@@ -254,7 +255,7 @@ static void
 get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
                         boost::property_tree::ptree& ptTree)
 {
-  ptTree.put("platform", xrt_core::device_query<xq::rom_vbnv>(device));
+  ptTree.put("platform", xrt_core::platform::get_device_name(device.get()));
   const auto mode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
   ptTree.put("power_mode", xq::performance_mode::parse_status(mode));
 }

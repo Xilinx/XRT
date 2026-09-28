@@ -52,6 +52,7 @@ enum class key_type
   pcie_express_lane_width_max,
   pcie_bdf,
   pcie_id,
+  device_id_str,
 
   instance,
   edge_vendor,
@@ -384,6 +385,26 @@ struct pcie_device : request
   to_string(result_type val)
   {
     return boost::str(boost::format("0x%x") % val);
+  }
+};
+
+// Human-readable device/part id string (e.g. "xc2ve3858" for the aie2ps/npu12
+// of_plat part).  Only implemented by shims that can source it (from the
+// device-tree compatible); returns empty elsewhere so callers can fall back to
+// the numeric pcie_device id.
+struct device_id_str : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::device_id_str;
+  static const char* name() { return "devid_str"; }
+
+  std::any
+  get(const device*) const override = 0;
+
+  static std::string
+  to_string(const result_type& value)
+  {
+    return value;
   }
 };
 
