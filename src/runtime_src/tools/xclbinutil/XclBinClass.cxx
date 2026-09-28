@@ -67,6 +67,7 @@ XclBin::initializeHeader(axlf& _xclBinHeader)
   _xclBinHeader = { 0 };
 
   std::string sMagic = "xclbin2";
+  // C++ automatically converts m_matic (char array) to char*
   XUtil::safeStringCopy(_xclBinHeader.m_magic, sMagic, sizeof(_xclBinHeader.m_magic));
   _xclBinHeader.m_signature_length = -1;  // Initialize to 0xFFs
   memset(_xclBinHeader.reserved, 0xFF, sizeof(_xclBinHeader.reserved));
@@ -525,7 +526,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   _axlfHeader = { 0 };
 
   auto sMagic = _ptHeader.get<std::string>("Magic");
-  XUtil::safeStringCopy((char*)&_axlfHeader.m_magic, sMagic, sizeof(axlf::m_magic));
+  XUtil::safeStringCopy(_axlfHeader.m_magic, sMagic, sizeof(axlf::m_magic));
   _axlfHeader.m_signature_length = _ptHeader.get<int32_t>("SignatureLength", -1);
   auto sKeyBlock = _ptHeader.get<std::string>("KeyBlock");
   XUtil::hexStringToBinaryBuffer(sKeyBlock, (unsigned char*)&_axlfHeader.m_keyBlock, sizeof(axlf::m_keyBlock));
@@ -544,14 +545,15 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   auto sInterfaceUUID = _ptHeader.get<std::string>("InterfaceUUID");
   XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
   auto sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
-  XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_platformVBNV,
+  // m_platformVBNV is unsigned char [64], it requires explicit casting to be converted to char *
+  XUtil::safeStringCopy(reinterpret_cast<char*>(_axlfHeader.m_header.m_platformVBNV),
 
                         sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
   auto sXclBinUUID = _ptHeader.get<std::string>("XclBinUUID");
   XUtil::hexStringToBinaryBuffer(sXclBinUUID, (unsigned char*)&_axlfHeader.m_header.uuid, sizeof(axlf_header::uuid));
 
   auto sDebugBin = _ptHeader.get<std::string>("DebugBin");
-  XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_debug_bin, sDebugBin, sizeof(axlf_header::m_debug_bin));
+  XUtil::safeStringCopy(_axlfHeader.m_header.m_debug_bin, sDebugBin, sizeof(axlf_header::m_debug_bin));
 
   XUtil::TRACE("Done Reading via JSON mirror xclbin header information.");
 }
@@ -902,10 +904,6 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
 
     // Feature ROM VBNV
-    // Save the current platform vbnv in the xclbin header
-    const std::string existingPlatformVBNV =
-      reinterpret_cast<const char*>(m_xclBinHeader.m_header.m_platformVBNV);
-    std::cout << "existingPlatformVBNV is " << existingPlatformVBNV << std::endl;
     auto sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
 
     // Examine OLD names -- // This code can be removed AFTER v++ has been updated to use the new format
@@ -922,14 +920,9 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     }
 
     // Preserve the existing header VBNV when metadata provides no value.
-    if (sPlatformVBNV.empty()) {
-      std::cout << "there is no vbnv info in BUILD_METADATA" << std::endl;
-      sPlatformVBNV = existingPlatformVBNV;
-    }
-
-    if (sPlatformVBNV != existingPlatformVBNV) {
+    if (!sPlatformVBNV.empty()) {
       XUtil::safeStringCopy(
-        (char*)&m_xclBinHeader.m_header.m_platformVBNV,
+        reinterpret_cast<char*>(m_xclBinHeader.m_header.m_platformVBNV),
         sPlatformVBNV,
         sizeof(axlf_header::m_platformVBNV));
     }
@@ -1568,7 +1561,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
     }
 
     if (sKey == "PlatformVBNV") {
-      XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sValue, sizeof(axlf_header::m_platformVBNV));
+      XUtil::safeStringCopy(reinterpret_cast<char*>(m_xclBinHeader.m_header.m_platformVBNV), sValue, sizeof(axlf_header::m_platformVBNV));
       return; // Key processed
     }
 
