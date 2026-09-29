@@ -494,6 +494,16 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   return ret;
 }
 
+// Vitis packages the device tree as DTBO. OVERLAY is the older section kind.
+static const axlf_section_header*
+get_dtbo_section(const axlf *buffer)
+{
+  auto dtbo_header = xclbin::get_axlf_section(buffer, axlf_section_kind::DTBO);
+  if (dtbo_header)
+    return dtbo_header;
+
+  return xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+}
 
 int
 shim::
@@ -646,7 +656,10 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
   libdfxConfig(xclbin_dir_path, top, image_header, image_filename, overlay_header);
 
   // call libdfx api to load PL image and dtbo
-  int dtbo_id = dfx_cfg_init(xclbin_dir_path.c_str(), fpga_device.c_str(), 0);
+  // dfx_cfg_init always va_arg()s an optional cma_file; pass NULL so libdfx
+  // picks the default CMA heap instead of reading an indeterminate pointer.
+  int dtbo_id = dfx_cfg_init(xclbin_dir_path.c_str(), fpga_device.c_str(), 0,
+                             static_cast<const char*>(nullptr));
   if (dtbo_id <= 0) {
     libdfxClean(xclbin_dir_path);
     throw std::runtime_error("Failed to initialize config with libdfx api");
@@ -701,14 +714,14 @@ xclLoadAxlf(const axlf *buffer)
   auto is_pr_platform = buffer->m_header.m_mode == XCLBIN_PR;
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
   auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
-  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+  auto overlay_header = get_dtbo_section(buffer);
 
   if (is_pr_platform)
     flags = DRM_ZOCL_PLATFORM_PR;
   /*
    * If its non-PR-platform and enable_flat=true in xrt.ini, download the full
-   * bitstream. But if OVERLAY section is present in xclbin, userspace apis are
-   * used to download the PL image (bitstream or PDI) and dtbo
+   * bitstream. But if a DTBO or OVERLAY section is present in xclbin, userspace
+   * apis are used to download the PL image (bitstream or PDI) and dtbo
    */
   else if (is_flat_enabled && !overlay_header) {
     if (!ZYNQ::shim::handleCheck(this)) {
@@ -723,13 +736,13 @@ xclLoadAxlf(const axlf *buffer)
   }
 
 #if defined(XRT_ENABLE_LIBDFX)
-  // if OVERLAY section is present use libdfx apis to load PL image and dtbo
+  // DTBO (Vitis) or OVERLAY selects the libdfx path for the PL image and dtbo
   if(overlay_header) {
     try {
       libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, dtbo_path);
     }
     catch(const std::exception& e){
-      xclLog(XRT_ERROR, "%s: loading xclbin with OVERLAY section failed: %s", __func__,e.what());
+      xclLog(XRT_ERROR, "%s: loading xclbin with DTBO section failed: %s", __func__,e.what());
       return -EPERM;
     }
   }
@@ -1194,14 +1207,14 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
   auto is_pr_platform = buffer->m_header.m_mode == XCLBIN_PR;
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
   auto force_program = xrt_core::config::get_force_program_xclbin();
-  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+  auto overlay_header = get_dtbo_section(buffer);
 
   if (is_pr_platform)
     flags = DRM_ZOCL_PLATFORM_PR;
   /*
    * If its non-PR-platform and enable_flat=true in xrt.ini, download the full
-   * bitstream. But if OVERLAY section is present in xclbin, userspace apis are
-   * used to download the PL image (bitstream or PDI) and dtbo
+   * bitstream. But if a DTBO or OVERLAY section is present in xclbin, userspace
+   * apis are used to download the PL image (bitstream or PDI) and dtbo
    */
   else if (is_flat_enabled && !overlay_header) {
     if (!ZYNQ::shim::handleCheck(this)) {
@@ -1216,7 +1229,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
   }
 
 #if defined(XRT_ENABLE_LIBDFX)
-  // if OVERLAY section is present use libdfx apis to load PL image and dtbo
+  // DTBO (Vitis) or OVERLAY selects the libdfx path for the PL image and dtbo
   if(overlay_header) {
     try {
       /*
@@ -1230,7 +1243,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
         libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, dtbo_path);
     }
     catch(const std::exception& e){
-      xclLog(XRT_ERROR, "%s: loading xclbin with OVERLAY section failed: %s", __func__,e.what());
+      xclLog(XRT_ERROR, "%s: loading xclbin with DTBO section failed: %s", __func__,e.what());
       return -EPERM;
     }
   }
