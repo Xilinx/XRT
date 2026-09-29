@@ -738,9 +738,9 @@ class module_run_aie_gen2_plus : public module_run
 
     dtrace_util() : dtrace_handle(nullptr, destroy_dtrace_handle) {}
 
-    dtrace_util(const std::string& ctrl_file_path, const std::string& map_data,
-                uint32_t log_level, uint32_t output_fmt)
-      : dtrace_handle(create_dtrace_handle(ctrl_file_path, map_data, log_level, output_fmt),
+    dtrace_util(const std::string& ctrl_file_path, const ELFIO::elfio& elf,
+                const std::string& kernel_instance, uint32_t log_level, uint32_t output_fmt)
+      : dtrace_handle(create_dtrace_handle_elf(ctrl_file_path, elf, kernel_instance, log_level, output_fmt),
                       destroy_dtrace_handle) {}
   };
   dtrace_util m_dtrace;
@@ -771,14 +771,29 @@ class module_run_aie_gen2_plus : public module_run
       return false;
     }
 
-    // Get dump buffer data from aiebu::elf.
-    // Dump map is required only for jprobe; pass empty string when ELF has no .dump section.
-    auto dump_sz = m_elf_impl->get_dump_buf_size(m_ctrl_code_id);
-    std::string map_data;
-    if (dump_sz > 0) {
-      map_data.resize(dump_sz);
-      m_elf_impl->copy_dump_buf(m_ctrl_code_id,
-        {reinterpret_cast<std::byte*>(map_data.data()), dump_sz});
+    // For group ELFs, build "kernel:instance" string for the active ctrl_code_id.
+    // get_debug_section_json() requires "kernel:instance" with ':' separator.
+    // Iterate get_kernels() to construct the kernel_instance.
+    // For partial ELFs, kernel_instance stays "" as expected by create_dtrace_handle_elf.
+    std::string kernel_instance;
+    if (m_elf_impl->is_group_elf()) {
+      const auto& name_to_id = m_elf_impl->get_aiebu_elf().get_kernel_name_to_id_map();
+      for (const auto& k : m_elf_impl->get_aiebu_elf().get_kernels()) {
+        for (const auto& inst : k.instances) {
+          auto it = name_to_id.find(k.name + inst);
+          if (it != name_to_id.end() && it->second == m_ctrl_code_id) {
+            kernel_instance = k.name + ":" + inst;
+            break;
+          }
+        }
+        if (!kernel_instance.empty())
+          break;
+      }
+      if (kernel_instance.empty()) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "xrt_module",
+          "[dtrace] : kernel:instance not found for ctrl_code_id");
+        return false;
+      }
     }
 
     // log level 0: error, 1: warning, 2: info
@@ -788,7 +803,7 @@ class module_run_aie_gen2_plus : public module_run
     // output format 0: python, 1: json
     uint32_t output_fmt = xrt_core::config::get_dtrace_output_json_format() ? 1U : 0U;
 
-    m_dtrace = dtrace_util(path, map_data, log_level, output_fmt);
+    m_dtrace = dtrace_util(path, m_elf_impl->get_elfio(), kernel_instance, log_level, output_fmt);
     if (!m_dtrace.dtrace_handle.get()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
         "[dtrace] : Failed to get dtrace handle");
