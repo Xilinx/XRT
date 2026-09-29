@@ -1,7 +1,7 @@
-name: XRT Master (2026.2)
+name: XRT Master (2027.1)
 
 env:  
-  RELEASE: '2026.2'  
+  RELEASE: '2027.1'  
   PIPELINE: 'xrt' 
   ENV: 'prod'
 
