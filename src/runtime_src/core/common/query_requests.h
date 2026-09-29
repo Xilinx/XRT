@@ -1850,6 +1850,8 @@ struct aie_partition_info : request
   parse_priority_status(const uint64_t prio_status)
   {
     switch(prio_status) {
+      case 320: //0x140
+        return "Soft Realtime";
       case 256: //0x100
         return "Realtime";
       case 384: //0x180
