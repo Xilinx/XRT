@@ -31,6 +31,9 @@ private:
   void
   handle_config(const xrt_core::device* device) const;
 
+  void
+  report_state(const xrt_core::device* device) const;
+
 private:
   std::string m_device;
   bool m_enable;
