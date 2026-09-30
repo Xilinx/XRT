@@ -28,7 +28,8 @@ namespace xrt_core::module_int {
 XRT_CORE_COMMON_EXPORT
 xrt::module
 create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
-                  uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo);
+                  uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo,
+                  std::string kernel_name = {});
 
 // Get the underlying elf handle from module object
 XRT_CORE_COMMON_EXPORT
