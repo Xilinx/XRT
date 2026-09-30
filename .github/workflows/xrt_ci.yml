@@ -1,7 +1,7 @@
 name: XRT CI
 
 env:  
-  RELEASE: '2026.2'  
+  RELEASE: '2027.1'  
   PIPELINE: 'xrt' 
   ENV: 'prod' 
 
