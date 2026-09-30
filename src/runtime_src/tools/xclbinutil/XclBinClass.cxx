@@ -12,7 +12,9 @@
 #include "xrt/detail/version.h"                  // Generated include files
 #include <boost/algorithm/string.hpp>            // boost::split, is_any_of
 #include <boost/property_tree/json_parser.hpp>
+#include <charconv>
 #include <cstdlib>
+#include <system_error>
 #include <random>                                // randomGen 
 
 // Constant data
@@ -23,26 +25,54 @@ namespace XUtil = XclBinUtilities;
 namespace fs = std::filesystem;
 
 static
-bool getVersionMajorMinorPath(const char* _pVersion, uint8_t& _major, uint8_t& _minor, uint16_t& _patch)
+bool getVersionMajorMinorPatch(const char* version,
+                              uint8_t& major,
+                              uint8_t& minor,
+                              uint16_t& patch)
 {
-  std::string sVersion(_pVersion);
+  const std::string versionString(version);
   std::vector<std::string> tokens;
-  boost::split(tokens, sVersion, boost::is_any_of("."));
+  boost::split(tokens, versionString, boost::is_any_of("."));
+
+  const auto invalidVersion = []() {
+    return std::runtime_error(
+      "ERROR: Invalid xclbin version. Expected a decimal patch number "
+      "or major.minor.patch, with major/minor in the range 0-255 "
+      "and patch in the range 0-65535.");
+  };
+
+  const auto parseComponent =
+    [&invalidVersion](const std::string& token, unsigned int maximum) {
+      unsigned int value = 0;
+      const char* begin = token.data();
+      const char* end = begin + token.size();
+      const auto result = std::from_chars(begin, end, value, 10);
+
+      if (result.ec != std::errc{} || result.ptr != end || value > maximum)
+        throw invalidVersion();
+
+      return value;
+    };
+
+  // Parse into local variables so failure does not partially update the header.
+  unsigned int parsedMajor = 0;
+  unsigned int parsedMinor = 0;
+  unsigned int parsedPatch = 0;
+
   if (tokens.size() == 1) {
-    _major = 0;
-    _minor = 0;
-    _patch = (uint16_t)std::stoi(tokens[0]);
-    return true;
+    parsedPatch = parseComponent(tokens[0], 65535);
+  } else if (tokens.size() == 3) {
+    parsedMajor = parseComponent(tokens[0], 255);
+    parsedMinor = parseComponent(tokens[1], 255);
+    parsedPatch = parseComponent(tokens[2], 65535);
+  } else {
+    throw invalidVersion();
   }
 
-  if (tokens.size() == 3) {
-    _major = (uint8_t)std::stoi(tokens[0]);
-    _minor = (uint8_t)std::stoi(tokens[1]);
-    _patch = (uint16_t)std::stoi(tokens[2]);
-    return true;
-  }
-
-  return false;
+  major = static_cast<uint8_t>(parsedMajor);
+  minor = static_cast<uint8_t>(parsedMinor);
+  patch = static_cast<uint16_t>(parsedPatch);
+  return true;
 }
 
 XclBin::XclBin()
@@ -77,7 +107,7 @@ XclBin::initializeHeader(axlf& _xclBinHeader)
   _xclBinHeader.m_header.m_actionMask = 0;
 
   // Now populate the version information
-  getVersionMajorMinorPath(xrt_build_version,
+  getVersionMajorMinorPatch(xrt_build_version,
                            _xclBinHeader.m_header.m_versionMajor,
                            _xclBinHeader.m_header.m_versionMinor,
                            _xclBinHeader.m_header.m_versionPatch);
@@ -535,15 +565,27 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   _axlfHeader.m_header.m_timeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("TimeStamp"));
   _axlfHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("FeatureRomTimeStamp"));
   auto sVersion = _ptHeader.get<std::string>("Version");
-  getVersionMajorMinorPath(sVersion.c_str(),
-                           _axlfHeader.m_header.m_versionMajor,
-                           _axlfHeader.m_header.m_versionMinor,
-                           _axlfHeader.m_header.m_versionPatch);
+  try {
+    getVersionMajorMinorPatch(
+      sVersion.c_str(),
+      _axlfHeader.m_header.m_versionMajor,
+      _axlfHeader.m_header.m_versionMinor,
+      _axlfHeader.m_header.m_versionPatch);
+  } catch (const std::runtime_error& error) {
+    throw std::runtime_error(
+      std::string("ERROR: Cannot reconstruct xclbin header from mirror data: "
+                  "header.Version is invalid.\n") + error.what());
+  }
 
   _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
-  auto sInterfaceUUID = _ptHeader.get<std::string>("InterfaceUUID");
-  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+  const auto sInterfaceUUID = _ptHeader.get_optional<std::string>("InterfaceUUID");
+  if (!sInterfaceUUID) {
+    throw std::runtime_error(
+      "ERROR: Cannot reconstruct xclbin header from mirror data: "
+      "missing required field header.InterfaceUUID.");
+  }
+  XUtil::hexStringToBinaryBuffer(*sInterfaceUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
   auto sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
   // m_platformVBNV is unsigned char [64], it requires explicit casting to be converted to char *
   XUtil::safeStringCopy(reinterpret_cast<char*>(_axlfHeader.m_header.m_platformVBNV),
@@ -1350,7 +1392,7 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
 
   Section* pSection = findSection(eKind);
   if (pSection == nullptr) {
-    auto errMsg = boost::format("ERROR: Section '%s' does not exists.") % _PSD.getSectionName();
+    auto errMsg = boost::format("ERROR: Section '%s' does not exist.") % _PSD.getSectionName();
     throw XUtil::XclBinUtilException(xet_missing_section, boost::str(errMsg));
   }
 

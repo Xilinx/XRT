@@ -28,7 +28,13 @@ FormattedOutput::getFeatureRomTimeStampAsString(const axlf& _xclBinHeader)
 std::string
 FormattedOutput::getVersionAsString(const axlf& _xclBinHeader)
 {
-  return boost::str(boost::format("%d.%d.%d") % _xclBinHeader.m_header.m_versionMajor % _xclBinHeader.m_header.m_versionMinor % _xclBinHeader.m_header.m_versionPatch);
+  // m_versionMajor and m_versionMinor are declared as uint8_⅚
+  // uint8_t is an alias for unsigned char on some Linux platforms
+  return boost::str(
+    boost::format("%d.%d.%d")
+    % static_cast<unsigned int>(_xclBinHeader.m_header.m_versionMajor)
+    % static_cast<unsigned int>(_xclBinHeader.m_header.m_versionMinor)
+    % static_cast<unsigned int>(_xclBinHeader.m_header.m_versionPatch));
 }
 
 // String Getters
