@@ -722,6 +722,10 @@ class module_run_aie_gen2_plus : public module_run
   // into the instruction buffer.
   static constexpr const char* Control_Code_Symbol = "control-code";
 
+  // "kernel:instance" for group ELFs, empty for partial ELFs.
+  // Used by dtrace to filter DWARF debug info to this instance.
+  std::string m_kernel_name;
+
   ////////////////////////////////////////////////////////////////
   // Dtrace Implementation
   ////////////////////////////////////////////////////////////////
@@ -771,31 +775,6 @@ class module_run_aie_gen2_plus : public module_run
       return false;
     }
 
-    // For group ELFs, build "kernel:instance" string for the active ctrl_code_id.
-    // get_debug_section_json() requires "kernel:instance" with ':' separator.
-    // Iterate get_kernels() to construct the kernel_instance.
-    // For partial ELFs, kernel_instance stays "" as expected by create_dtrace_handle_elf.
-    std::string kernel_instance;
-    if (m_elf_impl->is_group_elf()) {
-      const auto& name_to_id = m_elf_impl->get_aiebu_elf().get_kernel_name_to_id_map();
-      for (const auto& k : m_elf_impl->get_aiebu_elf().get_kernels()) {
-        for (const auto& inst : k.instances) {
-          auto it = name_to_id.find(k.name + inst);
-          if (it != name_to_id.end() && it->second == m_ctrl_code_id) {
-            kernel_instance = k.name + ":" + inst;
-            break;
-          }
-        }
-        if (!kernel_instance.empty())
-          break;
-      }
-      if (kernel_instance.empty()) {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "xrt_module",
-          "[dtrace] : kernel:instance not found for ctrl_code_id");
-        return false;
-      }
-    }
-
     // log level 0: error, 1: warning, 2: info
     auto log_level = static_cast<uint32_t>(xrt_core::config::get_dtrace_log_level());
     log_level = (log_level > 2) ? 2U : log_level;
@@ -803,7 +782,8 @@ class module_run_aie_gen2_plus : public module_run
     // output format 0: python, 1: json
     uint32_t output_fmt = xrt_core::config::get_dtrace_output_json_format() ? 1U : 0U;
 
-    m_dtrace = dtrace_util(path, m_elf_impl->get_elfio(), kernel_instance, log_level, output_fmt);
+    m_dtrace = dtrace_util(path, m_elf_impl->get_elfio(),
+        m_elf_impl->is_group_elf() ? m_kernel_name : std::string{}, log_level, output_fmt);
     if (!m_dtrace.dtrace_handle.get()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
         "[dtrace] : Failed to get dtrace handle");
@@ -1085,8 +1065,10 @@ class module_run_aie_gen2_plus : public module_run
   }
 
 public:
-  module_run_aie_gen2_plus(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id)
+  module_run_aie_gen2_plus(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id,
+                           std::string kernel_name)
     : module_run(elf, hw_context, id)
+    , m_kernel_name(std::move(kernel_name))
   {
     XRT_TRACE_POINT_SCOPE(xrt_module_run_aie_gen2_plus);
     initialize_dtrace_buf("");  // use config path by default
@@ -1278,7 +1260,8 @@ namespace xrt_core::module_int {
 
 xrt::module
 create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
-                  uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
+                  uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo,
+                  std::string kernel_name)
 {
   auto platform = elf.get_platform();
   switch (platform) {
@@ -1290,7 +1273,7 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
   case xrt::elf::platform::aie4:
   case xrt::elf::platform::aie4a:
   case xrt::elf::platform::aie4z:
-    return xrt::module{std::make_shared<xrt::module_run_aie_gen2_plus>(elf, hwctx, ctrl_code_id)};
+    return xrt::module{std::make_shared<xrt::module_run_aie_gen2_plus>(elf, hwctx, ctrl_code_id, std::move(kernel_name))};
   default:
     throw std::runtime_error("Unsupported platform");
   }
