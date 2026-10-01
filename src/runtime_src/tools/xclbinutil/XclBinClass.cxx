@@ -12,6 +12,7 @@
 #include "xrt/detail/version.h"                  // Generated include files
 #include <boost/algorithm/string.hpp>            // boost::split, is_any_of
 #include <boost/property_tree/json_parser.hpp>
+#include <array>                                 // std::array
 #include <charconv>                              // std::from_chars  
 #include <cstdlib>
 #include <limits>                                // std::numeric_limits
@@ -302,7 +303,7 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
   memset(sectionHeader, 0, sizeof(struct axlf_section_header) * m_sections.size());  // Zero out memory
 
   // Populate the array size and offsets
-  uint64_t currentOffset = static_cast<uint64_t>(sizeof(axlf) - sizeof(axlf_section_header) + (sizeof(axlf_section_header) * m_sections.size()));
+  auto currentOffset = static_cast<uint64_t>(sizeof(axlf) - sizeof(axlf_section_header) + (sizeof(axlf_section_header) * m_sections.size()));
 
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     // Calculate padding
@@ -315,7 +316,9 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
   }
 
   XUtil::TRACE("Writing xclbin section header array");
-  _ostream.write(reinterpret_cast<const char*>(sectionHeader), sizeof(axlf_section_header) * m_sections.size());
+  _ostream.write(
+    reinterpret_cast<const char*>(sectionHeader),
+    static_cast<std::streamsize>(sizeof(axlf_section_header) * m_sections.size()));
   _ostream.flush();
 
   // Write out each of the sections
@@ -326,8 +329,8 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
     unsigned int runningOffset = static_cast<unsigned int>(_ostream.tellp());
     unsigned int bytePadding = XUtil::bytesToAlign(runningOffset);
     if (bytePadding != 0) {
-      static const char holePack[8] = {};
-      _ostream.write(holePack, bytePadding);
+      static constexpr std::array<char, 8> holePack{};
+      _ostream.write(holePack.data(), bytePadding);
       _ostream.flush();
     }
     runningOffset += bytePadding;
