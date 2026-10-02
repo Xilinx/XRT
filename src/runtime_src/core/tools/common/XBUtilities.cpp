@@ -258,9 +258,8 @@ XBUtilities::get_available_devices(bool inUserDomain)
       }
 
       try {
-        const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
         xrt_core::smi::smi_hardware_config smi_hrdw;
-        const auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+        const auto hardware_type = smi_hrdw.get_hardware_type(device.get());
         const auto aie_arch = xrt_core::smi::smi_hardware_config::get_aie_architecture_version(hardware_type);
         pt_dev.put("aie_architecture_version", aie_arch.value_or("N/A"));
       }

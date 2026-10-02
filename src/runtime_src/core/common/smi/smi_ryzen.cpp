@@ -99,6 +99,7 @@ create_config_generator(smi_hardware_config::hardware_type hw)
   case smi_hardware_config::hardware_family::phoenix:
     return std::make_shared<config_gen_phoenix>();
   case smi_hardware_config::hardware_family::strix:
+  case smi_hardware_config::hardware_family::aie2ps:
     return std::make_shared<config_gen_strix>();
   case smi_hardware_config::hardware_family::npu3:
     switch (smi_hardware_config::get_npu3_variant(hw)) {
@@ -118,8 +119,7 @@ void
 populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* device)
 {
   smi_hardware_config smi_hrdw;
-  const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
-  const auto hw = smi_hrdw.get_hardware_type(pcie_id);
+  const auto hw = smi_hrdw.get_hardware_type(device);
   const auto generator = create_config_generator(hw);
 
   smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
