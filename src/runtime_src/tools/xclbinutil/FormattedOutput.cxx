@@ -30,6 +30,12 @@ FormattedOutput::getVersionAsString(const axlf& _xclBinHeader)
 {
   // m_versionMajor and m_versionMinor are declared as uint8_t
   // uint8_t is an alias for unsigned char on some Linux platforms
+  // For an unsigned char, stream insertion writes a character, 
+  // not its decimal numeric representation. The %d formatting directive
+  // does not convert the argument to int. We have to explcitly cast them
+  // to unsigned int here
+  // For example, for version “2.19.0”, without cast, this function woudl
+  // return <control character 0x02>.<control character 0x13>.0
   return boost::str(
     boost::format("%d.%d.%d")
     % static_cast<unsigned int>(_xclBinHeader.m_header.m_versionMajor)
