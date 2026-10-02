@@ -61,9 +61,8 @@ TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_c
   }
   
   try {
-    const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(dev);
     xrt_core::smi::smi_hardware_config smi_hrdw;
-    const auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+    const auto hardware_type = smi_hrdw.get_hardware_type(dev.get());
     const bool use_runlist =
       (smi_hrdw.get_family(hardware_type) == xrt_core::smi::smi_hardware_config::hardware_family::npu3);
 

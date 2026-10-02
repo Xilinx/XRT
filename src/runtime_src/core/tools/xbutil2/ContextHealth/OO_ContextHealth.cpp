@@ -335,9 +335,8 @@ OO_ContextHealth::execute(const SubCmdOptions& _options) const
   }
 
   // Detect hardware type
-  const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device.get());
   xrt_core::smi::smi_hardware_config smi_hrdw;
-  auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+  auto hardware_type = smi_hrdw.get_hardware_type(device.get());
 
   // Parse filter options
   auto context_ids = parse_values(m_ctx_id_list);
