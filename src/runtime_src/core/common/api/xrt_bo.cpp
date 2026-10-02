@@ -1757,6 +1757,19 @@ bo(const xrt::hw_context& hwctx, size_t sz, access_mode access)
   : xrt::bo::bo{alloc_kbuf(device_type{hwctx}, nullptr, sz, adjust_buffer_flags(access))}
 {}
 
+// Both enumerators are defined from XRT_BO_USE_DEBUG, so the cast is sound
+// unless bo_int::use_type stops deriving from the same macro.
+static_assert(static_cast<uint64_t>(bo::use_mode::debug)
+              == static_cast<uint64_t>(xrt_core::bo_int::use_type::debug),
+              "xrt::ext::bo::use_mode::debug must match "
+              "xrt_core::bo_int::use_type::debug");
+
+bo::
+bo(const xrt::hw_context& hwctx, size_t sz, use_mode use)
+  : xrt::bo::bo{xrt_core::bo_int::create_bo(
+      hwctx, sz, static_cast<xrt_core::bo_int::use_type>(use)).get_handle()}
+{}
+
 bo::
 bo(const xrt::hw_context& hwctx, size_t sz)
   : bo{hwctx, sz, xrt::ext::bo::access_mode::local}
