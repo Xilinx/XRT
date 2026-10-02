@@ -12,7 +12,11 @@
 #include "xrt/detail/version.h"                  // Generated include files
 #include <boost/algorithm/string.hpp>            // boost::split, is_any_of
 #include <boost/property_tree/json_parser.hpp>
+#include <array>                                 // std::array
+#include <charconv>                              // std::from_chars  
 #include <cstdlib>
+#include <limits>                                // std::numeric_limits
+#include <system_error>                          // std::errc
 #include <random>                                // randomGen 
 
 // Constant data
@@ -22,28 +26,70 @@ static const std::string mirrorDataEnd("XCLBIN_MIRROR_DATA_END");
 namespace XUtil = XclBinUtilities;
 namespace fs = std::filesystem;
 
-static
-bool getVersionMajorMinorPath(const char* _pVersion, uint8_t& _major, uint8_t& _minor, uint16_t& _patch)
+namespace {
+
+struct XclBinVersion
 {
-  std::string sVersion(_pVersion);
+  uint8_t major;
+  uint8_t minor;
+  uint16_t patch;
+};
+
+static XclBinVersion
+getVersionMajorMinorPatch(const char* _pVersion)
+{
+  const std::string versionString(_pVersion);
   std::vector<std::string> tokens;
-  boost::split(tokens, sVersion, boost::is_any_of("."));
+  boost::split(tokens, versionString, boost::is_any_of("."));
+
+  const auto invalidVersion = []() {
+    return std::runtime_error(
+      "ERROR: Invalid xclbin version. Expected a decimal patch number "
+      "or major.minor.patch, with major/minor in the range 0-255 "
+      "and patch in the range 0-65535.");
+  };
+
+  const auto parseComponent =
+    [&invalidVersion](const std::string& token, unsigned int maximum) {
+      unsigned int value = 0;
+      const char* begin = token.data();
+      const char* end = begin + token.size();
+      const auto result = std::from_chars(begin, end, value, 10);
+
+      if (result.ec != std::errc{} || result.ptr != end || value > maximum)
+        throw invalidVersion();
+
+      return value;
+    };
+
+  // Parse into local variables so failure does not partially update the header.
+  unsigned int parsedMajor = 0;
+  unsigned int parsedMinor = 0;
+  unsigned int parsedPatch = 0;
+
+  constexpr unsigned int maxMajorMinor =
+    std::numeric_limits<uint8_t>::max();
+  constexpr unsigned int maxPatch =
+    std::numeric_limits<uint16_t>::max();
+
   if (tokens.size() == 1) {
-    _major = 0;
-    _minor = 0;
-    _patch = (uint16_t)std::stoi(tokens[0]);
-    return true;
+    parsedPatch = parseComponent(tokens[0], maxPatch);
+  } else if (tokens.size() == 3) {
+    parsedMajor = parseComponent(tokens[0], maxMajorMinor);
+    parsedMinor = parseComponent(tokens[1], maxMajorMinor);
+    parsedPatch = parseComponent(tokens[2], maxPatch);
+  } else {
+    throw invalidVersion();
   }
 
-  if (tokens.size() == 3) {
-    _major = (uint8_t)std::stoi(tokens[0]);
-    _minor = (uint8_t)std::stoi(tokens[1]);
-    _patch = (uint16_t)std::stoi(tokens[2]);
-    return true;
-  }
-
-  return false;
+  return {
+    static_cast<uint8_t>(parsedMajor),
+    static_cast<uint8_t>(parsedMinor),
+    static_cast<uint16_t>(parsedPatch)
+  };
 }
+
+} // namespace
 
 XclBin::XclBin()
     : m_xclBinHeader({ 0 })
@@ -77,10 +123,10 @@ XclBin::initializeHeader(axlf& _xclBinHeader)
   _xclBinHeader.m_header.m_actionMask = 0;
 
   // Now populate the version information
-  getVersionMajorMinorPath(xrt_build_version,
-                           _xclBinHeader.m_header.m_versionMajor,
-                           _xclBinHeader.m_header.m_versionMinor,
-                           _xclBinHeader.m_header.m_versionPatch);
+  const auto version = getVersionMajorMinorPatch(xrt_build_version);
+  _xclBinHeader.m_header.m_versionMajor = version.major;
+  _xclBinHeader.m_header.m_versionMinor = version.minor;
+  _xclBinHeader.m_header.m_versionPatch = version.patch;
 }
 
 void
@@ -98,7 +144,7 @@ XclBin::readXclBinBinaryHeader(std::fstream& _istream)
   const unsigned int expectBufferSize = sizeof(axlf);
 
   _istream.seekg(0);
-  _istream.read((char*)&m_xclBinHeader, sizeof(axlf));
+  _istream.read(reinterpret_cast<char*>(&m_xclBinHeader), sizeof(axlf));
 
   if (_istream.gcount() != expectBufferSize) {
     std::string errMsg = "ERROR: Input stream is smaller than the expected header size.";
@@ -127,14 +173,14 @@ XclBin::readXclBinBinarySections(std::fstream& _istream)
     axlf_section_header sectionHeader = axlf_section_header{};
     const unsigned int expectBufferSize = sizeof(axlf_section_header);
 
-    _istream.read((char*)&sectionHeader, sizeof(axlf_section_header));
+    _istream.read(reinterpret_cast<char*>(&sectionHeader), sizeof(axlf_section_header));
 
     if (_istream.gcount() != expectBufferSize) {
       std::string errMsg = "ERROR: Input stream is smaller than the expected section header size.";
       throw std::runtime_error(errMsg);
     }
 
-    Section* pSection = Section::createSectionObjectOfKind((enum axlf_section_kind)sectionHeader.m_sectionKind);
+    Section* pSection = Section::createSectionObjectOfKind(static_cast<axlf_section_kind>(sectionHeader.m_sectionKind));
 
     // Here for testing purposes, when all segments are supported it should be removed
     if (pSection != nullptr) {
@@ -233,7 +279,7 @@ XclBin::writeXclBinBinaryHeader(std::ostream& _ostream, boost::property_tree::pt
 {
   // Write the header (minus the section header array)
   XUtil::TRACE("Writing xclbin binary header");
-  _ostream.write((char*)&m_xclBinHeader, sizeof(axlf) - sizeof(axlf_section_header));
+  _ostream.write(reinterpret_cast<const char*>(&m_xclBinHeader), sizeof(axlf) - sizeof(axlf_section_header));
   _ostream.flush();
 
   // Get mirror data
@@ -257,20 +303,22 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
   memset(sectionHeader, 0, sizeof(struct axlf_section_header) * m_sections.size());  // Zero out memory
 
   // Populate the array size and offsets
-  uint64_t currentOffset = (uint64_t)(sizeof(axlf) - sizeof(axlf_section_header) + (sizeof(axlf_section_header) * m_sections.size()));
+  auto currentOffset = static_cast<uint64_t>(sizeof(axlf) - sizeof(axlf_section_header) + (sizeof(axlf_section_header) * m_sections.size()));
 
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     // Calculate padding
-    currentOffset += (uint64_t)XUtil::bytesToAlign(currentOffset);
+    currentOffset += static_cast<uint64_t>(XUtil::bytesToAlign(currentOffset));
 
     // Initialize section header
     m_sections[index]->initXclBinSectionHeader(sectionHeader[index]);
     sectionHeader[index].m_sectionOffset = currentOffset;
-    currentOffset += (uint64_t)sectionHeader[index].m_sectionSize;
+    currentOffset += static_cast<uint64_t>(sectionHeader[index].m_sectionSize);
   }
 
   XUtil::TRACE("Writing xclbin section header array");
-  _ostream.write((char*)sectionHeader, sizeof(axlf_section_header) * m_sections.size());
+  _ostream.write(
+    reinterpret_cast<const char*>(sectionHeader),
+    static_cast<std::streamsize>(sizeof(axlf_section_header) * m_sections.size()));
   _ostream.flush();
 
   // Write out each of the sections
@@ -278,11 +326,11 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
     XUtil::TRACE(boost::format("Writing section: Index: %d, ID: %d") % index % sectionHeader[index].m_sectionKind);
 
     // Align section to next 8 byte boundary
-    unsigned int runningOffset = (unsigned int)_ostream.tellp();
+    unsigned int runningOffset = static_cast<unsigned int>(_ostream.tellp());
     unsigned int bytePadding = XUtil::bytesToAlign(runningOffset);
     if (bytePadding != 0) {
-      static const char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
-      _ostream.write(holePack, bytePadding);
+      static constexpr std::array<char, 8> holePack{};
+      _ostream.write(holePack.data(), bytePadding);
       _ostream.flush();
     }
     runningOffset += bytePadding;
@@ -405,10 +453,10 @@ XclBin::writeXclBinBinary(const std::string& _binaryFileName,
     // Determine file size
     ofXclBin.seekg(0, ofXclBin.end);
     static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize precision is greater then 64 bits");
-    std::streamsize streamSize = (std::streamsize)ofXclBin.tellg();
+    std::streamsize streamSize = static_cast<std::streamsize>(ofXclBin.tellg());
 
     // Update Header
-    m_xclBinHeader.m_header.m_length = (uint64_t)streamSize;
+    m_xclBinHeader.m_header.m_length = static_cast<uint64_t>(streamSize);
 
     // Write out the header...again
     ofXclBin.seekg(0, ofXclBin.beg);
@@ -470,7 +518,7 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   unsigned int startOffset = 0;
   if (XUtil::findBytesInStream(_istream, mirroDataStart, startOffset) == true) {
     XUtil::TRACE(boost::format("Found MIRROR_DATA_START at offset: 0x%lx") % startOffset);
-    startOffset += (unsigned int)mirroDataStart.length();
+    startOffset += static_cast<unsigned int>(mirroDataStart.length());
   }  else {
     std::string errMsg;
     errMsg  = "ERROR: Mirror backup data not found in given file.\n";
@@ -496,13 +544,13 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   std::vector<unsigned char> memBuffer(bufferSize);
   _istream.clear();
   _istream.seekg(startOffset);
-  _istream.read((char*)memBuffer.data(), bufferSize);
+  _istream.read(reinterpret_cast<char*>(memBuffer.data()), bufferSize);
 
-  XUtil::TRACE_BUF("Buffer", (char*)memBuffer.data(), bufferSize);
+  XUtil::TRACE_BUF("Buffer", reinterpret_cast<const char*>(memBuffer.data()), bufferSize);
 
   // Convert the JSON file to a boost property tree
   std::stringstream ss;
-  ss.write((char*)memBuffer.data(), bufferSize);
+  ss.write(reinterpret_cast<const char*>(memBuffer.data()), bufferSize);
 
   try {
     boost::property_tree::read_json(ss, _mirrorData);
@@ -529,28 +577,41 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   XUtil::safeStringCopy(_axlfHeader.m_magic, sMagic, sizeof(axlf::m_magic));
   _axlfHeader.m_signature_length = _ptHeader.get<int32_t>("SignatureLength", -1);
   auto sKeyBlock = _ptHeader.get<std::string>("KeyBlock");
-  XUtil::hexStringToBinaryBuffer(sKeyBlock, (unsigned char*)&_axlfHeader.m_keyBlock, sizeof(axlf::m_keyBlock));
+  XUtil::hexStringToBinaryBuffer(sKeyBlock, _axlfHeader.m_keyBlock, sizeof(axlf::m_keyBlock));
   _axlfHeader.m_uniqueId = XUtil::stringToUInt64(_ptHeader.get<std::string>("UniqueID"), true /*forceHex*/);
 
   _axlfHeader.m_header.m_timeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("TimeStamp"));
   _axlfHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("FeatureRomTimeStamp"));
   auto sVersion = _ptHeader.get<std::string>("Version");
-  getVersionMajorMinorPath(sVersion.c_str(),
-                           _axlfHeader.m_header.m_versionMajor,
-                           _axlfHeader.m_header.m_versionMinor,
-                           _axlfHeader.m_header.m_versionPatch);
+  try {
+    const auto version = getVersionMajorMinorPatch(sVersion.c_str());
+    _axlfHeader.m_header.m_versionMajor = version.major;
+    _axlfHeader.m_header.m_versionMinor = version.minor;
+    _axlfHeader.m_header.m_versionPatch = version.patch;
+  } catch (const std::runtime_error& error) {
+    throw std::runtime_error(
+      std::string("ERROR: Cannot reconstruct xclbin header from mirror data: "
+                  "header.Version is invalid.\n") + error.what());
+  }
 
   _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
-  auto sInterfaceUUID = _ptHeader.get<std::string>("InterfaceUUID");
-  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+  const auto sInterfaceUUID = _ptHeader.get_optional<std::string>("InterfaceUUID");
+  if (!sInterfaceUUID) {
+    throw std::runtime_error(
+      "ERROR: Cannot reconstruct xclbin header from mirror data: "
+      "missing required field header.InterfaceUUID.");
+  }
+  XUtil::hexStringToBinaryBuffer(
+    *sInterfaceUUID,
+    _axlfHeader.m_header.m_interface_uuid,
+    sizeof(_axlfHeader.m_header.m_interface_uuid));
   auto sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
   // m_platformVBNV is unsigned char [64], it requires explicit casting to be converted to char *
   XUtil::safeStringCopy(reinterpret_cast<char*>(_axlfHeader.m_header.m_platformVBNV),
-
                         sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
   auto sXclBinUUID = _ptHeader.get<std::string>("XclBinUUID");
-  XUtil::hexStringToBinaryBuffer(sXclBinUUID, (unsigned char*)&_axlfHeader.m_header.uuid, sizeof(axlf_header::uuid));
+  XUtil::hexStringToBinaryBuffer(sXclBinUUID, _axlfHeader.m_header.uuid, sizeof(axlf_header::uuid));
 
   auto sDebugBin = _ptHeader.get<std::string>("DebugBin");
   XUtil::safeStringCopy(_axlfHeader.m_header.m_debug_bin, sDebugBin, sizeof(axlf_header::m_debug_bin));
@@ -562,7 +623,7 @@ void
 XclBin::readXclBinSection(std::fstream& _istream,
                           const boost::property_tree::ptree& _ptSection)
 {
-  enum axlf_section_kind eKind = (enum axlf_section_kind)_ptSection.get<unsigned int>("Kind");
+  enum axlf_section_kind eKind = static_cast<axlf_section_kind>(_ptSection.get<unsigned int>("Kind"));
 
   Section* pSection = Section::createSectionObjectOfKind(eKind);
 
@@ -613,7 +674,7 @@ XclBin::addSection(Section* _pSection)
   }
 
   m_sections.push_back(_pSection);
-  m_xclBinHeader.m_header.m_numSections = (uint32_t)m_sections.size();
+  m_xclBinHeader.m_header.m_numSections = static_cast<uint32_t>(m_sections.size());
 }
 
 void
@@ -716,7 +777,7 @@ XclBin::addMergeSection(ParameterSectionData& _PSD)
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section: '%s'(%d) merged successfully with\nFile: '%s'")
                              % pSection->getSectionKindAsString()
-                             % (unsigned int)  pSection->getSectionKind()
+                             % static_cast<unsigned int>(pSection->getSectionKind())
                              % _PSD.getFile());
 }
 
@@ -729,16 +790,16 @@ XclBin::removeSection(const Section* _pSection)
   }
 
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
-    if ((void*)m_sections[index] == (void*)_pSection) {
-      XUtil::TRACE(boost::format("Removing and deleting section '%s' (%d).") % _pSection->getSectionKindAsString() % (unsigned int) _pSection->getSectionKind());
+    if (m_sections[index] == _pSection) {
+      XUtil::TRACE(boost::format("Removing and deleting section '%s' (%d).") % _pSection->getSectionKindAsString() % static_cast<unsigned int>(_pSection->getSectionKind()));
       m_sections.erase(m_sections.begin() + index);
       delete _pSection;
-      m_xclBinHeader.m_header.m_numSections = (uint32_t)m_sections.size();
+      m_xclBinHeader.m_header.m_numSections = static_cast<uint32_t>(m_sections.size());
       return;
     }
   }
 
-  auto errMsg = boost::format("ERROR: Section '%s' (%d) not found") % _pSection->getSectionKindAsString() % (unsigned int) _pSection->getSectionKind();
+  auto errMsg = boost::format("ERROR: Section '%s' (%d) not found") % _pSection->getSectionKindAsString() % static_cast<unsigned int>(_pSection->getSectionKind());
   throw XUtil::XclBinUtilException(xet_missing_section, errMsg.str());
 }
 
@@ -835,7 +896,7 @@ XclBin::removeSection(const std::string& _sSectionToRemove)
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section '%s%s'(%d) was successfully removed")
                              % _sSectionToRemove % indexEntry
-                             % (unsigned int) _eKind);
+                             % static_cast<unsigned int>(_eKind));
 }
 
 
@@ -871,10 +932,10 @@ XclBin::replaceSection(ParameterSectionData& _PSD)
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
-  XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % (unsigned int)  pSection->getSectionKind());
+  XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % static_cast<unsigned int>(pSection->getSectionKind()));
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'")
-                             % pSection->getSectionKindAsString() % (unsigned int)  pSection->getSectionKind()
+                             % pSection->getSectionKindAsString() % static_cast<unsigned int>(pSection->getSectionKind())
                              % pSection->getSize()
                              % _PSD.getFormatTypeAsStr() % sSectionFileName);
 }
@@ -1005,7 +1066,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
                           "Section '%s%s%s' (%d) successfully added.")
                           % sSectionAddedName
                           % (sSubSection.empty() ? "" : "-")
-                          % sSubSection % (unsigned int)  pSection->getSectionKind()));
+                          % sSubSection % static_cast<unsigned int>(pSection->getSectionKind())));
   std::string optionalIndex;
   if (!(pSection->getSectionIndexName().empty()))
     optionalIndex = (boost::format("[%s]") % pSection->getSectionIndexName()).str();
@@ -1016,7 +1077,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
                          % sSectionAddedName
                          % optionalIndex
                          % (sSubSection.empty() ? "" : "-")
-                         % sSubSection.c_str() % (unsigned int) pSection->getSectionKind()
+                         % sSubSection.c_str() % static_cast<unsigned int>(pSection->getSectionKind())
                          % pSection->getSize()
                          % _PSD.getFormatTypeAsStr() % sSectionFileName));
 }
@@ -1083,7 +1144,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
     XUtil::QUIET(boost::str(boost::format(
                             "Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'")
                              % pSection->getSectionKindAsString()
-                             % (unsigned int) pSection->getSectionKind()
+                             % static_cast<unsigned int>(pSection->getSectionKind())
                              % _PSD.getFormatTypeAsStr() % sSectionFileName));
     delete pSection;
     pSection = nullptr;
@@ -1095,11 +1156,11 @@ XclBin::addSection(ParameterSectionData& _PSD)
 
   std::string sSectionAddedName = pSection->getSectionKindAsString();
 
-  XUtil::TRACE(boost::str(boost::format("Section '%s' (%d) successfully added.") % sSectionAddedName % (unsigned int) pSection->getSectionKind()));
+  XUtil::TRACE(boost::str(boost::format("Section '%s' (%d) successfully added.") % sSectionAddedName % static_cast<unsigned int>(pSection->getSectionKind())));
   XUtil::QUIET("");
   XUtil::QUIET(boost::str(boost::format(
                          "Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'")
-                          % sSectionAddedName % (unsigned int) pSection->getSectionKind()
+                          % sSectionAddedName % static_cast<unsigned int>(pSection->getSectionKind())
                           % pSection->getSize()
                           % _PSD.getFormatTypeAsStr() % sSectionFileName));
 }
@@ -1174,7 +1235,7 @@ XclBin::addSections(ParameterSectionData& _PSD)
       XUtil::QUIET("");
       XUtil::QUIET(boost::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'")
                                  % pSection->getSectionKindAsString()
-                                 % (unsigned int) pSection->getSectionKind()
+                                 % static_cast<unsigned int>(pSection->getSectionKind())
                                  % _PSD.getFormatTypeAsStr() % sectionName);
       delete pSection;
       pSection = nullptr;
@@ -1182,11 +1243,11 @@ XclBin::addSections(ParameterSectionData& _PSD)
     }
     addSection(pSection);
     updateHeaderFromSection(pSection);
-    XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
+    XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % static_cast<unsigned int>(pSection->getSectionKind()));
     XUtil::QUIET("");
     XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'")
                                % pSection->getSectionKindAsString()
-                               % (unsigned int) pSection->getSectionKind()
+                               % static_cast<unsigned int>(pSection->getSectionKind())
                                % _PSD.getFormatTypeAsStr() % sectionName);
   }
 }
@@ -1257,11 +1318,11 @@ XclBin::appendSections(ParameterSectionData& _PSD)
     pSection->readJSONSectionImage(ptPayload);
 
 
-    XUtil::TRACE(boost::format("Section '%s' (%d) successfully appended to.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
+    XUtil::TRACE(boost::format("Section '%s' (%d) successfully appended to.") % pSection->getSectionKindAsString() % static_cast<unsigned int>(pSection->getSectionKind()));
     XUtil::QUIET("");
     XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully appended to.\nFormat : %s\nFile   : '%s'")
                                % pSection->getSectionKindAsString()
-                               % (unsigned int) pSection->getSectionKind()
+                               % static_cast<unsigned int>(pSection->getSectionKind())
                                % _PSD.getFormatTypeAsStr() % sectionName);
   }
 }
@@ -1315,7 +1376,7 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
   pSection->setPathAndName(sDumpFileName);
   pSection->dumpSubSection(oDumpFile, sSubSection, _PSD.getFormatType());
 
-  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
+  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % static_cast<unsigned int>(pSection->getSectionKind()));
   XUtil::QUIET("");
 
   std::string optionalIndex;
@@ -1326,7 +1387,7 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
                              % pSection->getSectionKindAsString()
                              % optionalIndex
                              % (sSubSection.empty() ? "" : "-")
-                             % sSubSection % (unsigned int) pSection->getSectionKind()
+                             % sSubSection % static_cast<unsigned int>(pSection->getSectionKind())
                              % _PSD.getFormatTypeAsStr() % sDumpFileName);
 }
 
@@ -1350,7 +1411,7 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
 
   Section* pSection = findSection(eKind);
   if (pSection == nullptr) {
-    auto errMsg = boost::format("ERROR: Section '%s' does not exists.") % _PSD.getSectionName();
+    auto errMsg = boost::format("ERROR: Section '%s' does not exist.") % _PSD.getSectionName();
     throw XUtil::XclBinUtilException(xet_missing_section, boost::str(errMsg));
   }
 
@@ -1383,11 +1444,11 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
   pSection->setPathAndName(sDumpFileName);
   pSection->dumpContents(oDumpFile, _PSD.getFormatType());
 
-  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
+  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % static_cast<unsigned int>(pSection->getSectionKind()));
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'")
                              % pSection->getSectionKindAsString()
-                             % (unsigned int) pSection->getSectionKind()
+                             % static_cast<unsigned int>(pSection->getSectionKind())
                              % _PSD.getFormatTypeAsStr() % sDumpFileName);
 }
 
@@ -1556,7 +1617,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
 
     if (sKey == "InterfaceUUID") {
       sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
-      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+      XUtil::hexStringToBinaryBuffer(sValue, m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
       return; // Key processed
     }
 
@@ -1568,7 +1629,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
     if (sKey == "XclbinUUID") {
       std::cout << "Warning: Changing this 'XclbinUUID' property to a non-unique value can result in non-determinist negative runtime behavior.\n";
       sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
-      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid));
+      XUtil::hexStringToBinaryBuffer(sValue, m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid));
       return; // Key processed
     }
 
@@ -1983,5 +2044,5 @@ XclBin::updateInterfaceuuid()
   boost::property_tree::ptree ptInterface = ptInterfaces[0];
   auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000-0000-0000-0000-000000000000");
   sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'
-  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
 }
