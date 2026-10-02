@@ -5,6 +5,7 @@
 
 // Local - Include Files
 #include "core/common/smi/smi.h"
+#include "core/common/device.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
@@ -215,18 +216,56 @@ smi_hardware_config()
     {{0x17f3, 0x15}, hardware_type::npu11_vf},
 
     {{0xb052, 0x01}, hardware_type::aie2ps},
+    {{0x1234, 0x00}, hardware_type::aie2ps},
   };
   // NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 }
 
 smi_hardware_config::hardware_type
 smi_hardware_config::
-get_hardware_type(const xq::pcie_id::data& dev) const 
+get_hardware_type(const xq::pcie_id::data& dev) const
 {
   auto it = hardware_map.find(dev);
   return (it != hardware_map.end())
     ? it->second
     : hardware_type::unknown;
+}
+
+smi_hardware_config::hardware_type
+smi_hardware_config::
+get_hardware_type(const std::string& devid_str) const
+{
+  if (devid_str == "xc2ve3858" || devid_str.rfind("xc2ve", 0) == 0)
+    return hardware_type::aie2ps;
+  return hardware_type::unknown;
+}
+
+smi_hardware_config::hardware_type
+smi_hardware_config::
+get_hardware_type(const xrt_core::device* dev) const
+{
+  if (!dev)
+    return hardware_type::unknown;
+
+  try {
+    const auto name = xrt_core::device_query_default<xq::device_id_str>(dev, std::string{});
+    if (!name.empty()) {
+      auto hw = get_hardware_type(name);
+      if (hw != hardware_type::unknown)
+        return hw;
+    }
+  }
+  catch (...) {
+  }
+
+  try {
+    const auto pcie_id = xrt_core::device_query<xq::pcie_id>(dev);
+    return get_hardware_type(pcie_id);
+  }
+  catch (...) {
+  }
+
+  return hardware_type::unknown;
 }
 
 smi_hardware_config::hardware_family
@@ -323,6 +362,7 @@ is_aie2_platform(hardware_type hw)
   switch (get_family(hw)) {
   case hardware_family::phoenix:
   case hardware_family::strix:
+  case hardware_family::aie2ps:
     return true;
   case hardware_family::npu3:
     return false;
@@ -342,6 +382,8 @@ get_validate_archive_path(hardware_type hw)
     return "Runner/xrt_smi_strx.a";
   case hardware_family::npu3:
     return "Runner/xrt_smi_npu3.a";
+  case hardware_family::aie2ps:
+    return "Runner/xrt_smi_ve2.a";
   default:
     throw std::runtime_error("Unsupported hardware type");
   }
