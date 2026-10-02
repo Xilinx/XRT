@@ -48,6 +48,11 @@ public:
   config_gen_phoenix();
 };
 
+class config_gen_aie2ps : public config_gen_ryzen {
+public:
+  config_gen_aie2ps();
+};
+
 void
 populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* device);
 
