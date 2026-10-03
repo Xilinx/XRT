@@ -212,8 +212,7 @@ create_from_device(const xrt_core::device* device)
   auto json_config = load_json_from_device(device);
 
   // Determine the hardware type
-  smi::smi_hardware_config smi_hrdw;
-  auto hardware_type = smi_hrdw.get_hardware_type(device);
+  auto hardware_type = XBUtilities::get_hardware_type(device);
 
   if (XBUtilities::is_strix_hardware(hardware_type))
     return std::make_unique<config_strix>(json_config);
@@ -273,8 +272,7 @@ create_from_config(const std::unique_ptr<event_trace_config>& config,
                    const xrt_core::device* device)
 {
   // Detect device type using same logic as create_from_device
-  xrt_core::smi::smi_hardware_config smi_hrdw;
-  auto hardware_type = smi_hrdw.get_hardware_type(device);
+  auto hardware_type = XBUtilities::get_hardware_type(device);
   
   if (XBUtilities::is_strix_hardware(hardware_type)) {
     return std::make_unique<parser_strix>(dynamic_cast<const config_strix&>(*config));

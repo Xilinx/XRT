@@ -75,8 +75,7 @@ TestSanity::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::ar
   }
 
   try {
-    xrt_core::smi::smi_hardware_config smi_hrdw;
-    const auto hardware_type = smi_hrdw.get_hardware_type(dev.get());
+    const auto hardware_type = XBUtilities::get_hardware_type(dev.get());
 
     if (XBU::is_strix_hardware(hardware_type))
       run_strix(dev, archive, ptree);

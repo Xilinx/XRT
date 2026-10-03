@@ -258,8 +258,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
       }
 
       try {
-        xrt_core::smi::smi_hardware_config smi_hrdw;
-        const auto hardware_type = smi_hrdw.get_hardware_type(device.get());
+        const auto hardware_type = XBUtilities::get_hardware_type(device.get());
         const auto aie_arch = xrt_core::smi::smi_hardware_config::get_aie_architecture_version(hardware_type);
         pt_dev.put("aie_architecture_version", aie_arch.value_or("N/A"));
       }
@@ -1107,6 +1106,34 @@ XBUtilities::
 is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
 {
   return xrt_core::smi::smi_hardware_config::is_aie2_platform(hw_type);
+}
+
+xrt_core::smi::smi_hardware_config::hardware_type
+XBUtilities::
+get_hardware_type(const xrt_core::device* dev)
+{
+  if (!dev)
+    return xrt_core::smi::smi_hardware_config::hardware_type::unknown;
+
+  xrt_core::smi::smi_hardware_config smi_hrdw;
+
+  try {
+    const auto name = xrt_core::device_query_default<xrt_core::query::device_id_str>(dev, std::string{});
+    const auto hw = smi_hrdw.get_hardware_type(name);
+    if (hw != xrt_core::smi::smi_hardware_config::hardware_type::unknown)
+      return hw;
+  }
+  catch (...) {
+  }
+
+  try {
+    const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(dev);
+    return smi_hrdw.get_hardware_type(pcie_id);
+  }
+  catch (...) {
+  }
+
+  return xrt_core::smi::smi_hardware_config::hardware_type::unknown;
 }
 
 std::string
