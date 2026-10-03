@@ -335,8 +335,7 @@ OO_ContextHealth::execute(const SubCmdOptions& _options) const
   }
 
   // Detect hardware type
-  xrt_core::smi::smi_hardware_config smi_hrdw;
-  auto hardware_type = smi_hrdw.get_hardware_type(device.get());
+  auto hardware_type = XBUtilities::get_hardware_type(device.get());
 
   // Parse filter options
   auto context_ids = parse_values(m_ctx_id_list);

@@ -62,7 +62,7 @@ TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_c
   
   try {
     xrt_core::smi::smi_hardware_config smi_hrdw;
-    const auto hardware_type = smi_hrdw.get_hardware_type(dev.get());
+    const auto hardware_type = XBUtilities::get_hardware_type(dev.get());
     const bool use_runlist =
       (smi_hrdw.get_family(hardware_type) == xrt_core::smi::smi_hardware_config::hardware_family::npu3);
 

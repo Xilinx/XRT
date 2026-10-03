@@ -156,8 +156,7 @@ TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const 
   }
 
   // Determine the hardware type
-  xrt_core::smi::smi_hardware_config smi_hrdw;
-  auto hardware_type = smi_hrdw.get_hardware_type(dev.get());
+  auto hardware_type = XBUtilities::get_hardware_type(dev.get());
 
   if (XBUtilities::is_strix_hardware(hardware_type))
     run_strix(dev, archive, ptree);
