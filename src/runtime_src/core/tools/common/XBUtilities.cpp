@@ -6,6 +6,7 @@
 #include "XBUtilitiesCore.h"
 
 #include "common/error.h"
+#include "common/info_platform.h"
 #include "common/info_vmr.h"
 #include "common/utils.h"
 #include "common/message.h"
@@ -157,7 +158,7 @@ XBUtilities::get_available_bdfs(bool inUserDomain)
         pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
         break;
       case xrt_core::query::device_class::type::ryzen:
-        pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        pt_dev.put("name", xrt_core::platform::get_device_name(device.get()));
         break;
       }
     }
@@ -197,7 +198,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
         break;
       case xrt_core::query::device_class::type::ryzen:
-        pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        pt_dev.put("name", xrt_core::platform::get_device_name(device.get()));
         break;
       }
 
@@ -257,9 +258,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
       }
 
       try {
-        const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
-        xrt_core::smi::smi_hardware_config smi_hrdw;
-        const auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+        const auto hardware_type = XBUtilities::get_hardware_type(device.get());
         const auto aie_arch = xrt_core::smi::smi_hardware_config::get_aie_architecture_version(hardware_type);
         pt_dev.put("aie_architecture_version", aie_arch.value_or("N/A"));
       }
@@ -1107,6 +1106,32 @@ XBUtilities::
 is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
 {
   return xrt_core::smi::smi_hardware_config::is_aie2_platform(hw_type);
+}
+
+xrt_core::smi::smi_hardware_config::hardware_type
+XBUtilities::
+get_hardware_type(const xrt_core::device* dev)
+{
+  if (!dev)
+    return xrt_core::smi::smi_hardware_config::hardware_type::unknown;
+
+  try {
+    const auto name = xrt_core::device_query_default<xrt_core::query::device_id_str>(dev, std::string{});
+    if (name == "xc2ve3858" || name.rfind("xc2ve", 0) == 0)
+      return xrt_core::smi::smi_hardware_config::hardware_type::aie2ps;
+  }
+  catch (...) {
+  }
+
+  try {
+    const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(dev);
+    xrt_core::smi::smi_hardware_config smi_hrdw;
+    return smi_hrdw.get_hardware_type(pcie_id);
+  }
+  catch (...) {
+  }
+
+  return xrt_core::smi::smi_hardware_config::hardware_type::unknown;
 }
 
 std::string

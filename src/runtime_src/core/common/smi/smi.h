@@ -19,6 +19,10 @@
 
 namespace xq = xrt_core::query;
 
+namespace xrt_core {
+class device;
+}
+
 namespace xrt_core::smi {
 
 using tuple_vector = std::vector<std::tuple<std::string, std::string, std::string>>; 
@@ -269,8 +273,18 @@ public:
 
   // Returns the hardware type based on the PCIe ID and Revision ID.
   XRT_CORE_COMMON_EXPORT
-  hardware_type 
+  hardware_type
   get_hardware_type(const xq::pcie_id::data&) const;
+
+  // Returns the hardware type based on device / part name string (e.g. "xc2ve3858").
+  XRT_CORE_COMMON_EXPORT
+  hardware_type
+  get_hardware_type(const std::string& devid_str) const;
+
+  // Returns the hardware type for a device, checking device_id_str first, then pcie_id.
+  XRT_CORE_COMMON_EXPORT
+  hardware_type
+  get_hardware_type(const xrt_core::device* dev) const;
 
   // Maps a specific hardware_type to its family. All per-device case logic lives here.
   XRT_CORE_COMMON_EXPORT
@@ -280,6 +294,20 @@ public:
   XRT_CORE_COMMON_EXPORT
   hardware_family
   get_family(const xq::pcie_id::data& dev) const
+  {
+    return get_family(get_hardware_type(dev));
+  }
+
+  XRT_CORE_COMMON_EXPORT
+  hardware_family
+  get_family(const std::string& devid_str) const
+  {
+    return get_family(get_hardware_type(devid_str));
+  }
+
+  XRT_CORE_COMMON_EXPORT
+  hardware_family
+  get_family(const xrt_core::device* dev) const
   {
     return get_family(get_hardware_type(dev));
   }
