@@ -40,6 +40,8 @@ getVersionMajorMinorPatch(const char* _pVersion)
 {
   const std::string versionString(_pVersion);
   std::vector<std::string> tokens;
+  // Split the version into tokens using '.' as the delimiter
+  // For example, "2.26.0" -> "2", "26", "0"
   boost::split(tokens, versionString, boost::is_any_of("."));
 
   const auto invalidVersion = []() {
@@ -49,7 +51,13 @@ getVersionMajorMinorPatch(const char* _pVersion)
       "and patch in the range 0-65535.");
   };
 
-  const auto parseComponent =
+  // Previously, each token was passed to std::stoi to convert it to an int.
+  // std::stoi throws an exception if the token is not a valid integer string.
+  // std::from_chars converts a sequence of characters to a number without throwing exceptions.
+  //   "result.ec != std::errc{}" checks for empty input, invalid characters, or overflow of unsigned int.
+  //   "result.ptr != end" checks for partially parsed input, such as "12abc" or "12 ".
+  //   "value > maximum" checks for values that fit in unsigned int but exceed the header field's range.
+  const auto verifyToken =
     [&invalidVersion](const std::string& token, unsigned int maximum) {
       unsigned int value = 0;
       const char* begin = token.data();
@@ -62,10 +70,9 @@ getVersionMajorMinorPatch(const char* _pVersion)
       return value;
     };
 
-  // Parse into local variables so failure does not partially update the header.
-  unsigned int parsedMajor = 0;
-  unsigned int parsedMinor = 0;
-  unsigned int parsedPatch = 0;
+  unsigned int verifiedMajor = 0;
+  unsigned int verifiedMinor = 0;
+  unsigned int verifiedPatch = 0;
 
   constexpr unsigned int maxMajorMinor =
     std::numeric_limits<uint8_t>::max();
@@ -73,19 +80,19 @@ getVersionMajorMinorPatch(const char* _pVersion)
     std::numeric_limits<uint16_t>::max();
 
   if (tokens.size() == 1) {
-    parsedPatch = parseComponent(tokens[0], maxPatch);
+    verifiedPatch = verifyToken(tokens[0], maxPatch);
   } else if (tokens.size() == 3) {
-    parsedMajor = parseComponent(tokens[0], maxMajorMinor);
-    parsedMinor = parseComponent(tokens[1], maxMajorMinor);
-    parsedPatch = parseComponent(tokens[2], maxPatch);
+    verifiedMajor = verifyToken(tokens[0], maxMajorMinor);
+    verifiedMinor = verifyToken(tokens[1], maxMajorMinor);
+    verifiedPatch = verifyToken(tokens[2], maxPatch);
   } else {
     throw invalidVersion();
   }
 
   return {
-    static_cast<uint8_t>(parsedMajor),
-    static_cast<uint8_t>(parsedMinor),
-    static_cast<uint16_t>(parsedPatch)
+    static_cast<uint8_t>(verifiedMajor),
+    static_cast<uint8_t>(verifiedMinor),
+    static_cast<uint16_t>(verifiedPatch)
   };
 }
 
