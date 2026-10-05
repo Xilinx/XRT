@@ -18,7 +18,10 @@
 namespace {
 
 static std::map<xrt_core::device::id_type, std::weak_ptr<xrt_core::device>> mgmtpf_device_map;
-static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device>> userpf_device_map;
+static std::map<xrt_core::device::id_type, std::weak_ptr<xrt_core::device>> userpf_device_map;
+
+// Should remove handle map
+static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device>> userpf_handle_map;
 
 // mutex to protect insertion
 static std::mutex mutex;
@@ -106,24 +109,34 @@ get_devices(boost::property_tree::ptree& pt)
 std::shared_ptr<device>
 get_userpf_device(device::id_type id)
 {
-  // Construct device by calling xclOpen, the returned
+  {
+    // If a device already is created for this adapter id, then return it
+    std::lock_guard lk(mutex);
+    if (auto itr = userpf_device_map.find(id); itr != userpf_device_map.end())
+      if (auto device = itr->second.lock())
+        return device;
+  }
+
   // device is cached and unmanaged
   auto device = instance().get_userpf_device(id);
 
   if (!device)
     throw std::runtime_error("Could not open device with index '"+ std::to_string(id) + "'");
 
-  // Repackage raw ptr in new shared ptr with deleter that calls xclClose,
+  // Repackage raw ptr in new shared ptr with deleter that calls close_device
   // but leaves device object alone. The returned device is managed in that
   // it calls xclClose when going out of scope.
-  auto close = [] (xrt_core::device* d) { d->close_device(); };
+  auto close = [] (xrt_core::device* d) {
+    d->close_device();
+  };
   std::shared_ptr<xrt_core::device> ptr{device.get(), close};
 
   // The repackage raw ptr is the one that should be cached so
   // so that all references to device handles in application code
   // are tied to the shared ptr that ends up calling xclClose
   std::lock_guard lk(mutex);
-  userpf_device_map[device->get_device_handle()] = ptr;
+  userpf_device_map[id] = ptr;
+  userpf_handle_map[device->get_device_handle()] = ptr;
   return ptr;
 }
 
@@ -136,9 +149,9 @@ get_userpf_device(device::handle_type handle)
   // thread could be in process of inserting some handle while this
   // thread is looking up another handle.
   std::lock_guard lk(mutex);
-  auto itr = userpf_device_map.find(handle);
-  if (itr != userpf_device_map.end())
+  if (auto itr = userpf_handle_map.find(handle); itr != userpf_handle_map.end())
     return (*itr).second.lock();
+
   return nullptr;
 }
 
@@ -148,14 +161,16 @@ get_userpf_device(device::handle_type handle, device::id_type id)
   // Check device map cache
   if (auto device = get_userpf_device(handle)) {
     if (device->get_device_id() != id)
-        throw std::runtime_error("get_userpf_device: id mismatch");
+      throw std::runtime_error("get_userpf_device: id mismatch");
+
     return device;
   }
 
   // Construct a new device object and insert in map.
-  auto device = instance().get_userpf_device(handle,id);
+  auto device = instance().get_userpf_device(handle, id);
   std::lock_guard lk(mutex);
-  userpf_device_map[handle] = device;  // create or replace
+  userpf_device_map[id] = device;
+  userpf_handle_map[handle] = device;
   return device;
 }
 
@@ -164,8 +179,7 @@ get_mgmtpf_device(device::id_type id)
 {
   // Check cache
   std::lock_guard lk(mutex);
-  auto itr = mgmtpf_device_map.find(id);
-  if (itr != mgmtpf_device_map.end())
+  if (auto itr = mgmtpf_device_map.find(id); itr != mgmtpf_device_map.end())
     if (auto device = (*itr).second.lock())
       return device;
 
