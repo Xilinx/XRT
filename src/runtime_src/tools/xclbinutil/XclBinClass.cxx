@@ -46,8 +46,8 @@ getVersionMajorMinorPatch(const char* _pVersion)
 
   const auto invalidVersion = []() {
     return std::runtime_error(
-      "ERROR: Invalid xclbin version. Expected a decimal patch number "
-      "or major.minor.patch, with major/minor in the range 0-255 "
+      "ERROR: Invalid xclbin version. Expected either a decimal patch number or a version "
+      "in the form <major>.<minor>.<patch>, with major and minor in the range 0-255 "
       "and patch in the range 0-65535.");
   };
 
