@@ -570,7 +570,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     }
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    XBU::print_exception(e);
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
