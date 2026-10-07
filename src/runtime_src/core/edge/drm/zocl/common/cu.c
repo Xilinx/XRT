@@ -358,6 +358,7 @@ static int cu_probe(struct platform_device *pdev)
 	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 	int i;
+	bool irq_added = false;
 
 	zcu = kzalloc(sizeof(*zcu), GFP_KERNEL);
 	if (!zcu)
@@ -397,8 +398,10 @@ static int cu_probe(struct platform_device *pdev)
 	}
 
 	zcu->irq_name = kzalloc(20, GFP_KERNEL);
-	if (!zcu->irq_name)
-		return -ENOMEM;
+	if (!zcu->irq_name) {
+		err = -ENOMEM;
+		goto err2;
+	}
 
 	sprintf(zcu->irq_name, "zocl_cu[%d]", info->intr_id);
 
@@ -410,6 +413,9 @@ static int cu_probe(struct platform_device *pdev)
 			DRM_WARN("Failed to initial CU interrupt. "
 				 "Fall back to polling\n");
 			zcu->base.info.intr_enable = 0;
+			err = 0;
+		} else {
+			irq_added = true;
 		}
 	}
 
@@ -444,6 +450,13 @@ static int cu_probe(struct platform_device *pdev)
 	zocl_info(&pdev->dev, "CU[%d] created", info->inst_idx);
 	return 0;
 err2:
+	/* cu_isr holds zcu. Drop the handler before kfree. */
+	if (irq_added) {
+		intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
+		if (intc)
+			zocl_ert_intc_remove(intc, info->intr_id);
+	}
+	kfree(zcu->irq_name);
 	zocl_kds_del_cu(zdev, &zcu->base);
 err1:
 	vfree(args);
