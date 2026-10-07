@@ -170,6 +170,18 @@ jobs:
           path: composite-workflows  
           ref: main
        
+      # Read-only token for github.com/AMD-AECG-SSW-PUBLIC, where the internal
+      # PetaLinux mirrors redirect github.com/Xilinx fetches. bitbake only needs
+      # it when sstate and the download mirrors miss.
+      - name: Mint EMU fetch token
+        id: emu-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.EMU_FETCH_APP_ID }}
+          private-key: ${{ secrets.EMU_FETCH_APP_PRIVATE_KEY }}
+          owner: AMD-AECG-SSW-PUBLIC
+          permission-contents: read
+
       - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
         with:     
@@ -184,6 +196,7 @@ jobs:
           appConfig1: ${{ secrets.APP_CONFIG1 }} 
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
+          emuToken: ${{ steps.emu-token.outputs.token }}
 
   package-download:    
     needs: [build, apu-package-build, windows-build]    
