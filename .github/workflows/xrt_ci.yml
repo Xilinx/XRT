@@ -16,6 +16,8 @@ concurrency:
 jobs:
   authorize:
     runs-on: [self-hosted, Ubuntu-22.04]
+    outputs:
+      trusted: ${{ steps.authorize.outputs.trusted }}
     steps:
       - name: Checkout private repository      
         uses: actions/checkout@v4   
@@ -27,6 +29,7 @@ jobs:
           ref: main
 
       - name: authorize
+        id: authorize
         uses: ./composite-workflows/authorize
         with:
           app-id: ${{ secrets.XRT_APP_ID }}
@@ -168,6 +171,20 @@ jobs:
           path: composite-workflows  
           ref: main
        
+      # Read-only token for github.com/AMD-AECG-SSW-PUBLIC, where the internal
+      # PetaLinux mirrors redirect github.com/Xilinx fetches. bitbake only needs
+      # it when sstate and the download mirrors miss.
+      # Skipped for build-label runs: that PR code comes from outside contributors.
+      - name: Mint EMU fetch token
+        id: emu-token
+        if: needs.authorize.outputs.trusted == 'true'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.EMU_FETCH_APP_ID }}
+          private-key: ${{ secrets.EMU_FETCH_APP_PRIVATE_KEY }}
+          owner: AMD-AECG-SSW-PUBLIC
+          permission-contents: read
+
       - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
         with:     
@@ -182,6 +199,7 @@ jobs:
           appConfig1: ${{ secrets.APP_CONFIG1 }} 
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
+          emuToken: ${{ steps.emu-token.outputs.token }}
 
   package-download:    
     needs: build    
