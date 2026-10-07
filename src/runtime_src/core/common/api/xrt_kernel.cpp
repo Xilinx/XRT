@@ -2438,7 +2438,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // By default first control code that is available is picked
   static xrt::module
   copy_module(const xrt::module& module, const xrt::hw_context& hwctx,
-              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
+              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo,
+              std::string kernel_name)
   {
     if (!module)
       return {};
@@ -2447,7 +2448,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     // This buffer is empty when ELF doesn't have ctrlpkt
     return xrt_core::module_int::create_module_run(
         xrt::elf(xrt_core::module_int::get_elf_handle(module)),
-        hwctx, ctrl_code_id, ctrlpkt_bo);
+        hwctx, ctrl_code_id, ctrlpkt_bo, std::move(kernel_name));
   }
 
   // payload_size() - Number of bytes in command payload that can be
@@ -2714,7 +2715,7 @@ public:
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
     , m_ctrlpkt_bo(kernel->get_ctrlpkt_buffer())
-    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo)}
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo, kernel->get_full_name())}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
