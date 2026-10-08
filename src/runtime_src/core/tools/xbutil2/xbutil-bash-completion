@@ -1,7 +1,35 @@
 # bash completion for xrt-smi                              -*- shell-script -*-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
+
+# Extract enum values for a named option from xrt-smi help output.
+# $1: option name to match (e.g. "--report")
+# Remaining args: passed to xrt-smi before --help (e.g. "examine --advanced")
+_xrt_smi_enum()
+{
+  local opt="$1"; shift
+  xrt-smi "$@" --help 2>&1 | awk -v opt="$opt" '
+    index($0, opt) { found=1; next }
+    found && /^[[:space:]]+[a-z]/ && / - / { print $1; next }
+    found && /^[[:space:]]+-/ { exit }
+    found && !/^[[:space:]]/ { exit }
+  ' | tr '\n' ' '
+}
+
+# Extract all option flags from xrt-smi help output.
+# All args are passed to xrt-smi before --help.
+_xrt_smi_options()
+{
+  xrt-smi "$@" --help 2>&1 | awk '
+    /^[[:space:]]+-/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i == "-") break
+        if ($i ~ /^-/) { gsub(/,/, "", $i); print $i }
+      }
+    }
+  ' | tr '\n' ' '
+}
 
 # Generates the command word options dependant on the previous word
 # using COMPREPLY
@@ -10,11 +38,11 @@
 # 
 # Parameters:
 # 1: The complete list of options for the previous word
-_command_word_xbutil_completion()
+_xrt_smi_completion()
 {
   # Get the righthand most word on the command line
   local cur=${COMP_WORDS[COMP_CWORD]}
-  # The previous word 
+  # The previous word
   local prev=${COMP_WORDS[COMP_CWORD-1]}
 
   # The BDFs (for devices) contain colons which breaks the autocomplete
@@ -22,102 +50,230 @@ _command_word_xbutil_completion()
   # words
   _get_comp_words_by_ref -n : cur prev
 
-  # Each defined case requires an argument so no reply is given
-  # All other cases default to using `compgen` output to format COMPREPLY
+  local commands="configure examine validate advanced"
+  local globalModifiers="--verbose --batch --force --advanced"
+
+  # Check for terminal options first - no completions after these
+  local i
+  for (( i=1; i < COMP_CWORD; i++ )); do
+    case ${COMP_WORDS[i]} in
+      --version)
+        # --version is terminal at top level, no more completions
+        COMPREPLY=()
+        return
+        ;;
+    esac
+  done
+
+  # Detect if --advanced flag is present
+  local hasAdvanced=0 advFlag=""
+  for (( i=1; i < COMP_CWORD; i++ )); do
+    case ${COMP_WORDS[i]} in
+      --advanced)
+        hasAdvanced=1
+        advFlag="--advanced"
+        break
+        ;;
+    esac
+  done
+
+  # Search for a command in the current command line
+  # Global options like --verbose can appear before the command
+  local commandWord=""
+  for (( i=1; i < COMP_CWORD; i++ )); do
+    case ${COMP_WORDS[i]} in
+      configure|examine|validate|advanced)
+        commandWord=${COMP_WORDS[i]}
+        break
+        ;;
+    esac
+  done
+
+  # Detect sub-option context (OptionOptions that consume remaining args)
+  local subOption=""
+  for (( i=1; i < COMP_CWORD; i++ )); do
+    case ${COMP_WORDS[i]} in
+      --event-trace|--firmware-log|--context-health|--force-preemption|\
+      --read-mem|--write-mem|--read-aie-reg|--aie-clock)
+        subOption=${COMP_WORDS[i]}
+        break
+        ;;
+    esac
+  done
+
+  # Handle sub-option specific completions
+  if [[ -n "${subOption}" ]]; then
+    case ${prev} in
+      -d|--device)
+        local devices
+        devices=$(ls -d /sys/class/accel/accel*/device 2>/dev/null | xargs -I{} readlink {} | xargs -n1 basename 2>/dev/null)
+        COMPREPLY=($(compgen -W "${devices}" -- "${cur}"))
+        __ltrim_colon_completions "${cur}"
+        return
+        ;;
+      -o|--output|-i|--input|--raw)
+        _filedir
+        return
+        ;;
+    esac
+    local subOptions=""
+    case ${subOption} in
+      --event-trace)
+        if [[ "${commandWord}" == "examine" ]]; then
+          subOptions="--device -d --help -h --status --watch --raw --payload-version"
+        elif [[ "${commandWord}" == "configure" ]]; then
+          subOptions="--device -d --help -h --enable --disable --list-categories --categories"
+        fi
+        ;;
+      --firmware-log)
+        if [[ "${commandWord}" == "examine" ]]; then
+          subOptions="--device -d --help -h --status --watch --raw --payload-version"
+        elif [[ "${commandWord}" == "configure" ]]; then
+          subOptions="--device -d --help -h --enable --disable --log-level"
+        fi
+        ;;
+      --context-health)
+        subOptions="--device -d --help -h --watch --ctx-id --pid"
+        ;;
+      --force-preemption)
+        subOptions="--device -d --help enable disable status"
+        ;;
+      --read-mem)
+        subOptions="--device -d --output -o --address --size --count --help"
+        ;;
+      --write-mem)
+        subOptions="--input -i --device -d --address --size --count --fill -f --help"
+        ;;
+      --read-aie-reg)
+        subOptions="--device -d --row --col --reg --help"
+        ;;
+      --aie-clock)
+        subOptions="--device -d --partition -p --set -s --get -g --help -h"
+        ;;
+    esac
+    COMPREPLY=($(compgen -W "${subOptions}" -- "${cur}"))
+    __ltrim_colon_completions "${cur}"
+    return
+  fi
+
+  # Handle options that require arguments
   case ${prev} in
     -d|--device)
-      options=""
+      # List available device BDFs by reading symlinks from /sys/class/accel/
+      local devices
+      devices=$(ls -d /sys/class/accel/accel*/device 2>/dev/null | xargs -I{} readlink {} | xargs -n1 basename 2>/dev/null)
+      COMPREPLY=($(compgen -W "${devices}" -- "${cur}"))
+      __ltrim_colon_completions "${cur}"
+      return
       ;;
-    -u|--user)
+    -f|--format)
+      # Format options: JSON or JSON-2020.2
+      COMPREPLY=($(compgen -W "JSON JSON-2020.2" -- "${cur}"))
+      return
+      ;;
+    --pmode)
+      # Performance mode options (dynamically from device)
+      local vals
+      vals=$(_xrt_smi_enum "--pmode" configure ${advFlag})
+      [[ -z "$vals" ]] && vals="default powersaver balanced performance turbo"
+      COMPREPLY=($(compgen -W "${vals}" -- "${cur}"))
+      return
+      ;;
+    -o|--output)
       # The _filedir function is defined in the bash-completion script typically found in
       # /usr/share/bash-completion/bash_completions. This populates the COMP_REPLY with 
       # All files and directories are specified by the last argument in the command line
       # when a tab completion event is triggered.
       _filedir
-      options=""
+      return
       ;;
-    -f|--format)
-      options=""
-      ;;
-    -o|--output)
+    -i|--input)
       _filedir
-      options=""
-      ;;
-    -t|--type)
-      options=""
+      return
       ;;
     -p|--path)
-      _filedir
-      options=""
+      _filedir -d
+      return
       ;;
-    --p2p)
-      options=""
+    --report)
+      # Report types for examine command (dynamically from device)
+      local vals
+      vals=$(_xrt_smi_enum "--report" examine ${advFlag})
+      [[ -z "$vals" ]] && vals="aie-partitions all host platform"
+      COMPREPLY=($(compgen -W "${vals}" -- "${cur}"))
+      return
+      ;;
+    --run)
+      # Test types for validate command (dynamically from device)
+      local vals
+      vals=$(_xrt_smi_enum "--run" validate ${advFlag})
+      [[ -z "$vals" ]] && vals="all latency throughput"
+      COMPREPLY=($(compgen -W "${vals}" -- "${cur}"))
+      return
+      ;;
+    -r)
+      # -r is --report for examine, --run for validate
+      local vals
+      if [[ "${commandWord}" == "validate" ]]; then
+        vals=$(_xrt_smi_enum "--run" validate ${advFlag})
+        [[ -z "$vals" ]] && vals="all latency throughput"
+      else
+        vals=$(_xrt_smi_enum "--report" examine ${advFlag})
+        [[ -z "$vals" ]] && vals="aie-partitions all host platform"
+      fi
+      COMPREPLY=($(compgen -W "${vals}" -- "${cur}"))
+      return
+      ;;
+    --force-preemption)
+      COMPREPLY=($(compgen -W "enable disable status" -- "${cur}"))
+      return
       ;;
     --host-mem)
-      options=""
+      COMPREPLY=($(compgen -W "enable disable" -- "${cur}"))
+      return
       ;;
-    # The -r option is used for multiple commands so extra processing is needed in here
-    -r|--report|--run)
-      options=""
+    --p2p)
+      COMPREPLY=($(compgen -W "enable disable validate" -- "${cur}"))
+      return
       ;;
-    *)
-      # Default to using the passed in options if no particular option is used
-      options=$1
+    -h|--help)
+      # --help is terminal, no more completions
+      COMPREPLY=()
+      return
       ;;
   esac
+
+  # Build completion options based on context
+  local options=""
+
+  if [[ -z "${commandWord}" ]]; then
+    # No command found yet, suggest commands and global options
+    options="${commands} ${globalModifiers} --help -h --version"
+  else
+    # Dynamically get available options from help output
+    options=$(_xrt_smi_options ${commandWord} ${advFlag})
+    if [[ -n "${options}" ]]; then
+      # Add --advanced since it's a global option not shown in subcommand help
+      options="${options} --advanced"
+    else
+      # Fallback to static options
+      local commonOptions="--device -d --help -h ${globalModifiers}"
+      case ${commandWord} in
+        configure) options="--pmode ${commonOptions}" ;;
+        examine)   options="--report -r --format -f --output -o ${commonOptions}" ;;
+        validate)  options="--run -r --format -f --output -o ${commonOptions}" ;;
+        advanced)  options="--read-mem --write-mem --device -d --help" ;;
+      esac
+    fi
+  fi
+
   # The format of the compgen commands options is seperated from the current word using a --.
   # The -- character signifies the end of command options. All following arguments are positional.
-  COMPREPLY+=($(compgen -W "$options" -- $cur))
+  COMPREPLY=($(compgen -W "${options}" -- "${cur}"))
   # 2nd part of getting around colons in the suggested keywords
-  __ltrim_colon_completions "$cur"
+  __ltrim_colon_completions "${cur}"
 }
 
-# The main function populating the COMPREPLY
-_xbutil_completion()
-{
-  commonSubCommands="--verbose --batch --force --help -h --version"
-  # COMP_CWORD is the current index of the cursor in the command line
-  # 0 is the first argument (xrt-smi), 1 is the desired command for xrt-smi,
-  # 2 is an option for the command, etc.
-  case ${COMP_CWORD} in
-    # Case for command after xrt-smi
-    1)
-      options="program validate examine configure reset ${commonSubCommands}"
-      ;;
-    # Case for options after the above command is entered
-    *)
-      # Command word is used to specify further options as the command expands
-      commandWord=${COMP_WORDS[1]}
-      # Options that appear for all commands
-      commonSubCommands="--device -d ${commonSubCommands}"
-      # Once a command is identified the options will always be the same
-      case ${commandWord} in
-        "program")
-          options="--user -u ${commonSubCommands}"
-          ;;
-        "validate")
-          options="--run -r --format -f --output -o --path -p ${commonSubCommands}"
-          ;;
-        "examine")
-          options="--report -r --format -f --output -o ${commonSubCommands}"
-          ;;
-        "configure")
-          options="--host-mem --p2p --size ${commonSubCommands}"
-          ;;
-        "reset")
-          options="--type -t ${commonSubCommands}"
-          ;;
-        # Return an empty reply if an invalid command is entered
-        *)
-          options=""
-          ;;
-      esac
-      ;;
-  esac
-  _command_word_xbutil_completion "${options}"
-}
-
-complete -F _xbutil_completion xrt-smi
-echo Autocomplete enabled for the xrt-smi command
+complete -F _xrt_smi_completion xrt-smi
 
 # ex: filetype=sh

@@ -1,10 +1,10 @@
 #!/bin/csh -f
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
-# Enable autocompletion for the xrt-smi and xbmgmt commands
-alias __xbutil_completion_csh tcsh $XILINX_XRT/share/completions/xrt-smi-csh-completion
+# Enable autocompletion for the xrt-smi command
+alias __xrt_smi_completion_csh tcsh $XILINX_XRT/share/completions/xrt-smi-csh-completion
 # TCSH is very unfriendly when performing file completions inside the aliased script
 # to get around this we add certain options that default to file/directory searches here
 # The options that bypass the completion script are identified (using the n as the first parameter) by their name
@@ -13,6 +13,5 @@ alias __xbutil_completion_csh tcsh $XILINX_XRT/share/completions/xrt-smi-csh-com
 # n/--test/-f -> A tab completion event following the --test option will display available files in the current directory
 # 
 # The options that bypass the script parsing are as follows:
-# -u, --user, -o, --output, -p, --path
-complete xrt-smi 'n/-u/f/' 'n/--user/f/' 'n/-o/f/' 'n/--output/f/' 'n/-p/f/' 'n/--path/f/' 'p/*/`__xbutil_completion_csh`/'
-echo Autocomplete enabled for the xrt-smi command
+# -o, --output
+complete xrt-smi 'n/-o/f/' 'n/--output/f/' 'n/-i/f/' 'n/--input/f/' 'n/-p/f/' 'n/--path/f/' 'n/--raw/f/' 'p/*/`__xrt_smi_completion_csh`/'
