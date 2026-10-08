@@ -182,7 +182,7 @@ execute(const SubCmdOptions& _options) const
     //validate required arguments
     validate_args(); 
   } catch(xrt_core::error& err) {
-    std::cout << err.what() << std::endl;
+    XBUtilities::print_exception(err);
     printHelp();
     throw xrt_core::error(err.get_code());
   }
