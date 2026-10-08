@@ -11,6 +11,10 @@ class config_gen_npu3 : public config_gen_ryzen {
 protected:
   std::vector<xrt_core::smi::basic_option> examine_report_desc;
 
+  // Only exposed by variants that support reset (PF and VF, not classic).
+  static xrt_core::smi::subcommand
+  make_reset_subcommand();
+
 public:
   config_gen_npu3();
   const std::vector<xrt_core::smi::basic_option>&
