@@ -19,6 +19,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -175,9 +176,9 @@ SubCmdReset::setOptionConfig(const boost::property_tree::ptree& config)
   if (!type_opt || type_opt->second.empty())
     return;
 
-  po::options_description common("Common Options");
-  add_reset_options(common, &m_device, &m_resetType, &m_help, type_opt->first, type_opt->second);
-  m_commonOptions = common;
+  std::destroy_at(&m_commonOptions);
+  new (&m_commonOptions) po::options_description("Common Options");
+  add_reset_options(m_commonOptions, &m_device, &m_resetType, &m_help, type_opt->first, type_opt->second);
 }
 
 void
