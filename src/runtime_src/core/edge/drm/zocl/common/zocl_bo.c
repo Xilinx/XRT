@@ -126,43 +126,41 @@ static struct drm_zocl_bo *zocl_create_userprt_bo(struct drm_device *dev,
 		uint64_t unaligned_size)
 {
 	size_t size = PAGE_ALIGN(unaligned_size);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-	struct drm_gem_dma_object *cma_obj;
-#else
-	struct drm_gem_cma_object *cma_obj;
-#endif
+	struct drm_zocl_bo *bo;
 	int err = 0;
 
 	if (!size)
 		return ERR_PTR(-EINVAL);
 
-	cma_obj = kzalloc(sizeof(*cma_obj), GFP_KERNEL);
-	if (!cma_obj) {
+	/* drm_zocl_bo is larger than the embedded GEM CMA/DMA object.
+	 * Allocating only the inner object and then writing bo->flags /
+	 * bo->user_flags walks off the slab.
+	 */
+	bo = kzalloc(sizeof(*bo), GFP_KERNEL);
+	if (!bo) {
 		DRM_DEBUG("cma object create failed\n");
 		return ERR_PTR(-ENOMEM);
 	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-	cma_obj->base.funcs = &zocl_gem_object_funcs;
+	bo->cma_base.base.funcs = &zocl_gem_object_funcs;
 #endif
-	err = drm_gem_object_init(dev, &cma_obj->base, size);
+	err = drm_gem_object_init(dev, &bo->cma_base.base, size);
 	if (err) {
 		DRM_DEBUG("drm gem object initial failed\n");
-		goto out1;
+		kfree(bo);
+		return ERR_PTR(err);
 	}
 
-	cma_obj->sgt   = NULL;
-	cma_obj->vaddr = NULL;
+	bo->cma_base.sgt   = NULL;
+	bo->cma_base.vaddr = NULL;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-	cma_obj->dma_addr = 0x0;
+	bo->cma_base.dma_addr = 0x0;
 #else
-	cma_obj->paddr = 0x0;
+	bo->cma_base.paddr = 0x0;
 #endif
 
-	return to_zocl_bo(&cma_obj->base);
-out1:
-	kfree(cma_obj);
-	return NULL;
+	return bo;
 }
 
 void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)

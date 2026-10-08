@@ -129,6 +129,9 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	char *data = NULL;
 	size_t i;
 
+	if (length <= 0)
+		return -EINVAL;
+
 	memset(&bit_header, 0, sizeof(bit_header));
 	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
 	    &bit_header)) {
@@ -136,7 +139,12 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 		return -EINVAL;
 	}
 
-	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
+	/* HeaderLength and BitstreamLength are 32-bit. Adding them in
+	 * unsigned int wraps, and the following byte-swap
+	 * would then walk off the section buffer.
+	 */
+	if ((uint64_t)bit_header.HeaderLength +
+	    (uint64_t)bit_header.BitstreamLength > (uint64_t)length) {
 		DRM_ERROR("bitstream header+stream length parse failed");
 		return -EINVAL;
 	}
