@@ -21,16 +21,35 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
     const char* path;
     bool is_pci;
   };
-  static constexpr std::array<bus_root, 3> bus_roots = {{
-    { "/sys/bus/pci/drivers/",      true  },
-    { "/sys/bus/rpmsg/drivers/",    false },
-    { "/sys/bus/platform/drivers/", false },
+  static constexpr std::array<bus_root, 4> bus_roots = {{
+    { "/sys/bus/pci/drivers/",       true  },
+    { "/sys/bus/rpmsg/drivers/",     false },
+    { "/sys/bus/platform/drivers/",  false },
+    { "/sys/bus/auxiliary/drivers/", false },
   }};
 
   const std::string drv_name = name();
 
   for (const auto& [bus_path, is_pci] : bus_roots) {
-    const std::string drvpath = bus_path + drv_name;
+    std::string drvpath = std::string(bus_path) + drv_name;
+
+    /*
+     * The auxiliary bus publishes the driver as "<module>.<name>". VE2 is
+     * amdxdna.ve2. Older builds used amdxdna.amdxdna. PCI, rpmsg, and
+     * platform keep the plain name.
+     */
+    if (!sfs::exists(drvpath)) {
+      const std::array<std::string, 2> aux_names = {
+        std::string(bus_path) + drv_name + ".ve2",
+        std::string(bus_path) + drv_name + "." + drv_name,
+      };
+      for (const auto& prefixed : aux_names) {
+        if (sfs::exists(prefixed)) {
+          drvpath = prefixed;
+          break;
+        }
+      }
+    }
 
     if (!sfs::exists(drvpath))
       continue;
@@ -56,7 +75,7 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
           continue;
 
         // PCI: pass BDF filename (e.g. "0000:01:00.0")
-        // rpmsg/platform: pass canonical device sysfs path
+        // rpmsg/platform/auxiliary: pass canonical device sysfs path
         std::string dev_sysfs = is_pci ? path.filename().string() : real.string();
 
         auto pf = create_pcidev(dev_sysfs);
@@ -79,8 +98,8 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
       }
     }
 
-    // A driver binds on a single bus type (PCI, rpmsg or platform), so
-    // once a root yields devices there is no need to scan the others.
+    // A driver binds on one bus type, so once a root yields devices there
+    // is no need to scan the others. VE2 binds on the auxiliary bus.
     if (!ready_list.empty() || !nonready_list.empty())
       return;
   }
