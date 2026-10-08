@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -40,6 +41,13 @@ public:
 
   xrt_core::smi::subcommand
   create_configure_subcommand() override;
+
+  // Creates the "reset" subcommand; std::nullopt when reset is not supported.
+  virtual std::optional<xrt_core::smi::subcommand>
+  create_reset_subcommand()
+  {
+    return std::nullopt;
+  }
 
 };
 

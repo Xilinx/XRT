@@ -823,6 +823,7 @@ static const std::map<std::string, xrt_core::query::reset_type> reset_map = {
     { "soft-kernel", xrt_core::query::reset_type(xrt_core::query::reset_key::soft_kernel, "SOFT KERNEL Reset", "", "mgmt_reset", "", "5") },
     { "aie", xrt_core::query::reset_type(xrt_core::query::reset_key::aie, "AIE Reset", "", "mgmt_reset", "", "6") },
     { "user", xrt_core::query::reset_type(xrt_core::query::reset_key::user, "HOT Reset", "", "", "", "") },
+    { "flr", xrt_core::query::reset_type(xrt_core::query::reset_key::flr, "FLR Reset", "", "", "", "") },
   };
 
 xrt_core::query::reset_type

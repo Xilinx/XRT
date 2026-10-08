@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2026, Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +23,7 @@
 class SubCmdReset : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
+  void setOptionConfig(const boost::property_tree::ptree &config) override;
 
  public:
   SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary);

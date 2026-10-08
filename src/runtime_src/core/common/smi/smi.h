@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #pragma once
 // Local include files
@@ -295,6 +295,7 @@ public:
   is_aie2_platform(hardware_type hw);
 
   // NPU3 variant (classic host, VF, or PF) for xrt-smi config generator selection.
+  XRT_CORE_COMMON_EXPORT
   static npu3_variant
   get_npu3_variant(hardware_type hw);
 
