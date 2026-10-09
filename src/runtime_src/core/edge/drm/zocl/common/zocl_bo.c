@@ -913,20 +913,24 @@ zocl_can_dma_performed(struct drm_device *dev, struct drm_file *filp,
 
 	/*
 	 * pre check before requesting DMA memory copy.
+	 * Compare offset against the BO size before adding so a
+	 * wrapping uint64_t sum cannot pass:
 	 *    dst_offset + size <= dst_size
-	 *    src_offset + size <= src_size`
+	 *    src_offset + size <= src_size
 	 */
 	if (args->size == 0) {
 		DRM_ERROR("Failed: request size cannot be ZERO!");
 		rc = false;
 		goto out;
 	}
-	if (args->dst_offset + args->size > dst_size) {
+	if (args->dst_offset > dst_size ||
+	    args->size > dst_size - args->dst_offset) {
 		DRM_ERROR("Failed: dst_offset + size out of boundary");
 		rc = false;
 		goto out;
 	}
-	if (args->src_offset + args->size > src_size) {
+	if (args->src_offset > src_size ||
+	    args->size > src_size - args->src_offset) {
 		DRM_ERROR("Failed: src_offset + size out of boundary");
 		rc = false;
 		goto out;
