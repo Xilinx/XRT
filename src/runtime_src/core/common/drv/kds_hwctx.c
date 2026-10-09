@@ -37,49 +37,75 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 	ssize_t all_cu_sz = 0;
 	enum kds_type type = (domain == DOMAIN_PL) ? KDS_CU : KDS_SCU;
 	int i = 0, j = 0;
+	bool stop = false;
 
-	mutex_lock(&cu_mgmt->lock);
+	/*
+	 * kds->clients is protected by kds->lock. Per-client cu_ctx_list and
+	 * hw_ctx_list are protected by client->lock. Lock order elsewhere is
+	 * client->lock then cu_mgmt->lock, so take cu_mgmt->lock only while
+	 * reading the CU array.
+	 */
+	mutex_lock(&kds->lock);
 	/* For legacy context */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		if (!client->ctx || list_empty(&client->ctx->cu_ctx_list)) 
+		mutex_lock(&client->lock);
+		if (!client->ctx || list_empty(&client->ctx->cu_ctx_list)) {
+			mutex_unlock(&client->lock);
 			continue;
+		}
 
 		/* Find out if same CU context is already exists  */
 		list_for_each_entry(cu_ctx, &client->ctx->cu_ctx_list, link) {
-			xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
-			if ((xcu == NULL) || (cu_ctx->cu_domain != domain)) 
+			if (cu_ctx->cu_idx >= MAX_CUS ||
+			    cu_ctx->cu_domain != domain)
 				continue;
+
+			mutex_lock(&cu_mgmt->lock);
+			xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
+			if (!xcu) {
+				mutex_unlock(&cu_mgmt->lock);
+				continue;
+			}
 
 			j = cu_ctx->ctx->slot_idx;
 			i = cu_ctx->cu_idx;
-                        /* Generate the CU string to write into the buffer */
-                        memset(cu_buf, 0, sizeof(cu_buf));
-                        cu_sz = kds_create_cu_string(xcu, &cu_buf, j, i,
-                                        cu_stat_read(cu_mgmt, usage[i]), type);
+			/* Generate the CU string to write into the buffer */
+			memset(cu_buf, 0, sizeof(cu_buf));
+			cu_sz = kds_create_cu_string(xcu, &cu_buf, j, i,
+					cu_stat_read(cu_mgmt, usage[i]), type);
+			mutex_unlock(&cu_mgmt->lock);
 
-                        /* Store the CU string length with previous lengths */
-                        all_cu_sz += cu_sz;
+			/* Store the CU string length with previous lengths */
+			all_cu_sz += cu_sz;
 
-                        /**
-                         * Verify that
-                         * 1. The data starts after the requested offset
-                         * 2. The buffer can hold the data
-                         */
-                        if (all_cu_sz > offset) {
-                                if (sz + cu_sz > buf_size)
-					goto out;
-                                
+			/**
+			 * Verify that
+			 * 1. The data starts after the requested offset
+			 * 2. The buffer can hold the data
+			 */
+			if (all_cu_sz > offset) {
+				if (sz + cu_sz > buf_size) {
+					stop = true;
+					break;
+				}
+
 				sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
-                        }
+			}
 		}
+		mutex_unlock(&client->lock);
+		if (stop)
+			goto out;
 	}
 
 	/* For hw context */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		if (!client->ctx || list_empty(&client->hw_ctx_list)) 
+		mutex_lock(&client->lock);
+		if (!client->ctx || list_empty(&client->hw_ctx_list)) {
+			mutex_unlock(&client->lock);
 			continue;
+		}
 
 		list_for_each_entry(curr, &client->hw_ctx_list, link) {
 			if (list_empty(&curr->cu_ctx_list))
@@ -87,9 +113,16 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 
 			/* Find out if same CU context is already exists  */
 			list_for_each_entry(cu_ctx, &curr->cu_ctx_list, link) {
-				xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
-				if ((xcu == NULL) || (cu_ctx->cu_domain != domain))
+				if (cu_ctx->cu_idx >= MAX_CUS ||
+				    cu_ctx->cu_domain != domain)
 					continue;
+
+				mutex_lock(&cu_mgmt->lock);
+				xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
+				if (!xcu) {
+					mutex_unlock(&cu_mgmt->lock);
+					continue;
+				}
 
 				j = cu_ctx->hw_ctx->hw_ctx_idx;
 				i = cu_ctx->cu_idx;
@@ -97,6 +130,7 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 				memset(cu_buf, 0, sizeof(cu_buf));
 				cu_sz = kds_create_cu_string(xcu, &cu_buf, j, i,
 						cu_stat_read(cu_mgmt, usage[i]), type);
+				mutex_unlock(&cu_mgmt->lock);
 
 				/* Store the CU string length with previous lengths */
 				all_cu_sz += cu_sz;
@@ -107,17 +141,24 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 				 * 2. The buffer can hold the data
 				 */
 				if (all_cu_sz > offset) {
-					if (sz + cu_sz > buf_size)
-						goto out;
-			
+					if (sz + cu_sz > buf_size) {
+						stop = true;
+						break;
+					}
+
 					sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
 				}
 			}
+			if (stop)
+				break;
 		}
+		mutex_unlock(&client->lock);
+		if (stop)
+			goto out;
 	}
 
 out:
-	mutex_unlock(&cu_mgmt->lock);
+	mutex_unlock(&kds->lock);
 
 	return sz;
 }
