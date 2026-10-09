@@ -45,8 +45,7 @@ class TestRunner : public JSONConfigurable, public std::enable_shared_from_this<
     // out keeps running in a detached thread which must not outlive its
     // referents, so the worker takes shared ownership of them.
     boost::property_tree::ptree startTest(const std::shared_ptr<xrt_core::device>&,
-                                          std::shared_ptr<const xrt_core::archive> archive,
-                                          unsigned int iter);
+                                          std::shared_ptr<const xrt_core::archive> archive);
     
     virtual void set_param(const std::string&, const std::string&) {}
     bool is_explicit() const { return m_explicit; };

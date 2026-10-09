@@ -97,48 +97,41 @@ TestRunner::run(const std::shared_ptr<xrt_core::device>& dev)
 
 boost::property_tree::ptree
 TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev, 
-                      std::shared_ptr<const xrt_core::archive> archive, 
-                      unsigned int iter)
+                      std::shared_ptr<const xrt_core::archive> archive)
 {
-  boost::property_tree::ptree result;
+  XBUtilities::BusyBar busy_bar("Running Test", std::cout);
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
-  for (unsigned int i = 0; i < iter; ++i) {
-    XBUtilities::BusyBar busy_bar("Running Test", std::cout);
-    busy_bar.start(XBUtilities::is_escape_codes_disabled());
+  auto ctx = std::make_shared<test_context>();
+  ctx->dev = dev;
+  ctx->test = shared_from_this();
+  ctx->archive = archive;
 
-    auto ctx = std::make_shared<test_context>();
-    ctx->dev = dev;
-    ctx->test = shared_from_this();
-    ctx->archive = archive;
-
-    // Start the test process
-    std::thread test_thread([ctx] { runTestInternal(ctx); });
-    // Wait for the test process to finish or for the signal to be caught
-    while (ctx->running && !force_exit) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-      try {
-        busy_bar.check_timeout(max_test_duration);
-      } catch (const std::exception&) {
-        test_thread.detach();
-        throw;
-      }
-    }
-    if (force_exit) {
+  // Start the test process
+  std::thread test_thread([ctx] { runTestInternal(ctx); });
+  // Wait for the test process to finish or for the signal to be caught
+  while (ctx->running && !force_exit) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    try {
+      busy_bar.check_timeout(max_test_duration);
+    } catch (const std::exception&) {
       test_thread.detach();
-      busy_bar.finish();
-      throw std::runtime_error("Test interrupted by user (Ctrl+C).");
+      throw;
     }
-
-    test_thread.join();
+  }
+  if (force_exit) {
+    test_thread.detach();
     busy_bar.finish();
-
-    if (ctx->error)
-      std::rethrow_exception(ctx->error);
-
-    result = ctx->result;
+    throw std::runtime_error("Test interrupted by user (Ctrl+C).");
   }
 
-  return result;
+  test_thread.join();
+  busy_bar.finish();
+
+  if (ctx->error)
+    std::rethrow_exception(ctx->error);
+
+  return ctx->result;
 }
 
 

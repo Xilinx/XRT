@@ -635,6 +635,7 @@ private:
 // then behavior is undefined.
 class ip_context
 {
+public:
   // class connectivy - Represents argument connectiviy to memory banks
   //
   // The argument connectivity is represented using a compressed bitset
@@ -645,7 +646,6 @@ class ip_context
   // @default_connection: default connectivity for an argument
   class connectivity
   {
-    static constexpr int32_t no_memidx {-1};
     static constexpr size_t max_connections {64};
     std::vector<encoded_bitset<max_connections>> connections; // indexed by argidx
     std::vector<int32_t> default_connection;                  // indexed by argidx
@@ -662,6 +662,8 @@ class ip_context
     }
 
   public:
+    static constexpr int32_t no_memidx {-1};
+
     connectivity() = default;
 
     // @xclbin: meta data
@@ -717,8 +719,6 @@ class ip_context
     }
   };
 
-
-public:
   using access_mode = xrt::kernel::cu_access_mode;
   using slot_id = xrt_core::hwctx_handle::slot_id;
 
@@ -1461,6 +1461,12 @@ public:
   is_output() const
   { return arg.dir == direction::output; }
 
+  bool
+  is_buffer() const
+  {
+    return arg.type == xarg::argtype::global || arg.type == xarg::argtype::constant;
+  }
+
   xarg::argtype
   type() const
   { return arg.type; }
@@ -2149,11 +2155,20 @@ public:
     // for the xclbin slot, and 8 bits reserved for bo flags.  The latter
     // flags are populated when the xrt::bo object is constructed.
 
+    if (argno < 0 || static_cast<size_t>(argno) >= args.size())
+      throw xrt_core::error(EINVAL, "No such kernel argument at index " + std::to_string(argno)
+                            + " for kernel '" + name + "'");
+
     // Last (for group id) connection of first ip in this kernel
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
+    auto memidx = ip->arg_memidx(argno);
+    if (memidx == ip_context::connectivity::no_memidx && args[argno].is_buffer())
+      throw xrt_core::error(EINVAL, "No memory group assigned for global argument at index "
+                            + std::to_string(argno) + " of kernel '" + name + "'");
+
     xcl_bo_flags grp = {0};     // xrt_mem.h
-    grp.bank = ip->arg_memidx(argno);
+    grp.bank = memidx;
     grp.slot = ip->get_slot();
 
     // This function should return uint32_t or some same symbolic type
@@ -2429,7 +2444,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // By default first control code that is available is picked
   static xrt::module
   copy_module(const xrt::module& module, const xrt::hw_context& hwctx,
-              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
+              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo,
+              std::string kernel_name)
   {
     if (!module)
       return {};
@@ -2438,7 +2454,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     // This buffer is empty when ELF doesn't have ctrlpkt
     return xrt_core::module_int::create_module_run(
         xrt::elf(xrt_core::module_int::get_elf_handle(module)),
-        hwctx, ctrl_code_id, ctrlpkt_bo);
+        hwctx, ctrl_code_id, ctrlpkt_bo, std::move(kernel_name));
   }
 
   // payload_size() - Number of bytes in command payload that can be
@@ -2705,7 +2721,7 @@ public:
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
     , m_ctrlpkt_bo(kernel->get_ctrlpkt_buffer())
-    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo)}
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo, kernel->get_full_name())}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())

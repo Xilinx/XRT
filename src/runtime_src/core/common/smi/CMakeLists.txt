@@ -3,7 +3,14 @@
 #
 # OBJECT libraries linked into xrt_coreutil, xrt_core (Alveo/edge), and xrt_driver_xdna / other shims.
 
-add_library(core_common_smi_objects OBJECT smi.cpp smi_ryzen.cpp)
+add_library(core_common_smi_objects OBJECT
+  smi.cpp
+  smi_ryzen.cpp
+  smi_ryzen_npu3.cpp
+  smi_ryzen_pf.cpp
+  smi_ryzen_strix.cpp
+  smi_ryzen_vf.cpp
+  )
 target_include_directories(core_common_smi_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
