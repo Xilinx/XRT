@@ -130,10 +130,12 @@ XclBin::initializeHeader(axlf& _xclBinHeader)
   _xclBinHeader.m_header.m_actionMask = 0;
 
   // Now populate the version information
-  const auto version = getVersionMajorMinorPatch(xrt_build_version);
-  _xclBinHeader.m_header.m_versionMajor = version.major;
-  _xclBinHeader.m_header.m_versionMinor = version.minor;
-  _xclBinHeader.m_header.m_versionPatch = version.patch;
+  _xclBinHeader.m_header.m_versionMajor =
+    static_cast<uint8_t>(XRT_MAJOR(XRT_VERSION_CODE));
+  _xclBinHeader.m_header.m_versionMinor =
+    static_cast<uint8_t>(XRT_MINOR(XRT_VERSION_CODE));
+  _xclBinHeader.m_header.m_versionPatch =
+    static_cast<uint16_t>(XRT_PATCH);
 }
 
 void
@@ -570,6 +572,7 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
 }
 
 
+// Only used for reading mirror data (see --migrate-forward usage)
 void
 XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
                          struct axlf& _axlfHeader)
@@ -626,6 +629,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   XUtil::TRACE("Done Reading via JSON mirror xclbin header information.");
 }
 
+// Only used for reading mirror data (see --migrate-forward usage)
 void
 XclBin::readXclBinSection(std::fstream& _istream,
                           const boost::property_tree::ptree& _ptSection)
@@ -637,8 +641,6 @@ XclBin::readXclBinSection(std::fstream& _istream,
   pSection->readXclBinBinary(_istream, _ptSection);
   addSection(pSection);
 }
-
-
 
 void
 XclBin::readXclBinaryMirrorImage(std::fstream& _istream,
