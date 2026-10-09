@@ -9,6 +9,7 @@
 #include "core/common/utils.h"
 #include "core/common/query_requests.h"
 #include "core/common/archive.h"
+#include "core/common/info_platform.h"
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/Report.h"
@@ -83,11 +84,17 @@ static const std::string test_token_failed = "FAILED";
 static const std::string test_token_passed = "PASSED";
 
 void
-doesTestExist(const std::string& userTestName, std::vector<std::shared_ptr<TestRunner>>& testNames)
+doesTestExist(const std::string& userTestName, const std::vector<std::shared_ptr<TestRunner>>& testNames)
 {
-  const auto iter = std::find_if( testNames.begin(), testNames.end(),
-    [&userTestName](const std::shared_ptr<TestRunner>& testRunner){ 
-      return userTestName == "all" || userTestName == "quick" || userTestName == testRunner->get_name();
+  if (testNames.empty())
+    throw xrt_core::error("No validate tests are available for this device");
+
+  if (userTestName == "all" || userTestName == "quick")
+    return;
+
+  const auto iter = std::find_if(testNames.begin(), testNames.end(),
+    [&userTestName](const std::shared_ptr<TestRunner>& testRunner) {
+      return userTestName == testRunner->get_name();
     });
 
   if (iter == testNames.end())
@@ -198,7 +205,8 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   }
   else if (warn) {
     _status.append(" with warnings");
-    status = test_status::warning;
+    if (status != test_status::failed)
+      status = test_status::warning;
   }
 
   boost::to_upper(_status);
@@ -247,7 +255,7 @@ static void
 get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
                         boost::property_tree::ptree& ptTree)
 {
-  ptTree.put("platform", xrt_core::device_query<xq::rom_vbnv>(device));
+  ptTree.put("platform", xrt_core::platform::get_device_name(device.get()));
   const auto mode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
   ptTree.put("power_mode", xq::performance_mode::parse_status(mode));
 }
@@ -314,22 +322,34 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   for (std::shared_ptr<TestRunner> testPtr : testObjectsToRun) {
     auto bdf = xrt_core::device_query<xq::pcie_bdf>(device);
 
-    boost::property_tree::ptree ptTest;
-    pretty_print_test_desc(testPtr, ptTest, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
-    try {
-      // Archive is null on devices that don't provide one; pass iter_count for repeated runs
-      ptTest = testPtr->startTest(device, test_archive, iter_count);
-    } catch (const std::runtime_error& e) {
-      std::cout << e.what() << std::endl;
-      return test_status::failed;
-    } catch (const std::exception&) {
-      XBValidateUtils::logger(ptTest, "Error", "The test timed out");
-      ptTest.put("status", test_token_failed);
-      status = test_status::failed;
-    }
-    ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
+    boost::property_tree::ptree ptHeader;
+    pretty_print_test_desc(testPtr, ptHeader, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
 
-    pretty_print_test_run(ptTest, status, std::cout);
+    for (unsigned int iter = 1; iter <= iter_count; ++iter) {
+      boost::property_tree::ptree ptTest = ptHeader;
+      bool timed_out = false;
+      try {
+        // Archive is null on devices that don't provide one
+        ptTest = testPtr->startTest(device, test_archive);
+      } catch (const std::runtime_error& e) {
+        std::cout << e.what() << std::endl;
+        return test_status::failed;
+      } catch (const std::exception&) {
+        XBValidateUtils::logger(ptTest, "Error", "The test timed out");
+        ptTest.put("status", test_token_failed);
+        status = test_status::failed;
+        timed_out = true;
+      }
+      if (iter_count > 1)
+        XBValidateUtils::logger(ptTest, "Iteration", boost::str(boost::format("%u/%u") % iter % iter_count));
+      ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
+
+      pretty_print_test_run(ptTest, status, std::cout);
+
+      // A timed out test is still running in a detached thread
+      if (timed_out)
+        break;
+    }
   }
 
   print_status(status, std::cout);
@@ -475,7 +495,11 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   po::variables_map vm;
   SubCmdValidateOptions options;
   try{
-    const auto unrecognized_options = process_arguments(vm, _options, false);
+    // All JSON "hidden" options require --advanced to be accepted on the command line.
+    po::options_description empty_hidden;
+    const po::options_description& hidden_for_parse = XBU::getAdvance() ? m_hiddenOptions : empty_hidden;
+    const auto unrecognized_options = process_arguments(vm, _options, m_commonOptions, hidden_for_parse,
+                                                        m_positionals, m_subOptionOptions, false);
     fill_option_values(vm, options);
 
     if (!unrecognized_options.empty())

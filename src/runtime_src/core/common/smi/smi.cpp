@@ -5,6 +5,7 @@
 
 // Local - Include Files
 #include "core/common/smi/smi.h"
+#include "core/common/device.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
@@ -221,12 +222,57 @@ smi_hardware_config()
 
 smi_hardware_config::hardware_type
 smi_hardware_config::
-get_hardware_type(const xq::pcie_id::data& dev) const 
+get_hardware_type(const xq::pcie_id::data& dev) const
 {
   auto it = hardware_map.find(dev);
   return (it != hardware_map.end())
     ? it->second
     : hardware_type::unknown;
+}
+
+smi_hardware_config::hardware_type
+smi_hardware_config::
+get_hardware_type(const std::string& devid_str) const
+{
+  // Part-name prefix -> hardware_type, matched as a prefix of devid_str
+  // (e.g. "xc2ve3858" for T50/npu12 -> aie2ps). Kept local so the exported
+  // smi_hardware_config layout stays ABI-stable across the xrt/xdna boundary.
+  static const std::map<std::string, hardware_type> name_prefix_map = {
+    {"xc2ve", hardware_type::aie2ps}, // VE2 parts (e.g. xc2ve3858 for T50/npu12)
+  };
+  for (const auto& [prefix, hw] : name_prefix_map) {
+    if (devid_str.rfind(prefix, 0) == 0)
+      return hw;
+  }
+  return hardware_type::unknown;
+}
+
+smi_hardware_config::hardware_type
+smi_hardware_config::
+get_hardware_type(const xrt_core::device* dev) const
+{
+  if (!dev)
+    return hardware_type::unknown;
+
+  try {
+    const auto name = xrt_core::device_query_default<xq::device_id_str>(dev, std::string{});
+    if (!name.empty()) {
+      auto hw = get_hardware_type(name);
+      if (hw != hardware_type::unknown)
+        return hw;
+    }
+  }
+  catch (...) {
+  }
+
+  try {
+    const auto pcie_id = xrt_core::device_query<xq::pcie_id>(dev);
+    return get_hardware_type(pcie_id);
+  }
+  catch (...) {
+  }
+
+  return hardware_type::unknown;
 }
 
 smi_hardware_config::hardware_family
@@ -290,6 +336,32 @@ get_aie_architecture_version(hardware_type hw)
   }
 }
 
+smi_hardware_config::npu3_variant
+smi_hardware_config::
+get_npu3_variant(hardware_type hw)
+{
+  switch (hw) {
+  case hardware_type::npu3a_vf:
+  case hardware_type::npu3_B03_vf:
+  case hardware_type::npu7_vf:
+  case hardware_type::npu8_vf:
+  case hardware_type::npu9_vf:
+  case hardware_type::npu10_vf:
+  case hardware_type::npu11_vf:
+    return npu3_variant::vf;
+  case hardware_type::npu3a_pf:
+  case hardware_type::npu3_B02_pf:
+  case hardware_type::npu7_pf:
+  case hardware_type::npu8_pf:
+  case hardware_type::npu9_pf:
+  case hardware_type::npu10_pf:
+  case hardware_type::npu11_pf:
+    return npu3_variant::pf;
+  default:
+    return npu3_variant::classic;
+  }
+}
+
 bool
 smi_hardware_config::
 is_aie2_platform(hardware_type hw)
@@ -297,6 +369,7 @@ is_aie2_platform(hardware_type hw)
   switch (get_family(hw)) {
   case hardware_family::phoenix:
   case hardware_family::strix:
+  case hardware_family::aie2ps:
     return true;
   case hardware_family::npu3:
     return false;
@@ -316,6 +389,8 @@ get_validate_archive_path(hardware_type hw)
     return "Runner/xrt_smi_strx.a";
   case hardware_family::npu3:
     return "Runner/xrt_smi_npu3.a";
+  case hardware_family::aie2ps:
+    return "Runner/xrt_smi_ve2.a";
   default:
     throw std::runtime_error("Unsupported hardware type");
   }

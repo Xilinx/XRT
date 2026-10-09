@@ -176,6 +176,9 @@ namespace XBUtilities {
   bool
   is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type);
 
+  xrt_core::smi::smi_hardware_config::hardware_type
+  get_hardware_type(const xrt_core::device* dev);
+
   void
   printAdvancedDisclaimer();
 
