@@ -34,7 +34,7 @@ FormattedOutput::getVersionAsString(const axlf& _xclBinHeader)
   // not its decimal numeric representation. The %d formatting directive
   // does not convert the argument to int. We have to explcitly cast them
   // to unsigned int here
-  // For example, for version “2.19.0”, without cast, this function woudl
+  // For example, for version “2.19.0”, without cast, this function would
   // return <control character 0x02>.<control character 0x13>.0
   return boost::str(
     boost::format("%d.%d.%d")
