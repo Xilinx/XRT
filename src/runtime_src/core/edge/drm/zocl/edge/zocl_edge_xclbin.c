@@ -137,6 +137,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		return -EFAULT;
 	}
 
+	/*
+	 * Two copies of the same user pointer race. The buffer
+	 * was sized from axlf_head, so every later walk must use that header
+	 * rather than a second-fetch m_numSections / m_length.
+	 */
+	memcpy(&axlf->m_header, &axlf_head.m_header, sizeof(axlf->m_header));
+
 	xclbin = (char __user *)axlf_obj->za_xclbin_ptr;
 	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
 	if (ret) {
