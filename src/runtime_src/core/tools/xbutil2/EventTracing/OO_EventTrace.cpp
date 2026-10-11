@@ -98,15 +98,33 @@ handle_list_categories(const xrt_core::device* device) const {
 
 void
 OO_EventTrace::
+report_state(const xrt_core::device* device) const {
+  std::cout << "Event trace " << (m_enable ? "enabled" : "disabled") << " successfully" << std::endl;
+  if (!m_disable)
+    return;
+
+  std::vector<std::string> remaining;
+  try {
+    const auto state = xrt_core::device_query<xrt_core::query::event_trace_state>(device);
+    remaining = smi::event_trace_config::mask_to_category_names(state.categories, device);
+  }
+  catch (const std::exception&) {}
+
+  if (!remaining.empty())
+    std::cout << "Following categories are still enabled and cannot be disabled via xrt-smi: "
+              << boost::algorithm::join(remaining, ", ") << std::endl;
+}
+
+void
+OO_EventTrace::
 handle_config(const xrt_core::device* device) const {
   uint32_t action_value = m_enable ? 1 : 0;
-  std::string action_name = m_enable ? "enable" : "disable";
 
   try {
     uint32_t category_mask = parse_categories(m_categories, device, m_enable);
     xrt_core::query::event_trace_state::value_type params{action_value, category_mask};
     xrt_core::device_update<xrt_core::query::event_trace_state>(device, params);
-    std::cout << "Event trace " << action_name << "d successfully" << std::endl;
+    report_state(device);
   }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();

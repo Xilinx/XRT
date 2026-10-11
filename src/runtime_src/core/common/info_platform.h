@@ -35,6 +35,13 @@ XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 get_clock_info(const xrt_core::device* device);
 
+// Human-readable device name for display: the part-number string from the shim
+// (query::device_id_str) when available, else the ROM VBNV, else the numeric
+// pcie device id formatted as hex.
+XRT_CORE_COMMON_EXPORT
+std::string
+get_device_name(const xrt_core::device* device);
+
 }} // platform, xrt
 
 #endif

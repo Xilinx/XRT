@@ -26,9 +26,8 @@ TestRunlistLatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(dev);
   xrt_core::smi::smi_hardware_config smi_hrdw;
-  const auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+  const auto hardware_type = XBUtilities::get_hardware_type(dev.get());
   if (smi_hrdw.get_family(hardware_type) == xrt_core::smi::smi_hardware_config::hardware_family::npu3) {
     XBValidateUtils::logger(ptree, "Details", "N/A");
     ptree.put("status", XBValidateUtils::test_token_skipped);
