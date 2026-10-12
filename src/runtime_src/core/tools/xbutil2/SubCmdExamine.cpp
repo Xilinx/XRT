@@ -253,7 +253,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    XBU::print_exception(e);
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -295,7 +295,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   try {
     XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
   } catch (const xrt_core::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    XBU::print_exception(e);
     printHelp();
     return;
   }
