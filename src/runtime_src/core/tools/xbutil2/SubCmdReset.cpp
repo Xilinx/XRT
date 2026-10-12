@@ -46,10 +46,10 @@ flr_reset_device(xrt_core::device* dev)
   const auto triggered =
     xrt_core::device_query_default<xrt_core::query::flr_reset>(dev, false);
 
-  if (triggered)
-    std::cout << boost::format("Successfully triggered FLR reset on Device[%s]\n") % bdf;
-  else
-    std::cout << "Unable to perform FLR reset" << std::endl;
+  if (!triggered)
+    throw xrt_core::error("Unable to perform FLR reset");
+
+  std::cout << boost::format("Successfully triggered FLR reset on Device[%s]\n") % bdf;
 }
 
 static void
@@ -170,10 +170,12 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     std::cerr << "ERROR: " << e.what() << std::endl;
     std::cout << boost::format("Reset failed on Device[%s]\n") 
                  % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  } catch (std::exception& ex) {
+    throw xrt_core::error(std::errc::operation_canceled);
+  } catch (const std::exception& ex) {
     std::cerr << "ERROR:" << ex.what() << std::endl;
     std::cout << boost::format("Reset failed on Device[%s]\n") 
                  % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
 }
