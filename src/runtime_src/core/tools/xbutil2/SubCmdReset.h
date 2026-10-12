@@ -25,13 +25,7 @@ class SubCmdReset : public SubCmd {
   virtual void execute(const SubCmdOptions &_options) const;
   void setOptionConfig(const boost::property_tree::ptree &config) override;
 
- public:
   SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  std::string m_device;
-  std::string m_resetType;
-  bool        m_help;
 };
 
 #endif

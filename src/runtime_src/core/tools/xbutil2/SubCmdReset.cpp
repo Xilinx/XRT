@@ -20,9 +20,7 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 #include <memory>
-#include <optional>
 #include <string>
-#include <utility>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 static bool
@@ -96,57 +94,9 @@ reset_device(xrt_core::device* dev, const xrt_core::query::reset_type& reset)
     % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
 }
 
-static void
-supported(std::string resetType) {
-  if (resetType != "user" && resetType != "flr")
-    throw xrt_core::error(-ENODEV, "reset not supported");
-}
-
-static void
-add_reset_options(po::options_description& opts,
-                  std::string* device,
-                  std::string* reset_type,
-                  bool* help,
-                  const std::string& type_desc,
-                  const std::string& type_default)
-{
-  opts.add_options()
-    ("device,d", po::value<std::string>(device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("type,t", po::value<std::string>(reset_type)->notifier(supported)->implicit_value(type_default), type_desc.c_str())
-    ("help", po::bool_switch(help), "Help to use this sub-command")
-  ;
-}
-
-// NPU3 VF/PF SMI config supplies the flr type text. Other devices keep user reset.
-static std::optional<std::pair<std::string, std::string>>
-configured_reset_type(const boost::property_tree::ptree& config)
-{
-  const auto subcommands = config.get_child_optional("subcommands");
-  if (!subcommands)
-    return std::nullopt;
-
-  for (const auto& sub : *subcommands) {
-    if (sub.second.get<std::string>("name", "") != "reset")
-      continue;
-    const auto options = sub.second.get_child_optional("options");
-    if (!options)
-      return std::nullopt;
-    for (const auto& opt : *options) {
-      if (opt.second.get<std::string>("name", "") != "type")
-        continue;
-      return std::make_pair(opt.second.get<std::string>("description", ""),
-                            opt.second.get<std::string>("default_value", ""));
-    }
-  }
-  return std::nullopt;
-}
-
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("reset", 
+    : SubCmd("reset",
              "Resets the given device")
-    , m_device("")
-    , m_resetType("user")
-    , m_help(false)
 {
   const std::string longDescription = "Resets the given device.";
   setLongDescription(longDescription);
@@ -154,31 +104,18 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
-
-  m_commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("type,t", boost::program_options::value<decltype(m_resetType)>(&m_resetType)->notifier(supported)->implicit_value("user"), "The type of reset to perform. Types resets available:\n"
-                                                                       "  user         - Hot reset (default)\n"
-                                                                       /*"  aie          - Reset Aie array\n"*/
-                                                                       /*"  kernel       - Kernel communication links\n"*/
-                                                                       /*"  scheduler    - Scheduler\n"*/
-                                                                       /*"  clear-fabric - Clears the accleration fabric with the\n"*/
-                                                                       /*"                 shells verify.xclbin image.\n"*/
-                                                                       /*"  memory       - Clears the memory block."*/)
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-  ;
 }
 
 void
 SubCmdReset::setOptionConfig(const boost::property_tree::ptree& config)
 {
-  const auto type_opt = configured_reset_type(config);
-  if (!type_opt || type_opt->second.empty())
-    return;
-
-  std::destroy_at(&m_commonOptions);
-  new (&m_commonOptions) po::options_description("Common Options");
-  add_reset_options(m_commonOptions, &m_device, &m_resetType, &m_help, type_opt->first, type_opt->second);
+  m_jsonConfig = SubCmdJsonObjects::JsonConfig(config.get_child("subcommands"), getName());
+  try {
+    m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
+  }
+  catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+  }
 }
 
 void
@@ -191,16 +128,18 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
-  if (m_help) {
+  const bool help = vm.count("help") != 0 && vm["help"].as<bool>();
+  if (help) {
     printHelp();
     return;
   }
 
   // -- Now process the subcommand --------------------------------------------
   // Find device of interest
+  const std::string device_str = vm.count("device") != 0 ? vm["device"].as<std::string>() : "";
   std::shared_ptr<xrt_core::device> device;
   try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -211,8 +150,9 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   if (flr_dev)
     XBU::sudo_or_throw("Root privileges are required to reset this device");
 
-  // ensure correct reset type on correct device family when type is not specified
-  const std::string reset_name = (flr_dev && vm.count("type") == 0) ? "flr" : m_resetType;
+  const std::string reset_name = vm.count("type") != 0
+    ? vm["type"].as<std::string>()
+    : (flr_dev ? "flr" : "user");
   if ((flr_dev && reset_name != "flr") || (!flr_dev && reset_name != "user"))
     throw xrt_core::error(-EINVAL, "reset not supported");
 
