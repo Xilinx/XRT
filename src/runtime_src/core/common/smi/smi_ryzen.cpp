@@ -149,6 +149,8 @@ populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* 
   smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
   smi_instance->add_subcommand("examine",  generator->create_examine_subcommand());
   smi_instance->add_subcommand("configure",  generator->create_configure_subcommand());
+  if (auto reset = generator->create_reset_subcommand())
+    smi_instance->add_subcommand("reset", std::move(*reset));
 }
 
 std::string

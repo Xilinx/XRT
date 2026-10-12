@@ -86,4 +86,16 @@ config_gen_npu3::create_configure_subcommand()
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
 }
 
+subcommand
+config_gen_npu3::make_reset_subcommand()
+{
+  std::map<std::string, std::shared_ptr<option>> reset_suboptions;
+  reset_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  reset_suboptions.emplace("type", std::make_shared<option>("type", "t", "The type of reset to perform. Types resets available:\n"
+                            "  flr          - FLR reset (default)\n", "common", "flr", "string"));
+  reset_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
+
+  return {"reset", "Resets the given device", "common", std::move(reset_suboptions)};
+}
+
 } // namespace xrt_core::smi::ryzen

@@ -352,7 +352,9 @@ enum class key_type
 
   aie_read,
   aie_write,
-  aie_coredump
+  aie_coredump,
+
+  flr_reset
 };
 
 struct pcie_vendor : request
@@ -4349,6 +4351,22 @@ struct aie_coredump : request
 
   std::any
   get(const device*, const std::any&) const override = 0;
+};
+
+// Trigger PCI function-level reset (FLR). result_type is true when successful.
+struct flr_reset : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::flr_reset;
+
+  virtual std::any
+  get(const device*) const override = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
+  }
 };
 } // query
 

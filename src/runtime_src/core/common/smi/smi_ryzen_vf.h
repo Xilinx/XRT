@@ -13,6 +13,12 @@ public:
 
   xrt_core::smi::subcommand
   create_configure_subcommand() override;
+
+  std::optional<xrt_core::smi::subcommand>
+  create_reset_subcommand() override
+  {
+    return make_reset_subcommand();
+  }
 };
 
 } // namespace xrt_core::smi::ryzen
