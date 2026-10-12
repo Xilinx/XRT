@@ -196,7 +196,7 @@ public:
 
       auto bosize = bo.size();
 
-      if (offset + size > bosize)
+      if (offset > bosize || size > bosize - offset)
         throw xrt_core::error(-EINVAL, "Sync AIE BO fails: exceed BO boundary.");
 
       std::vector<xrt::bo> bos {bo};
@@ -215,7 +215,7 @@ public:
 
       auto bosize = bo.size();
 
-      if (offset + size > bosize)
+      if (offset > bosize || size > bosize - offset)
         throw xrt_core::error(-EINVAL, "Sync AIE NBO fails: exceed BO boundary.");
 
       std::vector<xrt::bo> bos {bo};
