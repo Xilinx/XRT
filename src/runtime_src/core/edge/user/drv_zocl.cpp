@@ -5,6 +5,7 @@
 #include "dev_zocl.h"
 #include "dev.h"
 
+#include <chrono>
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
@@ -46,11 +47,24 @@ scan_devices(std::vector<std::shared_ptr<dev>>& dev_list)
 
    static const std::regex zocl_filter{"platform.*zyxclmm_drm-render"};
    const std::string ver_name = "zocl";
+   const std::string dev_path{"/dev/dri/"};
+   const std::string render_dev_sym_dir{"/dev/dri/by-path/"};
+
+#ifdef __HWEM__
+   const std::string render_dev_sym{render_dev_sym_dir + "platform-zyxclmm_drm-render"};
+   for (int attempt = 0; attempt < 60; ++attempt) {
+     std::error_code ec;
+     if (fs::exists(render_dev_sym, ec))
+       break;
+
+     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+       render_dev_sym + " is not created yet, 0 devices");
+     if (attempt + 1 < 60)
+       std::this_thread::sleep_for(std::chrono::seconds(1));
+   }
+#endif
 
    try {
-     const std::string dev_path{"/dev/dri/"};
-     const std::string render_dev_sym_dir{"/dev/dri/by-path/"};
-
      auto drm_dev_name = dev_path + match(render_dev_sym_dir, zocl_filter);
      if (!fs::exists(drm_dev_name))
        throw std::runtime_error(drm_dev_name + " device node doesn't exist");
