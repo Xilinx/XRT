@@ -525,7 +525,7 @@ reportHardwarePlatform(std::ostream& _ostream,
     // Created
     {
       std::string sCreated = getPTreeValue(_ptMetaData, "generated_by.time_stamp");
-      _ostream << boost::format("   %-23s %s") % "Created:\n" % sCreated;
+      _ostream << boost::format("   %-23s %s\n") % "Created:" % sCreated;
     }
 
     // FPGA Device
