@@ -150,6 +150,10 @@ include (${XRT_SOURCE_DIR}/CMake/unitTestSupport.cmake)
 
 # OpenSSL encryption is only supported on linux
 if(NOT WIN32 AND NOT XRT_SYSTEM_INSTALL)
+  # Test reconstruction from embedded mirror metadata.
+  xrt_add_test("migrate-forward" "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unittests/migrateForward.py")
+
   # -- Test Signing of the xclbin image using a CER formatted certificate
   xrt_add_test("signing-xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
 

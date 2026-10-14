@@ -71,6 +71,7 @@ graph_api(const graph_config* pConfig, const std::shared_ptr<config_manager> cfg
   : pGraphConfig(pConfig)
   , isConfigured(false)
   , isRunning(false)
+  , isInfiniteRun(false)
   , startTime(0)
   , config(std::move(cfg))
 {}
@@ -179,6 +180,12 @@ err_code graph_api::run(int iterations)
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::run: AIE driver error.");
 
+    // A negative iteration count makes the core(s) loop forever, so they never
+    // set the done bit and the core-done handshake in wait()/end() can never
+    // complete. Remember it so those APIs terminate the graph instead of
+    // polling for a done bit that never arrives.
+    isInfiniteRun = (iterations < 0);
+
     return run();
 }
 
@@ -189,9 +196,18 @@ err_code graph_api::wait()
 
     int driverStatus = AieRC::XAIE_OK; //0
 
+    int numCores = coreTiles.size();
+
+    if (isInfiniteRun)
+    {
+        for (int i = 0; i < numCores; i++)
+            if (!pGraphConfig->triggered[i])
+                return errorMsg(err_code::user_error, "ERROR: adf::graph::wait: graph '" + pGraphConfig->name
+                    + "' was started with an infinite iteration count and never finishes. Use wait(cycle_timeout) or end(cycle_timeout).");
+    }
+
     infoMsg("Waiting for core(s) of graph " + pGraphConfig->name + " to finish execution ...");
 
-    int numCores = coreTiles.size();
     for (int i = 0; i < numCores; i++)
     {
         if (!pGraphConfig->triggered[i])
@@ -245,6 +261,7 @@ err_code graph_api::wait(unsigned long long cycleTimeout)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::wait: AIE driver error.");
 
     isRunning = false;
+    isInfiniteRun = false; //core(s) have been disabled by the cycle timeout
     return err_code::ok;
 }
 
@@ -281,6 +298,31 @@ err_code graph_api::end()
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::end: graph is not configured.");
 
     int driverStatus = AieRC::XAIE_OK; //0
+
+    // A graph started with an infinite iteration count keeps its core(s) inside
+    // the iteration loop, so they never reach the end-signal check and never
+    // report done. Terminate it the same way end(cycle_timeout) does once its
+    // cycle wait expires: disable the core(s), then set the end signal.
+    if (isRunning && isInfiniteRun)
+    {
+        infoMsg("Terminating free-running graph " + pGraphConfig->name);
+
+        int numCores = coreTiles.size();
+        for (int i = 0; i < numCores; i++)
+        {
+            driverStatus |= XAie_CoreDisable(config->get_dev(), coreTiles[i]);
+            //set the end signal in sync_buffer[0] (which is 4 byte before iteration address)
+            driverStatus |= XAie_DataMemWrWord(config->get_dev(), iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1);
+        }
+
+        isRunning = false;
+        isInfiniteRun = false;
+
+        if (driverStatus != AieRC::XAIE_OK)
+            return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::end: AIE driver error.");
+
+        return err_code::ok;
+    }
 
     bool isRunningBefore = isRunning;
     err_code ret = wait(); //wait core done. //wait() sets isRunning to false

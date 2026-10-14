@@ -19,7 +19,7 @@ SectionVenderMetadata::init SectionVenderMetadata::initializer;
 
 SectionVenderMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", []{ return new SectionVenderMetadata(); });
+  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDOR_METADATA", []{ return new SectionVenderMetadata(); });
   sectionInfo->supportsSubSections = true;
 
   // There is only one-subsection that is supported.  By default it is not named.
@@ -149,7 +149,7 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 void
 SectionVenderMetadata::createDefaultImage(std::istream& _istream, std::ostringstream& _buffer) const
 {
-  XUtil::TRACE("VENDER_METADATA IMAGE");
+  XUtil::TRACE("VENDOR_METADATA IMAGE");
 
   vender_metadata venderMetadataHdr = vender_metadata{};
   std::ostringstream stringBlock;       // String block (stored immediately after the header)
@@ -250,7 +250,7 @@ SectionVenderMetadata::writeObjImage(std::ostream& _oStream) const
 void
 SectionVenderMetadata::writeMetadata(std::ostream& _oStream) const
 {
-  XUtil::TRACE("VENDER_METADATA writeMetadata");
+  XUtil::TRACE("VENDOR_METADATA writeMetadata");
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(vender_metadata)) {
@@ -330,7 +330,7 @@ SectionVenderMetadata::readXclBinBinary(std::istream& _istream, const axlf_secti
   if (ptVenderMetadata.empty())
     throw std::runtime_error("ERROR: copyBufferUpdateMetadata could not find the vender_metadata section.");
 
-  XUtil::TRACE_PrintTree("Current VENDER_METADATA contents", pt);
+  XUtil::TRACE_PrintTree("Current VENDOR_METADATA contents", pt);
   auto sName = ptVenderMetadata.get<std::string>("mpo_name");
 
   Section::m_sIndexName = sName;

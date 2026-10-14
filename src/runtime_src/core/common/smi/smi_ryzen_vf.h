@@ -10,6 +10,15 @@ namespace xrt_core::smi::ryzen {
 class config_gen_npu3_vf : public config_gen_npu3 {
 public:
   config_gen_npu3_vf();
+
+  xrt_core::smi::subcommand
+  create_configure_subcommand() override;
+
+  std::optional<xrt_core::smi::subcommand>
+  create_reset_subcommand() override
+  {
+    return make_reset_subcommand();
+  }
 };
 
 } // namespace xrt_core::smi::ryzen

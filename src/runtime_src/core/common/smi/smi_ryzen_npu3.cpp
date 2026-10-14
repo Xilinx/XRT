@@ -25,14 +25,10 @@ config_gen_npu3()
 
   validate_test_desc = {
     {"all", "All applicable validate tests will be executed (default)", "common"},
-    {"runlist-latency", "Run end-to-end latency test using runlist", "hidden"},
-    {"runlist-throughput", "Run end-to-end throughput test using runlist", "hidden"},
     {"df-bw", "Run bandwidth test on data fabric", "hidden"},
     {"shim-dma-bw", "Run 2xRead/1xWrite bandwidth test for SHIM DMA", "hidden"},
     {"latency", "Run end-to-end latency test", "common"},
     {"throughput", "Run end-to-end throughput test", "common"},
-    {"tct-one-col", "Measure average TCT processing time for one column", "hidden"},
-    {"tct-all-col", "Measure average TCT processing time for all columns", "hidden"},
     {"gemm", "Measure the TOPS value of GEMM INT8operations", "common"},
     {"sanity", "Run a small model and validate sanity of the device", "hidden"},
     {"preemption-overhead", "Measure preemption overhead at noop and memtile levels", "hidden"}
@@ -51,7 +47,7 @@ config_gen_npu3::create_validate_subcommand()
   validate_suboptions.emplace("run", std::make_shared<listable_description_option>("run", "r", "Run a subset of the test suite. Valid options are:\n",
                               "common", "",  "array", get_validate_test_desc()));
   validate_suboptions.emplace("param", std::make_shared<option>("param", "", "Extended parameter for a given test. Format: <test-name>:<key>:<value>", "param", "", "string"));
-  validate_suboptions.emplace("pmode", std::make_shared<option>("pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"));
+  validate_suboptions.emplace("pmode", std::make_shared<option>("pmode", "", "Modes: default, powersaver, balanced, performance, turbo", "hidden", "", "string"));
   validate_suboptions.emplace("loop", std::make_shared<option>("loop", "", "Number of iterations to run the test", "hidden", "", "string"));
 
   return {"validate", "Validates the given device by executing the platform's validate executable", "common", std::move(validate_suboptions)};
@@ -88,6 +84,18 @@ config_gen_npu3::create_configure_subcommand()
   configure_suboptions.emplace("auto-coredump", std::make_shared<option>("auto-coredump", "", "Enable|disable automatic coredump on error", "hidden", "", "string", true));
 
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
+}
+
+subcommand
+config_gen_npu3::make_reset_subcommand()
+{
+  std::map<std::string, std::shared_ptr<option>> reset_suboptions;
+  reset_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  reset_suboptions.emplace("type", std::make_shared<option>("type", "t", "The type of reset to perform. Types resets available:\n"
+                            "  flr          - FLR reset (default)\n", "common", "flr", "string"));
+  reset_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
+
+  return {"reset", "Resets the given device", "common", std::move(reset_suboptions)};
 }
 
 } // namespace xrt_core::smi::ryzen

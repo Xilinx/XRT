@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #pragma once
 // Local include files
@@ -18,6 +18,10 @@
 #include <vector>
 
 namespace xq = xrt_core::query;
+
+namespace xrt_core {
+class device;
+}
 
 namespace xrt_core::smi {
 
@@ -269,8 +273,18 @@ public:
 
   // Returns the hardware type based on the PCIe ID and Revision ID.
   XRT_CORE_COMMON_EXPORT
-  hardware_type 
+  hardware_type
   get_hardware_type(const xq::pcie_id::data&) const;
+
+  // Returns the hardware type based on device / part name string (e.g. "xc2ve3858").
+  XRT_CORE_COMMON_EXPORT
+  hardware_type
+  get_hardware_type(const std::string& devid_str) const;
+
+  // Returns the hardware type for a device, checking device_id_str first, then pcie_id.
+  XRT_CORE_COMMON_EXPORT
+  hardware_type
+  get_hardware_type(const xrt_core::device* dev) const;
 
   // Maps a specific hardware_type to its family. All per-device case logic lives here.
   XRT_CORE_COMMON_EXPORT
@@ -284,17 +298,32 @@ public:
     return get_family(get_hardware_type(dev));
   }
 
+  XRT_CORE_COMMON_EXPORT
+  hardware_family
+  get_family(const std::string& devid_str) const
+  {
+    return get_family(get_hardware_type(devid_str));
+  }
+
+  XRT_CORE_COMMON_EXPORT
+  hardware_family
+  get_family(const xrt_core::device* dev) const
+  {
+    return get_family(get_hardware_type(dev));
+  }
+
   // AIE architecture version string for examine JSON; nullopt when unknown.
   XRT_CORE_COMMON_EXPORT
   static std::optional<std::string>
   get_aie_architecture_version(hardware_type hw);
 
-  // True for PHX and STX/KRK (AIE2/AIE2P); false for NPU3 (AIE4).
+  // True for PHX, STX/KRK, and AIE2PS (AIE2/AIE2P/AIE2PS); false for NPU3 (AIE4).
   XRT_CORE_COMMON_EXPORT
   static bool
   is_aie2_platform(hardware_type hw);
 
   // NPU3 variant (classic host, VF, or PF) for xrt-smi config generator selection.
+  XRT_CORE_COMMON_EXPORT
   static npu3_variant
   get_npu3_variant(hardware_type hw);
 

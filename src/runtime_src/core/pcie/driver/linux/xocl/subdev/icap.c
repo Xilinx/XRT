@@ -1062,7 +1062,8 @@ static long icap_download(struct icap *icap, const char *buffer,
 		goto free_buffers;
 	}
 
-	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
+	if ((uint64_t)bit_header.HeaderLength +
+	    (uint64_t)bit_header.BitstreamLength > length) {
 		err = -EINVAL;
 		goto free_buffers;
 	}
@@ -4625,7 +4626,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		goto failed;
 	}
 
-	icap->rp_bit_len = bit_header.HeaderLength + bit_header.BitstreamLength;
+	icap->rp_bit_len = (uint64_t)bit_header.HeaderLength +
+		(uint64_t)bit_header.BitstreamLength;
 	if (icap->rp_bit_len > section->m_sectionSize) {
 		ICAP_ERR(icap, "bitstream is too big");
 		ret = -EINVAL;

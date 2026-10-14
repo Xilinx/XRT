@@ -129,6 +129,9 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	char *data = NULL;
 	size_t i;
 
+	if (length <= 0)
+		return -EINVAL;
+
 	memset(&bit_header, 0, sizeof(bit_header));
 	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
 	    &bit_header)) {
@@ -136,7 +139,12 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 		return -EINVAL;
 	}
 
-	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
+	/* HeaderLength and BitstreamLength are 32-bit. Adding them in
+	 * unsigned int wraps, and the following byte-swap
+	 * would then walk off the section buffer.
+	 */
+	if ((uint64_t)bit_header.HeaderLength +
+	    (uint64_t)bit_header.BitstreamLength > (uint64_t)length) {
 		DRM_ERROR("bitstream header+stream length parse failed");
 		return -EINVAL;
 	}
@@ -629,18 +637,22 @@ void zocl_slot_remove_xclbin_overlay(struct drm_zocl_dev *zdev,
 
 	zocl_destroy_cu_slot(zdev, slot->slot_idx);
 
+	WRITE_ONCE(zdev->overlay_self_task, current);
 	err = of_overlay_remove(&slot->partial_overlay_id);
+	WRITE_ONCE(zdev->overlay_self_task, NULL);
 	if (err < 0) {
+		/* Tree unchanged, nothing to re-probe. */
 		DRM_WARN("%s: overlay remove failed (%d)\n", __func__, err);
-		goto refresh;
+		goto unlock;
 	}
 
 	slot->partial_overlay_id = -1;
 	DRM_INFO("%s: removed xclbin DT overlay from slot %d\n",
 		 __func__, slot->slot_idx);
 
-refresh:
-	zocl_cu_intc_refresh(zdev);
+	/* CU INTC is device global, only slot 0 owns CUs. */
+	if (slot->slot_idx == 0)
+		zocl_cu_intc_refresh(zdev);
 unlock:
 	mutex_unlock(&slot->slot_xclbin_lock);
 }

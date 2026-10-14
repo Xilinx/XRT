@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,11 +42,23 @@ public:
   xrt_core::smi::subcommand
   create_configure_subcommand() override;
 
+  // Creates the "reset" subcommand; std::nullopt when reset is not supported.
+  virtual std::optional<xrt_core::smi::subcommand>
+  create_reset_subcommand()
+  {
+    return std::nullopt;
+  }
+
 };
 
 class config_gen_phoenix : public config_gen_ryzen {
 public:
   config_gen_phoenix();
+};
+
+class config_gen_aie2ps : public config_gen_ryzen {
+public:
+  config_gen_aie2ps();
 };
 
 void

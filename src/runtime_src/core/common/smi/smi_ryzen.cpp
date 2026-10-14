@@ -39,6 +39,29 @@ config_gen_phoenix()
   };
 }
 
+config_gen_aie2ps::
+config_gen_aie2ps()
+{
+  examine_report_desc = {
+    {"aie-partitions", "AIE partition information", "common"},
+    {"all", "All known reports are produced", "common"},
+    {"host", "Host information (default)", "common"},
+    {"platform", "Platforms flashed on the device", "common"},
+    {"telemetry", "Telemetry data for the device", "hidden"},
+    {"preemption", "Preemption telemetry data for the device", "hidden"},
+    {"clocks", "Clock frequency information", "hidden"},
+    {"debug", "Debug configuration settings for the device", "hidden"}
+  };
+
+  validate_test_desc = {
+    {"all", "All applicable validate tests will be executed (default)", "common"},
+    {"latency", "Run end-to-end latency test", "common"},
+    {"runlist-latency", "Run end-to-end latency test using runlist", "hidden"},
+    {"runlist-throughput", "Run end-to-end throughput test using runlist", "hidden"},
+    {"throughput", "Run end-to-end throughput test", "common"},
+  };
+}
+
 subcommand
 config_gen_ryzen::create_validate_subcommand()
 {
@@ -52,7 +75,7 @@ config_gen_ryzen::create_validate_subcommand()
   validate_suboptions.emplace("run", std::make_shared<listable_description_option>("run", "r", "Run a subset of the test suite. Valid options are:\n",
                               "common", "",  "array", get_validate_test_desc()));
   validate_suboptions.emplace("param", std::make_shared<option>("param", "", "Extended parameter for a given test. Format: <test-name>:<key>:<value>", "param", "", "string"));
-  validate_suboptions.emplace("pmode", std::make_shared<option>("pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"));
+  validate_suboptions.emplace("pmode", std::make_shared<option>("pmode", "", "Modes: default, powersaver, balanced, performance, turbo", "hidden", "", "string"));
   validate_suboptions.emplace("loop", std::make_shared<option>("loop", "", "Number of iterations to run the test", "hidden", "", "string"));
 
   return {"validate", "Validates the given device by executing the platform's validate executable", "common", std::move(validate_suboptions)};
@@ -98,6 +121,8 @@ create_config_generator(smi_hardware_config::hardware_type hw)
   switch (smi_hardware_config::get_family(hw)) {
   case smi_hardware_config::hardware_family::phoenix:
     return std::make_shared<config_gen_phoenix>();
+  case smi_hardware_config::hardware_family::aie2ps:
+    return std::make_shared<config_gen_aie2ps>();
   case smi_hardware_config::hardware_family::strix:
     return std::make_shared<config_gen_strix>();
   case smi_hardware_config::hardware_family::npu3:
@@ -118,13 +143,14 @@ void
 populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* device)
 {
   smi_hardware_config smi_hrdw;
-  const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
-  const auto hw = smi_hrdw.get_hardware_type(pcie_id);
+  const auto hw = smi_hrdw.get_hardware_type(device);
   const auto generator = create_config_generator(hw);
 
   smi_instance->add_subcommand("validate",  generator->create_validate_subcommand());
   smi_instance->add_subcommand("examine",  generator->create_examine_subcommand());
   smi_instance->add_subcommand("configure",  generator->create_configure_subcommand());
+  if (auto reset = generator->create_reset_subcommand())
+    smi_instance->add_subcommand("reset", std::move(*reset));
 }
 
 std::string

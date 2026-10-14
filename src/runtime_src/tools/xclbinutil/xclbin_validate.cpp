@@ -71,7 +71,7 @@ static const char* section_kind_name(uint32_t kind)
     "SMARTNIC",               // 28
     "AIE_RESOURCES",          // 29
     "OVERLAY",                // 30
-    "VENDER_METADATA",        // 31
+    "VENDOR_METADATA",        // 31
     "AIE_PARTITION",          // 32
     "IP_METADATA",            // 33
     "AIE_RESOURCES_BIN",      // 34

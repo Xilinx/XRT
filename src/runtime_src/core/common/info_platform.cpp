@@ -60,7 +60,7 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
   }
   case xrt_core::query::device_class::type::ryzen:
   {
-    static_region.add("name", xrt_core::device_query<xq::rom_vbnv>(device));
+    static_region.add("name", xrt_core::platform::get_device_name(device));
     const auto total_cols = xrt_core::device_query_default<xq::total_cols>(device, 0);
     static_region.add("total_columns", total_cols);
     break;
@@ -457,6 +457,25 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
 } //unnamed namespace
 
 namespace xrt_core { namespace platform {
+
+std::string
+get_device_name(const xrt_core::device* device)
+{
+  auto name = xrt_core::device_query_default<xq::device_id_str>(device, std::string{});
+  if (!name.empty())
+    return name;
+
+  try {
+    name = xrt_core::device_query<xq::rom_vbnv>(device);
+    if (!name.empty())
+      return name;
+  }
+  catch (const xq::exception&) {
+    // No VBNV (e.g. of_plat npu12): fall through to the numeric device id.
+  }
+
+  return xq::pcie_device::to_string(xrt_core::device_query_default<xq::pcie_device>(device, 0));
+}
 
 ptree_type
 get_clock_info(const xrt_core::device* device)

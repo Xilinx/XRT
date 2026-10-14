@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <atomic>
+#include <mutex>
 #include <thread>
 #include <pthread.h> 
 #include "core/common/device.h"
@@ -41,10 +43,11 @@ public:
   void deregister_graph(const graph_object *graph);
 
 private:
-  bool done;
+  std::atomic<bool> done;
   bool m_is_enable;
   static void* poll_aie(void *arg);
   xrt_core::device *m_device;
+  std::mutex m_graphs_lock;
   std::vector<const graph_object*> m_graphs;
   pthread_t ptid;
 };

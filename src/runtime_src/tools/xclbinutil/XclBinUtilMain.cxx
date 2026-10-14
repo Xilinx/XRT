@@ -111,11 +111,7 @@ void insertTargetMode(const std::string & _sTarget, std::vector<std::string> & _
     modeValue = bDfxEnable ? "hw_pr" : "flat";
   else if (_sTarget == "hw_emu")
     modeValue = bDfxEnable ? "hw_emu_pr" : "hw_emu";
-  else if (_sTarget == "sw_emu") {
-    if (bDfxEnable)
-      throw std::runtime_error("ERROR: Target 'sw_emu' does not support the dfx_enable value of 'TRUE'");
-    modeValue = "sw_emu";
-  } else {
+  else {
     std::string errMsg = "ERROR: Unknown target option: '" + _sTarget + "'";
     throw std::runtime_error(errMsg);
   }
@@ -161,31 +157,31 @@ int main_(int argc, const char** argv) {
 
   po::options_description desc("Options");
   desc.add_options()
-      ("add-merge-section", boost::program_options::value<decltype(sectionsToAddMerge)>(&sectionsToAddMerge)->multitoken(), "Section name to add or merge.  Format: <section>:<format>:<file>")
-      ("add-pskernel", boost::program_options::value<decltype(addPsKernels)>(&addPsKernels)->multitoken(), "Helper option to add PS kernels.  Format: [<mem_banks>]:[<symbol_name>]:[<instances>]:<path_to_shared_library>")
-      ("add-replace-section", boost::program_options::value<decltype(sectionsToAddReplace)>(&sectionsToAddReplace)->multitoken(), "Section name to add or replace.  Format: <section>:<format>:<file>")
-      ("add-section", boost::program_options::value<decltype(sectionsToAdd)>(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
-      ("add-signature", boost::program_options::value<decltype(sSignature)>(&sSignature), "Adds a user defined signature to the given xclbin image.")
+      ("add-merge-section", boost::program_options::value<decltype(sectionsToAddMerge)>(&sectionsToAddMerge)->multitoken(), "Section name to add or merge. Format: <section>:<format>:<file>")
+      ("add-pskernel", boost::program_options::value<decltype(addPsKernels)>(&addPsKernels)->multitoken(), "Helper option to add PS kernels. Format: [<mem_banks>]:[<symbol_name>]:[<instances>]:<path_to_shared_library>")
+      ("add-replace-section", boost::program_options::value<decltype(sectionsToAddReplace)>(&sectionsToAddReplace)->multitoken(), "Section name to add or replace. Format: <section>:<format>:<file>")
+      ("add-section", boost::program_options::value<decltype(sectionsToAdd)>(&sectionsToAdd)->multitoken(), "Section name to add. Format: <section>:<format>:<file>")
+      ("add-signature", boost::program_options::value<decltype(sSignature)>(&sSignature), "Add a user defined signature to the given xclbin image.")
       ("certificate", boost::program_options::value<decltype(sCertificate)>(&sCertificate), "Certificate used in signing and validating the xclbin image.")
       ("digest-algorithm", boost::program_options::value<decltype(sDigestAlgorithm)>(&sDigestAlgorithm), "Digest algorithm. Default: sha512")
       ("dump-section", boost::program_options::value<decltype(sectionsToDump)>(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
-      ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
-      ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
+      ("force", boost::program_options::bool_switch(&bForce), "Force a file overwrite.")
+      ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Return the user defined signature (if set via --add-signature) in the xclbin image.")
       ("help,h", "Print help messages")
-      ("info", boost::program_options::value<decltype(sInfoFile)>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.  Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
-      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Reads xclbin into memory.")
-      ("key-value", boost::program_options::value<decltype(keyValuePairs)>(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
+      ("info", boost::program_options::value<decltype(sInfoFile)>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content. Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc. Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
+      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Read xclbin into memory.")
+      ("key-value", boost::program_options::value<decltype(keyValuePairs)>(&keyValuePairs)->multitoken(), "Set user or system key-value pairs. Format: [USER|SYS]:<key>:<value>")
       ("list-sections", boost::program_options::bool_switch(&bListSections), "List all possible section names (Stand Alone Option)")
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
       ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name. Writes in memory xclbin image to a file.")
       ("private-key", boost::program_options::value<decltype(sPrivateKey)>(&sPrivateKey), "Private key used in signing the xclbin image.")
       ("quiet,q", boost::program_options::bool_switch(&bQuiet),     "Minimize reporting information.")
-      ("remove-key", boost::program_options::value<decltype(keysToRemove)>(&keysToRemove)->multitoken(), "Removes the given user key from the xclbin archive." )
+      ("remove-key", boost::program_options::value<decltype(keysToRemove)>(&keysToRemove)->multitoken(), "Remove the given user key from the xclbin image. Format: <key>. Note: do not add \"USER:\" prefix." )
       ("remove-section", boost::program_options::value<decltype(sectionsToRemove)>(&sectionsToRemove)->multitoken(), "Section name to remove.")
-      ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the signature from the xclbin image.")
+      ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Remove the user defined signature (if set via --add-signature) from the xclbin image.")
       ("replace-section", boost::program_options::value<decltype(sectionsToReplace)>(&sectionsToReplace)->multitoken(), "Section to replace. ")
-      ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: hw, hw_emu, and sw_emu.")
-      ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validates the signature for the given xclbin archive.")
+      ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: hw and hw_emu.")
+      ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validate the cryptographic signature in the given xclbin image")
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
       ("file-check", boost::program_options::bool_switch(&fileCheck), "Check for Linux file command utility compliance")
@@ -205,13 +201,13 @@ int main_(int argc, const char** argv) {
   std::vector<std::string> sectionsToAppend;
 
   hidden.add_options()
-    ("add-kernel", boost::program_options::value<decltype(addKernels)>(&addKernels)->multitoken(), "Helper option to add fixed kernels.  Format: <path_to_json>")
+    ("add-kernel", boost::program_options::value<decltype(addKernels)>(&addKernels)->multitoken(), "Helper option to add fixed kernels. Format: <path_to_json>")
     ("append-section", boost::program_options::value<decltype(sectionsToAppend)>(&sectionsToAppend)->multitoken(), "Section to append to.")
     ("BAD-DATA", boost::program_options::value<decltype(badOptions)>(&badOptions)->multitoken(), "Dummy Data." )
-    ("dump-signature", boost::program_options::value<decltype(sSignatureOutputFile)>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
-    ("reset-bank-grouping", boost::program_options::bool_switch(&bResetBankGrouping), "Resets the memory bank grouping section(s).")
+    ("dump-signature", boost::program_options::value<decltype(sSignatureOutputFile)>(&sSignatureOutputFile), "Dump the cryptographic signature from a signed xclbin image.")
+    ("reset-bank-grouping", boost::program_options::bool_switch(&bResetBankGrouping), "Reset the memory bank grouping section(s).")
     ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
-    ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disables creating the memory bank grouping section(s).")
+    ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disable creating the memory bank grouping section(s).")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
     ("transform-pdi", boost::program_options::bool_switch(&bTransformPdi), "Transform the PDIs in AIE_PARTITION, this option only valid on Linux")
@@ -257,7 +253,7 @@ int main_(int argc, const char** argv) {
       std::cout << "\n";
       std::cout << "    <file>    - The name of the input/output file to use.\n";
       std::cout << "\n";
-      std::cout << "  Used By: --add_section and --dump_section\n";
+      std::cout << "  Used By: --add-section and --dump-section\n";
       std::cout << "  Example: xclbinutil --add-section BITSTREAM:RAW:mybitstream.bit\n";
       std::cout << std::endl;
 
@@ -329,8 +325,14 @@ int main_(int argc, const char** argv) {
   if (!sPrivateKey.empty() && sOutputFile.empty())
     throw std::runtime_error("ERROR: Private key specified, but no output file defined.");
 
+  // Signing requires both private key and certificate
   if (sCertificate.empty() && !sOutputFile.empty() && !sPrivateKey.empty())
     throw std::runtime_error("ERROR: Private key specified, but no certificate defined.");
+
+  // Signing also requires a valid digest algorithm (by default sha512)
+  // Reject unsupported signing digest
+  if (!sPrivateKey.empty())
+    validateSigningDigestAlgorithm(sDigestAlgorithm);
 
   // Report option conflicts
   if ((!sSignature.empty() && !sPrivateKey.empty()))
