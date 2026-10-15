@@ -2709,6 +2709,14 @@ public:
     if (!m_module)
       return;
 
+    // A reused run calls this on every inference past the profile window.
+    // Once the control buffer is gone, the column addresses and the ERT
+    // payload are already clear, so later calls have nothing to patch.
+    if (!xrt_core::module_int::is_dtrace_enabled(m_module)) {
+      m_dtrace_control_file.clear();
+      return;
+    }
+
     if (!cmd->is_done())
       throw xrt_core::error(
           "Cannot clear dtrace control file: run has already been started and is "
