@@ -620,7 +620,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			if (sdev_info->res[i].name) {
 				res[i].name = subdev->res_name +
 					i * XOCL_SUBDEV_RES_NAME_LEN;
-				strncpy(subdev->res_name +
+				strscpy(subdev->res_name +
 					i * XOCL_SUBDEV_RES_NAME_LEN,
 					sdev_info->res[i].name,
 					XOCL_SUBDEV_RES_NAME_LEN - 1);
@@ -1435,7 +1435,7 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 			dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
 			*in = dsa_map[i].priv_data;
 			core->priv.vbnv = core->vbnv_cache;
-			strncpy(core->vbnv_cache, dsa_map[i].vbnv,
+			strscpy(core->vbnv_cache, dsa_map[i].vbnv,
 				sizeof(core->vbnv_cache) - 1);
 			break;
 		}
