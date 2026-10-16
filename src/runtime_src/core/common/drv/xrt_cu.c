@@ -13,6 +13,7 @@
 
 #include <linux/delay.h>
 #include <linux/math64.h>
+#include <linux/timer.h>
 #include "kds_client.h"
 #include "xrt_cu.h"
 
@@ -76,7 +77,7 @@ ssize_t xrt_cu_circ_consume_all(struct xrt_cu *xcu, char *buf, size_t size)
 static void cu_timer(unsigned long data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0) && !defined(timer_container_of)
 static void cu_timer(struct timer_list *t)
 {
 	struct xrt_cu *xcu = from_timer(xcu, t, timer);
@@ -97,7 +98,7 @@ static void cu_timer(struct timer_list *t)
 static void cu_stats_timer(unsigned long data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0) && !defined(timer_container_of)
 static void cu_stats_timer(struct timer_list *t)
 {
 	struct xrt_cu *xcu = from_timer(xcu, t, stats.stats_timer);
