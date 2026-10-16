@@ -13,7 +13,7 @@ config_gen_npu3_vf::
 config_gen_npu3_vf()
   : config_gen_npu3()
 {
-  // VF cannot run preemption-overhead (PF/classic only).
+  // preemption-overhead enables force-preemption on the PF and runs the workload on the VF.
   validate_test_desc = {
     {"all", "All applicable validate tests will be executed (default)", "common"},
     {"df-bw", "Run bandwidth test on data fabric", "hidden"},
@@ -21,7 +21,8 @@ config_gen_npu3_vf()
     {"latency", "Run end-to-end latency test", "common"},
     {"throughput", "Run end-to-end throughput test", "common"},
     {"gemm", "Measure the TOPS value of GEMM INT8operations", "common"},
-    {"sanity", "Run a small model and validate sanity of the device", "hidden"}
+    {"sanity", "Run a small model and validate sanity of the device", "hidden"},
+    {"preemption-overhead", "Measure preemption overhead at noop and memtile levels", "hidden"}
   };
 
   examine_report_desc = {
