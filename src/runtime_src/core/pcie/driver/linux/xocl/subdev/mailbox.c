@@ -200,6 +200,7 @@
 #include <linux/ioctl.h>
 #include "../xocl_drv.h"
 #include "mailbox_proto.h"
+#include <linux/timer.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #include <linux/sched/clock.h>
 #endif
@@ -655,7 +656,7 @@ static irqreturn_t mailbox_isr(int irq, void *arg)
 static void chan_timer(unsigned long data)
 {
 	struct mailbox_channel *ch = (struct mailbox_channel *)data;
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0) && !defined(timer_container_of)
 static void chan_timer(struct timer_list *t)
 {
 	struct mailbox_channel *ch = from_timer(ch, t, mbc_timer);
