@@ -16,6 +16,7 @@
  */
 
 #include "../xocl_drv.h"
+#include <linux/timer.h>
 #include "kds_client.h"
 #include "xrt_ert.h"
 
@@ -645,7 +646,7 @@ static void ert_free_cmd(struct xrt_ert_command *ecmd)
 static void ert_timer(unsigned long data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0) && !defined(timer_container_of)
 static void ert_timer(struct timer_list *t)
 {
 	struct xocl_ert_user *ert_user = from_timer(ert_user, t, timer);
