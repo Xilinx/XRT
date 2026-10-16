@@ -536,7 +536,7 @@ static int mem_hbm_probe(struct platform_device *pdev)
 		left_parentness = strstr(mem_hbm->label.tag, "[");
 		right_parentness = strstr(mem_hbm->label.tag, "]");
 		digit_len = right_parentness-(1+left_parentness);
-		strncpy(temp, left_parentness+1, digit_len);
+		strscpy(temp, left_parentness+1, digit_len);
 		temp[digit_len] = '\0';
 
 		if (kstrtoint(temp, 10, &idx) != 0)

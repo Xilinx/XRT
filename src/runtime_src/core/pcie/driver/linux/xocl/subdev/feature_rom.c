@@ -356,8 +356,8 @@ static void set_vbnv_name(struct platform_device *pdev)
 
 	snprintf(sh_version, sizeof(sh_version), "%x", idcode);
 	memset(rom->header.VBNVName, 0, sizeof(rom->header.VBNVName));
-	strncpy(rom->header.VBNVName, AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
-	strncpy(&rom->header.VBNVName[32], sh_version, sizeof(sh_version)-1);
+	strscpy(rom->header.VBNVName, AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
+	strscpy(&rom->header.VBNVName[32], sh_version, sizeof(sh_version)-1);
 }
 
 static inline bool is_multi_rp(struct feature_rom *rom)
@@ -651,7 +651,7 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 	header->FeatureBitMap = UNIFIED_PLATFORM;
 	*(u32 *)header->EntryPointString = MAGIC_NUM;
 	if (XDEV(xdev)->priv.vbnv)
-		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
+		strscpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
 				sizeof (header->VBNVName) - 1);
 
 	/* overwrite if vbnv property exists */
@@ -659,7 +659,7 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
 		if (vbnv) {
 			xocl_xdev_dbg(xdev, "found vbnv prop, %s", vbnv);
-			strncpy(header->VBNVName, vbnv,
+			strscpy(header->VBNVName, vbnv,
 				sizeof(header->VBNVName) - 1);
 			for (i = 0; i < strlen(header->VBNVName); i++)
 				if (header->VBNVName[i] == ':' ||
@@ -754,23 +754,23 @@ static int get_header_from_iomem(struct feature_rom *rom)
  			 */
 			memset(rom->header.EntryPointString, 0,
 				sizeof(rom->header.EntryPointString));
-			strncpy(rom->header.EntryPointString, "xlnx", 4);
+			strscpy(rom->header.EntryPointString, "xlnx", 4);
 			memset(rom->header.FPGAPartName, 0,
 				sizeof(rom->header.FPGAPartName));
-			strncpy(rom->header.FPGAPartName, "AWS VU9P", 8);
+			strscpy(rom->header.FPGAPartName, "AWS VU9P", 8);
 			memset(rom->header.VBNVName, 0,
 				sizeof(rom->header.VBNVName));
 			if (did == 0xf010)
-				strncpy(rom->header.VBNVName,
+				strscpy(rom->header.VBNVName,
 					AWS_F1_XDMA_SHELL_NAME, strlen(AWS_F1_XDMA_SHELL_NAME));
 			else if (did == 0xf011)
-				strncpy(rom->header.VBNVName,
+				strscpy(rom->header.VBNVName,
 					AWS_F1_NODMA_SHELL_NAME, strlen(AWS_F1_NODMA_SHELL_NAME));
 			else if (did == 0x9048 || did == 0x9248)
-				strncpy(rom->header.VBNVName,
+				strscpy(rom->header.VBNVName,
 					AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
 			else
-				strncpy(rom->header.VBNVName,
+				strscpy(rom->header.VBNVName,
 					AWS_F1_DYNAMIC_SHELL_NAME, strlen(AWS_F1_DYNAMIC_SHELL_NAME));
 			rom->header.MajorVersion = 4;
 			rom->header.MinorVersion = 0;
