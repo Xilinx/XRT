@@ -118,6 +118,14 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  // Turn dtrace off for this module. An empty path cannot express this
+  // because it means "fall back to the config file path".
+  virtual void
+  clear_dtrace()
+  {
+    throw std::runtime_error("Not supported");
+  }
+
   std::shared_ptr<xrt::elf_impl>
   get_elf_handle() const
   {
@@ -856,6 +864,20 @@ class module_run_aie_gen2_plus : public module_run
     update_column_bo_dtrace_addresses();
   }
 
+  // Drops the dtrace handle and its control buffer, so the next start runs
+  // with dtrace off. Cannot be expressed through set_dtrace_control_file: an
+  // empty path there means "use the config file path" and a bad path leaves
+  // the previous handle in place.
+  void
+  clear_dtrace() override
+  {
+    if (!m_dtrace.dtrace_handle && !m_dtrace.ctrl_bo)
+      return;
+
+    m_dtrace = dtrace_util{};
+    update_column_bo_dtrace_addresses();
+  }
+
   ////////////////////////////////////////////////////////////////
   // Buffer creation and initialization functions
   ////////////////////////////////////////////////////////////////
@@ -1345,6 +1367,13 @@ set_dtrace_control_file(const xrt::module& module, const std::string& path)
 {
   valid_or_error(module);
   module.get_handle()->set_dtrace_control_file(path);
+}
+
+void
+clear_dtrace(const xrt::module& module)
+{
+  valid_or_error(module);
+  module.get_handle()->clear_dtrace();
 }
 
 xrt::bo

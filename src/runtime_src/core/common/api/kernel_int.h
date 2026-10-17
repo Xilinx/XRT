@@ -139,6 +139,13 @@ XRT_CORE_COMMON_EXPORT
 void
 set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path);
 
+// Turn dtrace off for this run. XDP uses this when a run object is reused for
+// more inferences than were configured for profiling: passing an empty path to
+// set_dtrace_control_file would fall back to the config file instead.
+XRT_CORE_COMMON_EXPORT
+void
+clear_dtrace_control_file(xrt::run_impl* run_impl);
+
 } // xrt_core::kernel_int
 
 #endif

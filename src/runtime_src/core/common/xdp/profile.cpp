@@ -237,7 +237,7 @@ run_constructor(xrt::run_impl* run_impl)
 }
 
 void
-run_start(const xrt::run_impl* run_impl)
+run_start(xrt::run_impl* run_impl)
 {
   if (!run_start_cb)
     return;
@@ -245,7 +245,8 @@ run_start(const xrt::run_impl* run_impl)
   try {
     xrt_kernel_data data{};
     xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
-    run_start_cb(nullptr, data.hwctx.get_handle().get(),
+    run_start_cb(run_impl,
+                 data.hwctx.get_handle().get(),
                  data.uid,
                  data.name.c_str());
   }
@@ -982,7 +983,7 @@ run_constructor(xrt::run_impl* run_impl)
 }
 
 void
-run_start(const xrt::run_impl* run_impl)
+run_start(xrt::run_impl* run_impl)
 {
   if (xrt_core::config::get_aie_halt())
     xrt_core::xdp::aie::halt::run_start(run_impl);

@@ -102,6 +102,12 @@ XRT_CORE_COMMON_EXPORT
 void
 set_dtrace_control_file(const xrt::module& module, const std::string& path);
 
+// Turn dtrace off for this run's module. Distinct from passing an empty path
+// to set_dtrace_control_file, which falls back to the config file path.
+XRT_CORE_COMMON_EXPORT
+void
+clear_dtrace(const xrt::module& module);
+
 // Returns buffer object associated with control scratchpad memory.
 // This memory is created using ELF associated with run object.
 // Throws if ELF doesn't contain scratchpad memory
