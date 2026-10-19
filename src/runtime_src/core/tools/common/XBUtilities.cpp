@@ -324,10 +324,13 @@ XBUtilities::filter_subcmds(bool is_user_domain,
       const std::string& name = cmd->getName();
       for (const auto& row : rows) {
         const std::string& n = std::get<0>(row);
-        if (!n.empty() && n == name) {
-          out.emplace_back(cmd);
+        if (n.empty() || n != name)
+          continue;
+        // Subcommands typed "advanced" are omitted unless --advanced was passed.
+        if (std::get<2>(row) == "advanced" && !getAdvance())
           break;
-        }
+        out.emplace_back(cmd);
+        break;
       }
     }
     return out;

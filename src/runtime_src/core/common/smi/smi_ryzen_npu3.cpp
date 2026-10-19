@@ -95,7 +95,7 @@ config_gen_npu3::make_reset_subcommand()
                             "  flr          - FLR reset (default)\n", "common", "flr", "string"));
   reset_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
 
-  return {"reset", "Resets the given device", "common", std::move(reset_suboptions)};
+  return {"reset", "Resets the given device", "advanced", std::move(reset_suboptions)};
 }
 
 } // namespace xrt_core::smi::ryzen
