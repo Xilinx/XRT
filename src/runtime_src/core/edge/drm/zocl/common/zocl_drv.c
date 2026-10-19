@@ -1481,6 +1481,8 @@ static bool zocl_overlay_tree_has_fpga_accel(struct device_node *np)
 	return false;
 }
 
+static void zocl_cu_irq_teardown(struct drm_zocl_dev *zdev);
+
 static int zocl_overlay_notify(struct notifier_block *nb, unsigned long action,
 			       void *data)
 {
@@ -1503,8 +1505,13 @@ static int zocl_overlay_notify(struct notifier_block *nb, unsigned long action,
 		zocl_cu_irq_update(zdev);
 		break;
 	case OF_OVERLAY_PRE_REMOVE:
-		DRM_INFO("fpga_accelerator overlay removing, refresh CU IRQs\n");
-		zocl_cu_irq_update(zdev);
+		/*
+		 * The overlay nodes are about to disappear. Drop CU and IRQ
+		 * state only; recreating them here walks a tree that is
+		 * going away and the next apply hangs.
+		 */
+		DRM_INFO("fpga_accelerator overlay removing, drop CU IRQs\n");
+		zocl_cu_irq_teardown(zdev);
 		break;
 	default:
 		break;
@@ -1549,6 +1556,34 @@ static void zocl_overlay_notifier_unregister(void)
 {
 }
 #endif
+
+static void zocl_cu_irq_teardown(struct drm_zocl_dev *zdev)
+{
+	struct drm_zocl_slot *slot;
+	struct device_node *ert;
+
+	if (!zdev)
+		return;
+
+	ert = of_find_node_by_name(NULL, "ert_hw");
+	if (ert) {
+		of_node_put(ert);
+		zert_cu_intc_fini();
+	} else if (zdev->cu_intc) {
+		zocl_ert_destroy_intc(zdev->cu_intc);
+		zdev->cu_intc = NULL;
+		zdev->cu_subdev.cu_num = 0;
+	}
+
+	/* Only slot 0 can hold PL CUs. */
+	slot = zdev->pr_slot[0];
+	if (!slot)
+		return;
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	zocl_destroy_cu_slot(zdev, slot->slot_idx);
+	mutex_unlock(&slot->slot_xclbin_lock);
+}
 
 void zocl_cu_irq_update(struct drm_zocl_dev *zdev)
 {

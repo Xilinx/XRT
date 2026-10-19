@@ -381,6 +381,36 @@ zocl_aie_slot_reset(struct drm_zocl_slot* slot)
 
 }
 
+/*
+ * Drop zocl's AIE bookkeeping without aie_partition_release().
+ * Slot 0's partition device is destroyed by the libdfx overlay removal
+ * that follows hw-context destroy. Releasing it here as well runs
+ * aie_part_remove() twice and oopses.
+ */
+void
+zocl_detach_aie(struct drm_zocl_slot *slot)
+{
+	mutex_lock(&slot->aie_lock);
+
+	if (slot->aie_information) {
+		vfree(slot->aie_information);
+		slot->aie_information = NULL;
+	}
+
+	if (!slot->aie) {
+		mutex_unlock(&slot->aie_lock);
+		return;
+	}
+
+	if (slot->aie->wq)
+		destroy_workqueue(slot->aie->wq);
+
+	vfree(slot->aie->err.errors);
+	vfree(slot->aie);
+	slot->aie = NULL;
+	mutex_unlock(&slot->aie_lock);
+}
+
 void
 zocl_destroy_aie(struct drm_zocl_slot* slot)
 {
