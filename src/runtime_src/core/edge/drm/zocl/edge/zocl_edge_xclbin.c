@@ -166,6 +166,15 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			//since AIE reset happened load xclbin again
 			DRM_WARN("%s After AIE reset, loading xclbin again", __func__);
 
+		} else if (xrt_xclbin_get_section_num(axlf, AIE_METADATA) &&
+			   (!slot->aie || !slot->aie->aie_dev)) {
+			/*
+			 * Same UUID, but the last hw context released the AIE
+			 * partition. Reload so the new overlay gets a partition.
+			 */
+			DRM_INFO("AIE partition is gone on slot=%d, reload xclbin\n",
+				 slot_id);
+
 		} else if (!zocl_xclbin_is_aie_only(axlf)) {
 			DRM_INFO("xclbin already downloaded to slot=%d", slot_id);
 			vfree(axlf);
