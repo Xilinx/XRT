@@ -28,13 +28,6 @@ Ctrlcode APIs
    :project: XRT
    :members:
 
-Module APIs
-~~~~~~~~~~~
-
-.. doxygenclass:: xrt::module
-   :project: XRT
-   :members:
-
 Extension APIs
 ~~~~~~~~~~~~~~
 
