@@ -76,6 +76,13 @@
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
 # define BIN_ATTRIBUTE_CONST const
+#elif defined(RHEL_RELEASE_CODE)
+/* RHEL 10.2 backports the const bin_attribute callbacks while staying on 6.12. */
+# if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(10, 2)
+#  define BIN_ATTRIBUTE_CONST const
+# else
+#  define BIN_ATTRIBUTE_CONST
+# endif
 #else
 # define BIN_ATTRIBUTE_CONST
 #endif
