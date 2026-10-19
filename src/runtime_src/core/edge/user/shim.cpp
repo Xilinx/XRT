@@ -526,14 +526,18 @@ namespace libdfx {
 static const std::string dtbo_dir_path = "/sys/kernel/config/device-tree/overlays/";
 
 // remove an overlay applied by libdfx from the live device tree
-static void
+static bool
 libdfxRemoveOverlay(const std::string& dtbo_path)
 {
   if (dtbo_path.empty())
-    return;
+    return true;
 
-  if (rmdir((dtbo_dir_path + dtbo_path).c_str()))
-    xclLog(XRT_WARNING, "%s: unable to remove dtbo '%s'", __func__, dtbo_path.c_str());
+  if (rmdir((dtbo_dir_path + dtbo_path).c_str()) && errno != ENOENT) {
+    xclLog(XRT_WARNING, "%s: unable to remove dtbo '%s': %s",
+           __func__, dtbo_path.c_str(), strerror(errno));
+    return false;
+  }
+  return true;
 }
 
 static void
@@ -563,8 +567,10 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
     dtbo_path.clear();
   }
   if (!dtbo_path.empty()) {
-    // remove existing libdfx node
-    rmdir((dtbo_dir_path + dtbo_path).c_str());
+    // remove existing libdfx node. A failed rmdir leaves the old overlay
+    // applied; loading another one on top of it hangs in the kernel.
+    if (!libdfxRemoveOverlay(dtbo_path))
+      throw std::runtime_error("unable to remove existing dtbo " + dtbo_path);
     dtbo_path.clear();
     // close drm fd as zocl driver will be reloaded
     close(fd);
@@ -578,7 +584,9 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
         continue;
 
       // remove existing libdfx node loaded by libdfx daemon
-      rmdir((dtbo_dir_path + itr->path().filename().string()).c_str());
+      if (!libdfxRemoveOverlay(itr->path().filename().string()))
+        throw std::runtime_error("unable to remove existing dtbo " +
+                                 itr->path().filename().string());
     }
   }
 }
@@ -1427,9 +1435,10 @@ destroy_hw_context(xrt_core::hwctx_handle::slot_id slot)
      * ioctl as removing the overlay tears down the devices it describes.
      */
     if (m_libdfx_hwctx_cnt && --m_libdfx_hwctx_cnt == 0) {
-      libdfx::libdfxRemoveOverlay(m_libdfx_dtbo_path);
-      m_libdfx_dtbo_path.clear();
-      m_libdfx_uuid = {};
+      if (libdfx::libdfxRemoveOverlay(m_libdfx_dtbo_path)) {
+        m_libdfx_dtbo_path.clear();
+        m_libdfx_uuid = {};
+      }
     }
 #endif
   }

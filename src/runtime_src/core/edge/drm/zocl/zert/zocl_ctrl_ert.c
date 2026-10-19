@@ -564,11 +564,24 @@ int zert_cu_intc_refresh(void)
 	if (!zert)
 		return -ENODEV;
 
-	if (zert->zce_cu_intc) {
-		zocl_ert_destroy_intc(zert->zce_cu_intc);
-		zert->zce_cu_intc = NULL;
-	}
+	zert_cu_intc_fini();
 	return zert_cu_intc_init(zert);
+}
+
+void zert_cu_intc_fini(void)
+{
+	struct platform_device *pdev = zocl_find_pdev("ert_hw");
+	struct zocl_ctrl_ert *zert;
+
+	if (!pdev)
+		return;
+
+	zert = platform_get_drvdata(pdev);
+	if (!zert || !zert->zce_cu_intc)
+		return;
+
+	zocl_ert_destroy_intc(zert->zce_cu_intc);
+	zert->zce_cu_intc = NULL;
 }
 
 static int zert_versal_init(struct zocl_ctrl_ert *zert)

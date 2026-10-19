@@ -316,6 +316,7 @@ void zocl_clear_mem(struct drm_zocl_dev *zdev);
 void zocl_clear_mem_slot(struct drm_zocl_dev *zdev, u32 slot_idx);
 int zocl_cleanup_aie(struct drm_zocl_slot *slot);
 void zocl_destroy_aie(struct drm_zocl_slot *slot);
+void zocl_detach_aie(struct drm_zocl_slot *slot);
 int zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclbin,
 		void *aie_res, uint8_t hw_gen, uint32_t partition_id);
 int zocl_init_aie(struct drm_zocl_slot* slot);
@@ -353,6 +354,7 @@ struct platform_device *zocl_find_pdev(char *name);
 void zocl_cu_intc_refresh(struct drm_zocl_dev *zdev);
 void zocl_cu_irq_update(struct drm_zocl_dev *zdev);
 int zert_cu_intc_refresh(void);
+void zert_cu_intc_fini(void);
 int zocl_of_parse_cu_irqs(struct device_node *np, u32 *virqs, u32 *hw_ids, int max);
 
 static inline struct drm_zocl_dev *
