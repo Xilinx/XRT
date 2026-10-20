@@ -7,9 +7,7 @@ include_directories(
 
 add_subdirectory(include)
 
-# VE2 links src/shim, which subclasses the PCIe core (device_pcie, pci::dev)
-# and enumerates the auxiliary bus from that core.
-if (NOT XRT_EDGE OR XDNA_VE2)
+if (NOT XRT_EDGE)
   xrt_add_subdirectory(common)
   xrt_add_subdirectory(pcie)
   xrt_add_subdirectory(tools)
