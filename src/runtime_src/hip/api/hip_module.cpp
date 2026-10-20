@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
-
-#include <array>
-
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "hip/core/common.h"
 #include "hip/core/event.h"
 #include "hip/core/module.h"
 #include "hip/core/stream.h"
 #include "hip/hip_xrt.h"
 
-#include <elfio/elfio.hpp>
+#include <array>
+#include <cstring>
+#include <fstream>
+#include <map>
 
 namespace xrt::core::hip {
 
