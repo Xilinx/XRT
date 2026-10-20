@@ -10,13 +10,17 @@
 #include "xrt/xrt_hw_context.h"
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_ext.h"
+#include "xrt/experimental/xrt_kernel.h"
 #include "core/common/runner/runner.h"
 #include "core/common/archive.h"
 #include "core/common/smi/smi.h"
 #include "core/common/api/bo_int.h"
 #include "xrt/detail/xclbin.h"
 
+#include <chrono>
+#include <cstring>
 #include <stdexcept>
+#include <thread>
 
 namespace XBU = XBUtilities;
 
@@ -24,6 +28,10 @@ static constexpr uint32_t num_of_cores_strix = 32;
 constexpr size_t num_of_cores_npu3 = 12;
 static constexpr uint32_t total_ops_strix = 196608; //192K OPs
 constexpr uint64_t total_ops_npu3 = 2097152; // 2,097,152 OPs
+
+constexpr size_t npu3_runlist_depth = 8;
+constexpr int npu3_iterations = 100;
+constexpr auto npu3_clock_sample_delay = std::chrono::milliseconds(100);
 
 /**
  * Get GEMM clock frequency in MHz for TOPS calculation from clock topology.
@@ -137,7 +145,6 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     xrt::hw_context hwctx(working_dev, program);
 
     xrt::ext::kernel kernel(hwctx, "DPU");
-    xrt::run run {kernel};
 
     //Configure the debug buffer
     std::map<uint32_t, size_t> buf_map; //uc index, size of buffer
@@ -148,14 +155,17 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
 
     xrt_core::bo_int::config_bo(bo, buf_map);
 
+    // Throughput mode: queue enough runs, sample clock while the list is still executing
+    xrt::runlist runlist(hwctx);
+    for (size_t i = 0; i < npu3_runlist_depth * static_cast<size_t>(npu3_iterations); ++i)
+      runlist.add(xrt::run{kernel});
+
+    runlist.execute();
+    std::this_thread::sleep_for(npu3_clock_sample_delay);
     uint64_t clock_mhz = get_clock(dev);
     double period_ns = clock_period_ns(clock_mhz);
 
-    for (int i = 0; i < 100; i++) { // NOLINT
-      run.start();
-      run.wait2();
-    }
-
+    runlist.wait();
     bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     double total_cycle_count = 0.0;
