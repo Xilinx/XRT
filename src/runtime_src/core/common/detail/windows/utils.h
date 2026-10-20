@@ -52,6 +52,7 @@ sys_dep_get_last_err_msg()
 inline std::string
 getenv(const char* name)
 {
+#ifdef _MSC_VER
   char* value = nullptr;
   size_t len = 0;
 
@@ -62,6 +63,10 @@ getenv(const char* name)
   // Use unique_ptr to ensure memory is freed even if string constructor throws
   std::unique_ptr<char, decltype(&std::free)> guard(value, &std::free);
   return std::string(guard.get());
+#else
+  const char* value = std::getenv(name);
+  return value ? std::string(value) : std::string{};
+#endif
 }
 
 inline std::string
