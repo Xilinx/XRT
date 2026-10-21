@@ -45,6 +45,7 @@ else()
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_kernel.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_elf.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_ext.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_hw_context.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_ini.h
