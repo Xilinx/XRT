@@ -8,10 +8,10 @@
 // directly exposed to end users.
 #include "core/common/aiebu/src/cpp/include/aiebu/elf.h"
 
-// TRANSITIONAL: elfio.hpp is included here solely to satisfy external
-// submodules that access ELFIO types through elf_impl::get_elfio().
-// Once those dependencies are updated to use get_aiebu_elf() instead,
-// this include and get_elfio() on elf_impl will be removed in Step 1.3.
+// TRANSITIONAL: included here while xdp elf_helper.cpp and xrt_module.cpp
+// still call get_elfio().  Once xdp submodule is updated to call save()
+// and dtrace.h is updated to accept const aiebu::elf&, remove this include
+// and get_elfio() below.
 #include <elfio/elfio.hpp>
 
 #include "core/common/config.h"
@@ -90,16 +90,21 @@ public:
   elf_impl& operator=(const elf_impl&) = delete;
   elf_impl& operator=(elf_impl&&) = delete;
 
-  // Get the aiebu::elf object (replaces get_elfio() for Step 1.3 call sites)
   const aiebu::elf&
   get_aiebu_elf() const
   {
     return m_elf;
   }
 
-  // Temporary escape hatch — forwards to aiebu::elf::get_elfio().
-  // TODO Step 1.3: remove once xrt_kernel.cpp and xdp elf_helper.cpp
-  // are updated to use get_aiebu_elf() directly.
+  void
+  save(std::ostream& stream) const
+  {
+    m_elf.save(stream);
+  }
+
+  // TRANSITIONAL (Step 1.3 remainder): xrt_module.cpp passes this to
+  // create_dtrace_handle_elf() which takes const ELFIO::elfio&.  Remove
+  // once dtrace.h is updated to accept const aiebu::elf& instead.
   const ELFIO::elfio&
   get_elfio() const
   {
