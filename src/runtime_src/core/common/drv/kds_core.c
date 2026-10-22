@@ -1999,12 +1999,12 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
-		strncpy(kname, ip->m_name, sizeof(kname));
+		strscpy(kname, ip->m_name, sizeof(kname));
 		kname[sizeof(kname)-1] = '\0';
 		kname_p = &kname[0];
-		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
+		strscpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
 		info.kname[sizeof(info.kname)-1] = '\0';
-		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
+		strscpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
 		info.iname[sizeof(info.kname)-1] = '\0';
 
 		info.addr = ip->m_base_address;
@@ -2098,12 +2098,12 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
-		strncpy(kname, ip->m_name, sizeof(kname));
+		strscpy(kname, ip->m_name, sizeof(kname));
 		kname[sizeof(kname)-1] = '\0';
 		kname_p = &kname[0];
-		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
+		strscpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
 		info.kname[sizeof(info.kname)-1] = '\0';
-		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
+		strscpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
 		info.iname[sizeof(info.kname)-1] = '\0';
 
 		info.addr = 0;

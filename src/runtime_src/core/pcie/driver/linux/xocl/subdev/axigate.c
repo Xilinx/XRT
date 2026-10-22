@@ -207,7 +207,7 @@ static int axigate_probe(struct platform_device *pdev)
 		len = p ? ((ulong)p - (ulong)res->name) :
 			sizeof(gate->ep_name) - 1;
 
-		strncpy(gate->ep_name, res->name, len);
+		strscpy(gate->ep_name, res->name, len);
 	}
 
 	gate->base = ioremap_nocache(res->start,
