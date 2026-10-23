@@ -887,9 +887,10 @@ class xclbin_full : public xclbin_impl
     if (strncmp(tmp->m_magic, "xclbin2", strlen("xclbin2")) != 0) // Future: Do not hardcode "xclbin2"
       throw std::runtime_error("Invalid xclbin");
 
-    // m_length must match the actual buffer size we loaded
-    if (tmp->m_header.m_length != m_axlf.size())
-      throw std::runtime_error("xclbin: m_length does not match buffer size");
+    // Strict equality check would be best here, but accept legacy
+    // xclbins where m_length does not match the actual file size
+    if (m_axlf.size() < tmp->m_header.m_length)
+      throw std::runtime_error("xclbin: buffer smaller than m_length declares");
 
     // Ensure the section header array fits within the buffer before iterating
     static const uint64_t max_sections_allowed = 10000;
