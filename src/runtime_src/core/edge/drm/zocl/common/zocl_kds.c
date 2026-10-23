@@ -508,10 +508,13 @@ int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 	}
 
 	// Check for polling mode and enable CU interrupt if polling_mode is false
-	if (cfg->polling)
+	if (cfg->polling) {
 		zdev->kds.cu_intr = 0;
-	else
+		zdev->kds.force_polling = true;
+	} else {
 		zdev->kds.cu_intr = 1;
+		zdev->kds.force_polling = false;
+	}
 
 	return kds_cfg_update(&zdev->kds);
 }

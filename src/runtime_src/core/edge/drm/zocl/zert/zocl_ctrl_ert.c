@@ -894,7 +894,9 @@ static void zert_cmd_cfg_end(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *
 	}
 
 	zocl_get_zdev()->kds.cu_intr_cap = 1;
-	zocl_get_zdev()->kds.cu_intr = 1;
+	/* Respect ert_polling config: don't override cu_intr if polling was requested */
+	if (!zocl_get_zdev()->kds.force_polling)
+		zocl_get_zdev()->kds.cu_intr = 1;
 	kds_cfg_update(&zocl_get_zdev()->kds);
 
 	zert->zce_config_completed = true;
