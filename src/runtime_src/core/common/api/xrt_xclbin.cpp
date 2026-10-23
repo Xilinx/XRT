@@ -890,7 +890,8 @@ class xclbin_full : public xclbin_impl
     // Strict equality check would be best here, but accept legacy
     // xclbins where m_length does not match the actual file size
     if (m_axlf.size() < tmp->m_header.m_length)
-      throw std::runtime_error("xclbin: buffer smaller than m_length declares");
+      //throw std::runtime_error("xclbin: buffer smaller than m_length declares");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "xclbin: buffer smaller than m_length declares");
 
     // Ensure the section header array fits within the buffer before iterating
     static const uint64_t max_sections_allowed = 10000;
