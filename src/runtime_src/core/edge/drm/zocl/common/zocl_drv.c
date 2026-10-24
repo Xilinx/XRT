@@ -1440,6 +1440,15 @@ void zocl_cu_intc_refresh(struct drm_zocl_dev *zdev)
 		return;
 	}
 
+	/* In polling mode, tear down any existing INTC and don't recreate it. */
+	if (zdev->kds.force_polling) {
+		if (zdev->cu_intc) {
+			zocl_ert_destroy_intc(zdev->cu_intc);
+			zdev->cu_intc = NULL;
+		}
+		return;
+	}
+
 	if (zdev->cu_intc) {
 		zocl_ert_destroy_intc(zdev->cu_intc);
 		zdev->cu_intc = NULL;
