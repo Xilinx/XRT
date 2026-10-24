@@ -385,6 +385,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		zocl_destroy_cu_slot(zdev, slot->slot_idx);
 
 		/*
+		 * Set force_polling from the incoming config before zocl_cu_intc_refresh()
+		 * so that refresh skips INTC creation in polling mode. zocl_create_cu()
+		 * must come after refresh so CUs register with the new (or absent) INTC.
+		 */
+		zdev->kds.force_polling = axlf_obj->kds_cfg.polling;
+
+		/*
 		 * Refresh CU IRQ routing when this xclbin applied a DT overlay
 		 * (including libdfx userspace dtbo via za_dtbo_path_len), or
 		 * when fpga_accelerator was applied earlier (e.g. fpgautil)
@@ -397,7 +404,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		if (fpga_np)
 			of_node_put(fpga_np);
 
-		/* Create the CUs for this slot */
+		/* Create the CUs for this slot (after INTC refresh so CUs register correctly) */
 		ret = zocl_create_cu(zdev, slot);
 		if (ret)
 			goto out0;
