@@ -8,11 +8,11 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 
-#include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/module_loader.h"
 #include "core/common/query_requests.h"
+#include "core/common/system.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/xclbin_swemu.h"
 
@@ -883,13 +883,14 @@ class xclbin_full : public xclbin_impl
     if (m_axlf.size() < sizeof(axlf))
       throw std::runtime_error("xclbin: buffer too small to contain header");
 
-    const axlf* tmp = reinterpret_cast<const axlf*>(m_axlf.data());
+    auto tmp = reinterpret_cast<const axlf*>(m_axlf.data());
     if (strncmp(tmp->m_magic, "xclbin2", strlen("xclbin2")) != 0) // Future: Do not hardcode "xclbin2"
       throw std::runtime_error("Invalid xclbin");
 
-    // m_length must match the actual buffer size we loaded
-    if (tmp->m_header.m_length != m_axlf.size())
-      throw std::runtime_error("xclbin: m_length does not match buffer size");
+    // Strict equality check would be best here, but accept legacy
+    // xclbins where m_length does not match the actual file size
+    if (m_axlf.size() < tmp->m_header.m_length)
+      throw std::runtime_error("xclbin declared length is greater than buffer size");
 
     // Ensure the section header array fits within the buffer before iterating
     static const uint64_t max_sections_allowed = 10000;
