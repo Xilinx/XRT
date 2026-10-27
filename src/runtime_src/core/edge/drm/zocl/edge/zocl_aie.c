@@ -382,23 +382,12 @@ zocl_aie_slot_reset(struct drm_zocl_slot* slot)
 
 }
 
-/*
- * libdfx removes the configfs overlay after the destroy-hw-context ioctl
- * returns, and that removal runs aie_part_remove(). The marker is the dtbo
- * path stored at load time. An empty path is not libdfx: the ioctl passes a
- * pointer even when userspace did not apply an overlay. A non-libdfx slot
- * requested the partition itself and must release it.
- */
-static bool
-zocl_aie_owned_by_libdfx(struct drm_zocl_slot *slot)
-{
-	return slot->slot_xclbin && slot->slot_xclbin->zx_dtbo_path &&
-		slot->slot_xclbin->zx_dtbo_path[0];
-}
-
 void
 zocl_destroy_aie(struct drm_zocl_slot *slot)
 {
+	/* Non-empty dtbo path means libdfx applied this slot's overlay. */
+	bool libdfx;
+
 	mutex_lock(&slot->aie_lock);
 
 	if (slot->aie_information) {
@@ -411,7 +400,16 @@ zocl_destroy_aie(struct drm_zocl_slot *slot)
 		return;
 	}
 
-	if (slot->aie->aie_dev && !zocl_aie_owned_by_libdfx(slot))
+	/*
+	 * libdfx removes the configfs overlay after this ioctl returns, and
+	 * that rmdir runs aie_part_remove(). Skip the release in that case.
+	 * An empty path is not libdfx: the load ioctl passes a pointer even
+	 * when userspace did not apply an overlay, and zocl must release the
+	 * partition it requested.
+	 */
+	libdfx = slot->slot_xclbin && slot->slot_xclbin->zx_dtbo_path &&
+		 slot->slot_xclbin->zx_dtbo_path[0];
+	if (slot->aie->aie_dev && !libdfx)
 		aie_partition_release(slot->aie->aie_dev);
 
 	if (slot->aie->wq)
