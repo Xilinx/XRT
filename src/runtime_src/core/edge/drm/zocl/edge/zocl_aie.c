@@ -15,6 +15,7 @@
 
 #include "zocl_drv.h"
 #include "zocl_aie.h"
+#include "zocl_xclbin.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
@@ -382,37 +383,21 @@ zocl_aie_slot_reset(struct drm_zocl_slot* slot)
 }
 
 /*
- * Drop zocl's AIE bookkeeping without aie_partition_release().
- * Slot 0's partition device is destroyed by the libdfx overlay removal
- * that follows hw-context destroy. Releasing it here as well runs
- * aie_part_remove() twice and oopses.
+ * libdfx removes the configfs overlay after the destroy-hw-context ioctl
+ * returns, and that removal runs aie_part_remove(). The marker is the dtbo
+ * path stored at load time. An empty path is not libdfx: the ioctl passes a
+ * pointer even when userspace did not apply an overlay. A non-libdfx slot
+ * requested the partition itself and must release it.
  */
-void
-zocl_detach_aie(struct drm_zocl_slot *slot)
+static bool
+zocl_aie_owned_by_libdfx(struct drm_zocl_slot *slot)
 {
-	mutex_lock(&slot->aie_lock);
-
-	if (slot->aie_information) {
-		vfree(slot->aie_information);
-		slot->aie_information = NULL;
-	}
-
-	if (!slot->aie) {
-		mutex_unlock(&slot->aie_lock);
-		return;
-	}
-
-	if (slot->aie->wq)
-		destroy_workqueue(slot->aie->wq);
-
-	vfree(slot->aie->err.errors);
-	vfree(slot->aie);
-	slot->aie = NULL;
-	mutex_unlock(&slot->aie_lock);
+	return slot->slot_xclbin && slot->slot_xclbin->zx_dtbo_path &&
+		slot->slot_xclbin->zx_dtbo_path[0];
 }
 
 void
-zocl_destroy_aie(struct drm_zocl_slot* slot)
+zocl_destroy_aie(struct drm_zocl_slot *slot)
 {
 	mutex_lock(&slot->aie_lock);
 
@@ -426,7 +411,7 @@ zocl_destroy_aie(struct drm_zocl_slot* slot)
 		return;
 	}
 
-	if (slot->aie->aie_dev)
+	if (slot->aie->aie_dev && !zocl_aie_owned_by_libdfx(slot))
 		aie_partition_release(slot->aie->aie_dev);
 
 	if (slot->aie->wq)
