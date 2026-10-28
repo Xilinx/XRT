@@ -1,0 +1,4 @@
+<map id="xrt::ext::bo" name="xrt::ext::bo">
+<area shape="rect" id="node1" title="Buffer object extension xrt::ext::bo is an extension of xrt::bo with additional functionality." alt="" coords="5,80,99,107"/>
+<area shape="rect" id="node2" href="$classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument" alt="" coords="20,5,84,32"/>
+</map>

@@ -80,6 +80,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l2"><a class="reference internal" href="#buffer-apis">Buffer APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#device-apis">Device APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ctrlcode-apis">Ctrlcode APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#extension-apis">Extension APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#context-apis">Context APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#configuration-apis">Configuration APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-ip-apis">Custom IP APIs</a></li>
@@ -137,6 +138,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt2boE">
 <span id="_CPPv3N3xrt2boE"></span><span id="_CPPv2N3xrt2boE"></span><span id="xrt::bo"></span><span class="target" id="classxrt_1_1bo"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><a class="headerlink" href="#_CPPv4N3xrt2boE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> represents a buffer object that can be used as kernel argument </p>
+<p>Subclassed by <a class="reference internal" href="#classxrt_1_1ext_1_1bo"><span class="std std-ref">xrt::ext::bo</span></a></p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
 <dl class="cpp enum-class">
@@ -1222,6 +1224,246 @@ The raw data of the elfcan be deleted after calling the constructor. </p>
 </dd></dl>
 
 </section>
+<section id="extension-apis">
+<h2>Extension APIs<a class="headerlink" href="#extension-apis" title="Permalink to this headline">¶</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2boE">
+<span id="_CPPv3N3xrt3ext2boE"></span><span id="_CPPv2N3xrt3ext2boE"></span><span id="xrt::ext::bo"></span><span class="target" id="classxrt_1_1ext_1_1bo"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ext</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo"><span class="n"><span class="pre">bo</span></span></a><a class="headerlink" href="#_CPPv4N3xrt3ext2boE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Buffer object extension <a class="reference internal" href="#classxrt_1_1ext_1_1bo"><span class="std std-ref">xrt::ext::bo</span></a> is an extension of <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> with additional functionality. </p>
+<p>An extension buffer amends the contruction of an <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> with additional simplified constructors for specifying access mode of host only buffers.</p>
+<p>Once constructed, the object must be assigned to an <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> object before use. This is becayse XRT relies on templated kernel argument assignment and the templated assignment operator is not specialized for <a class="reference internal" href="#classxrt_1_1ext_1_1bo"><span class="std std-ref">xrt::ext::bo</span></a>.</p>
+<p>Ultimately the extension will be merged into class <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
+<dl class="cpp enum-class">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_modeE">
+<span id="_CPPv3N3xrt3ext2bo11access_modeE"></span><span id="_CPPv2N3xrt3ext2bo11access_modeE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">access_mode</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint64_t</span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_modeE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><ul class="simple">
+<li><p>buffer object accessibility </p></li>
+</ul>
+</p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode4noneE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode4noneE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode4noneE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8a334c4a4c42fdb79d7ebc3e73b517e6f8"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">none</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode4noneE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>No access is specified, same as read|write|local </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode4readE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode4readE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode4readE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8aecae13117d6f0584c25a9da6c8f8415e"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">read</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode4readE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>The buffer is read by device, the cpu writes to the buffer </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode5writeE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode5writeE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode5writeE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8aefb2a684e4afb7d55e6147fbe5a332ee"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">write</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode5writeE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>The buffer is written by device, the host reads from the buffer </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode10read_writeE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode10read_writeE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode10read_writeE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8a06ad287ea83b37a6f9db3d8d10d72c8f"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">read_write</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode10read_writeE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode5localE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode5localE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode5localE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8af5ddaf0ca7929578b408c909429f68f2"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">local</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode5localE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Access is local to process and device on which it is allocated </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode6sharedE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode6sharedE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode6sharedE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8a9e81e7b963c71363e2fb3eefcfecfc0e"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">shared</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode6sharedE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Access is shared between devices within process </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode7processE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode7processE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode7processE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8a5075140835d0bc504791c76b04c33d2b"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">process</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode7processE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Access is shared between processes and devices </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo11access_mode6hybridE">
+<span id="_CPPv3N3xrt3ext2bo11access_mode6hybridE"></span><span id="_CPPv2N3xrt3ext2bo11access_mode6hybridE"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a3ec165ba620d5e64b75e0c37711233a8af7befc67e4b1ddf3a03d496537760671"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">hybrid</span></span></span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo11access_mode6hybridE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Access is shared between drivers (cross-adapter)</p>
+<p>The access mode is used to specify how the buffer is used by device and process.</p>
+<p>A buffer can be specified as local, meaning it is only used by the process and device on which it is allocated. A buffer can also be specified as shared, meaning it is shared between devices within the process. Finally a buffer can be specified as process, meaning it is shared between processes and devices. If neither local, shared, or process is specified, the default is local. Only one of local, shared, or process can be specified.</p>
+<p>A buffer can be opened for read, meaning the device will read the content written by host, or it can be opened for write, meaning the device will write to the buffer and the host will read. To specify that a buffer is used for both read and write, the access flags can be ORed. If neither read or write is specified, the default is read|write.</p>
+<p>The default access mode is read|write|local when no access mode is specified.</p>
+<p>Friend operators are provided for bitwise operations on access mode. It is invalid to combine local, shared, proces, and hybrid. </p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t11access_mode">
+<span id="_CPPv3N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t11access_mode"></span><span id="_CPPv2N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t11access_mode"></span><span id="xrt::ext::bo::bo__xrt::deviceCR.voidP.s.access_mode"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a051165be6bad4ee547b060ac0a28f9f6"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">userptr</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sz</span></span>, <a class="reference internal" href="#_CPPv4N3xrt3ext2bo11access_modeE" title="xrt::ext::bo::access_mode"><span class="n"><span class="pre">access_mode</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">access</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t11access_mode" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer and access mode</p>
+<p>
+This constructor creates a host_only buffer object with specified access. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – The device on which to allocate this buffer </p></li>
+<li><p><strong>userptr</strong> – The host buffer which must be page aligned </p></li>
+<li><p><strong>sz</strong> – Size of buffer which must in multiple of page size </p></li>
+<li><p><strong>access</strong> – Specific access mode for the buffer (see <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">access_mode</span></code>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t">
+<span id="_CPPv3N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t"></span><span id="_CPPv2N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t"></span><span id="xrt::ext::bo::bo__xrt::deviceCR.voidP.s"></span><span class="target" id="classxrt_1_1ext_1_1bo_1af316daf847fa354dbff801b724def17e"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">userptr</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sz</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceEPv6size_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer and access mode</p>
+<p>
+This constructor creates a host_only buffer object with local access and read|write direction. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – The device on which to allocate this buffer </p></li>
+<li><p><strong>userptr</strong> – The host buffer which must be page aligned </p></li>
+<li><p><strong>sz</strong> – Size of buffer which must in multiple of page size </p></li>
+<li><p><strong>access</strong> – Specific access mode for the buffer (see <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">access_mode</span></code>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceE6size_t11access_mode">
+<span id="_CPPv3N3xrt3ext2bo2boERKN3xrt6deviceE6size_t11access_mode"></span><span id="_CPPv2N3xrt3ext2bo2boERKN3xrt6deviceE6size_t11access_mode"></span><span id="xrt::ext::bo::bo__xrt::deviceCR.s.access_mode"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a254f212e45f25e9e3bfc04b52828a7ef"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sz</span></span>, <a class="reference internal" href="#_CPPv4N3xrt3ext2bo11access_modeE" title="xrt::ext::bo::access_mode"><span class="n"><span class="pre">access_mode</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">access</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceE6size_t11access_mode" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor for buffer object with specific access</p>
+<p>
+This constructor creates a host_only buffer object with specified access. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – The device on which to allocate this buffer </p></li>
+<li><p><strong>sz</strong> – Size of buffer </p></li>
+<li><p><strong>access</strong> – Specific access mode for the buffer (see <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">access_mode</span></code>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceE6size_t">
+<span id="_CPPv3N3xrt3ext2bo2boERKN3xrt6deviceE6size_t"></span><span id="_CPPv2N3xrt3ext2bo2boERKN3xrt6deviceE6size_t"></span><span id="xrt::ext::bo::bo__xrt::deviceCR.s"></span><span class="target" id="classxrt_1_1ext_1_1bo_1ac340caa41c3449ee2d6f2129c49a2d69"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sz</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceE6size_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor for buffer object</p>
+<p>
+This constructor creates a host_only buffer object with local access and read|write direction. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – The device on which to allocate this buffer </p></li>
+<li><p><strong>sz</strong> – Size of buffer</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceE8pid_typeN3xrt2bo13export_handleE">
+<span id="_CPPv3N3xrt3ext2bo2boERKN3xrt6deviceE8pid_typeN3xrt2bo13export_handleE"></span><span id="_CPPv2N3xrt3ext2bo2boERKN3xrt6deviceE8pid_typeN3xrt2bo13export_handleE"></span><span id="xrt::ext::bo::bo__xrt::deviceCR.pid_type.xrt::bo::export_handle"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a4db6d3c374bd5faadf853ed37234c391"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="n"><span class="pre">pid_type</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">pid</span></span>, <span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo"><span class="n"><span class="pre">bo</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">export_handle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ehdl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo2boERKN3xrt6deviceE8pid_typeN3xrt2bo13export_handleE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor to import an exported buffer from another process</p>
+<p>
+The exported buffer handle is obtained from exporting process by calling <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1bo_1a798fa816135d3dcf58bf4d909b43d518"><span class="std std-ref"><span class="pre">export_buffer()</span></span></a></code> on the buffer to be exported. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – The device that imports this buffer </p></li>
+<li><p><strong>pid</strong> – Process id of exporting process </p></li>
+<li><p><strong>ehdl</strong> – Exported buffer handle, implementation specific type</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t11access_mode">
+<span id="_CPPv3N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t11access_mode"></span><span id="_CPPv2N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t11access_mode"></span><span id="xrt::ext::bo::bo__xrt::hw_contextCR.s.access_mode"></span><span class="target" id="classxrt_1_1ext_1_1bo_1a1fa76b9aaee93ae11fbeafc1150491d3"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt10hw_contextE" title="xrt::hw_context"><span class="n"><span class="pre">hw_context</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">hwctx</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sz</span></span>, <a class="reference internal" href="#_CPPv4N3xrt3ext2bo11access_modeE" title="xrt::ext::bo::access_mode"><span class="n"><span class="pre">access_mode</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">access</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t11access_mode" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor for buffer object</p>
+<p>
+This constructor creates a host_only buffer object with specified access mode. The hardware context is used for syncing of data to from device and residency operations, which are all enqueued operations that are synchronized on fence objects. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hwctx</strong> – The hardware context that this buffer object uses for queue operations such as syncing and residency operations. </p></li>
+<li><p><strong>sz</strong> – Size of buffer </p></li>
+<li><p><strong>access</strong> – Specific access mode for the buffer (see <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">access_mode</span></code>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t">
+<span id="_CPPv3N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t"></span><span id="_CPPv2N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t"></span><span id="xrt::ext::bo::bo__xrt::hw_contextCR.s"></span><span class="target" id="classxrt_1_1ext_1_1bo_1ad172e8ec87924c6f6577b8e879709915"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt10hw_contextE" title="xrt::hw_context"><span class="n"><span class="pre">hw_context</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">hwctx</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sz</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext2bo2boERKN3xrt10hw_contextE6size_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor for buffer object</p>
+<p>
+This constructor creates a host_only buffer object with local access and in|out direction. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hwctx</strong> – The hardware context that this buffer object uses for queue operations such as syncing and residency operations. </p></li>
+<li><p><strong>sz</strong> – Size of buffer</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext6kernelE">
+<span id="_CPPv3N3xrt3ext6kernelE"></span><span id="_CPPv2N3xrt3ext6kernelE"></span><span id="xrt::ext::kernel"></span><span class="target" id="classxrt_1_1ext_1_1kernel"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ext</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6kernelE" title="xrt::kernel"><span class="n"><span class="pre">kernel</span></span></a><a class="headerlink" href="#_CPPv4N3xrt3ext6kernelE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKN3xrt6moduleERKNSt6stringE">
+<span id="_CPPv3N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKN3xrt6moduleERKNSt6stringE"></span><span id="_CPPv2N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKN3xrt6moduleERKNSt6stringE"></span><span id="xrt::ext::kernel::kernel__xrt::hw_contextCR.xrt::moduleCR.ssCR"></span><span class="target" id="classxrt_1_1ext_1_1kernel_1a8733fe4ebaa686bc5ec8ade7ac35d882"></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt10hw_contextE" title="xrt::hw_context"><span class="n"><span class="pre">hw_context</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">ctx</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">module</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">mod</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKN3xrt6moduleERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a1f819540d433c87f27067166ab1e8bff"><span class="std std-ref">kernel()</span></a> - Constructor from module</p>
+<p>
+The module contains an elf binary with instructions for maybe multiple functions. When the kernel is constructed, the corresponding function is located in the module. The instructions for the function are sent to the kernel mode driver in an ERT packet along with the kernel function arguments. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hwctx</strong> – The hardware context that this kernel is created in. </p></li>
+<li><p><strong>module</strong> – A module with elf binary instruction code which the kernel function will execute. </p></li>
+<li><p><strong>name</strong> – Name of kernel function to construct.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKNSt6stringE">
+<span id="_CPPv3N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKNSt6stringE"></span><span id="_CPPv2N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKNSt6stringE"></span><span id="xrt::ext::kernel::kernel__xrt::hw_contextCR.ssCR"></span><span class="target" id="classxrt_1_1ext_1_1kernel_1aa85e52625f6ca6c1d86df010151fac24"></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt10hw_contextE" title="xrt::hw_context"><span class="n"><span class="pre">hw_context</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">ctx</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ext6kernel6kernelERKN3xrt10hw_contextERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a1f819540d433c87f27067166ab1e8bff"><span class="std std-ref">kernel()</span></a> - Constructor from kernel name</p>
+<p>
+Constructs a kernel object by searching through all the ELF files that are registered with the provided context. The function looks for an ELF file that contains a kernel with the specified name. Once a matching ELF file is found, it is used to construct the kernel object. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ctx</strong> – The hardware context that this kernel is created in </p></li>
+<li><p><strong>name</strong> – Name of kernel function to construct</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
 <section id="context-apis">
 <h2>Context APIs<a class="headerlink" href="#context-apis" title="Permalink to this headline">¶</a></h2>
 <dl class="cpp class">
@@ -1948,6 +2190,7 @@ This log function uses boost::format to compose the message from specified forma
 <span id="_CPPv3N3xrt6kernelE"></span><span id="_CPPv2N3xrt6kernelE"></span><span id="xrt::kernel"></span><span class="target" id="classxrt_1_1kernel"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><a class="headerlink" href="#_CPPv4N3xrt6kernelE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>A kernel object represents a set of instances matching a specified name. The kernel is created by finding matching kernel instances in the currently loaded xclbin.</p>
 <p>Most interaction with kernel objects are through <a class="reference internal" href="#classxrt_1_1run"><span class="std std-ref">xrt::run</span></a> objects created from the kernel object to represent an execution of the kernel </p>
+<p>Subclassed by <a class="reference internal" href="#classxrt_1_1ext_1_1kernel"><span class="std std-ref">xrt::ext::kernel</span></a></p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
@@ -2350,7 +2593,7 @@ This overload catches <a class="reference internal" href="#classxrt_1_1bo"><span
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>index</strong> – Index of kernel argument to set </p></li>
-<li><p><strong>boh</strong> – Any <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> or subclass (e.g. xrt::ext::bo) argument value to set.</p></li>
+<li><p><strong>boh</strong> – Any <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> or subclass (e.g. <a class="reference internal" href="#classxrt_1_1ext_1_1bo"><span class="std std-ref">xrt::ext::bo</span></a>) argument value to set.</p></li>
 </ul>
 </dd>
 </dl>
