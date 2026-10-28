@@ -1,7 +1,7 @@
 var searchData=
 [
   ['abort_0',['abort',['../classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd',1,'xrt::run']]],
-  ['access_5fmode_1',['access_mode',['../classxrt_1_1hw__context.html#a19f423638bdf9bad7d9a9b0e08ecf290',1,'xrt::hw_context']]],
+  ['access_5fmode_1',['access_mode',['../classxrt_1_1ext_1_1bo.html#a3ec165ba620d5e64b75e0c37711233a8',1,'xrt::ext::bo::access_mode()'],['../classxrt_1_1hw__context.html#a19f423638bdf9bad7d9a9b0e08ecf290',1,'xrt::hw_context::access_mode()']]],
   ['add_2',['add',['../classxrt_1_1runlist.html#ac44fd2f9b72b35e128f09667fc62612d',1,'xrt::runlist::add(const xrt::run &amp;run)'],['../classxrt_1_1runlist.html#a1e6c03ad37939b553932cb1a6a46f79e',1,'xrt::runlist::add(xrt::run &amp;&amp;run)']]],
   ['add_5fcallback_3',['add_callback',['../classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628',1,'xrt::run']]],
   ['add_5fconfig_4',['add_config',['../classxrt_1_1hw__context.html#a1f6b1f193d4285577ddcf5a18b834e7b',1,'xrt::hw_context']]],

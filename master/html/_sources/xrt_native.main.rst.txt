@@ -28,6 +28,17 @@ Ctrlcode APIs
    :project: XRT
    :members:
 
+Extension APIs
+~~~~~~~~~~~~~~
+
+.. doxygenclass:: xrt::ext::bo
+   :project: XRT
+   :members:
+
+.. doxygenclass:: xrt::ext::kernel
+   :project: XRT
+   :members:
+
 Context APIs
 ~~~~~~~~~~~~
 

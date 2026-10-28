@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['warning_515',['warning',['../namespacexrt_1_1message.html#a6f303f50c0aeef482a843e18a0f24f4ca7b83d3f08fa392b79e3f553b585971cd',1,'xrt::message']]]
+  ['uram_528',['uram',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa2d7c24ccabd5da82aa90c666185c369d',1,'xrt::xclbin::mem']]]
 ];

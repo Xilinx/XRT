@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['thermal_512',['thermal',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa26a27f04d02b653b4b5b77b5d11d7bb9',1,'xrt::info']]]
+  ['read_519',['read',['../classxrt_1_1ext_1_1bo.html#a3ec165ba620d5e64b75e0c37711233a8aecae13117d6f0584c25a9da6c8f8415e',1,'xrt::ext::bo']]],
+  ['read_5fwrite_520',['read_write',['../classxrt_1_1ext_1_1bo.html#a3ec165ba620d5e64b75e0c37711233a8a06ad287ea83b37a6f9db3d8d10d72c8f',1,'xrt::ext::bo']]]
 ];
