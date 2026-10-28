@@ -13,7 +13,7 @@ import subprocess
 #       and classes have been defined and the syntax validated
 def main():
   # -- Configure the argument parser
-  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper for the AIE TRACE METADATA section')
+  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper for Linux file command compliance')
   parser.add_argument('--resource-dir', nargs='?', default=".", help='directory containing data to be used by this unit test')
   args = parser.parse_args()
 
@@ -45,8 +45,16 @@ def main():
 
   step = "2) Run file-check option on the valid xclbin"
 
-  cmd = [xclbinutil, "--file-check", "-i", outputXCLBIN] 
-  execCmd(step, cmd)
+  expectedMsg = "The xclbin is compliant with the Linux 'file' command requirements.\n"
+  for options in ([], ["--verbose"]):
+    cmd = [xclbinutil, "--file-check", "--input", outputXCLBIN] + options
+    output = execCmd(step, cmd)
+    if expectedMsg not in output:
+      raise Exception("Missing file-check compliance success message")
+
+  output = execCmd("Read valid xclbin without file-check", [xclbinutil, "--input", outputXCLBIN])
+  if expectedMsg in output:
+    raise Exception("Compliance message emitted without --file-check")
 
   # ---------------------------------------------------------------------------
 
@@ -85,6 +93,11 @@ def main():
   compErrorMsg(step, cmd, expectedMsg)
 
   # ----------------------------------------------------------------------------
+  step = "7) Create and check an invalid xclbin missing both requirements"
+  execCmd(step, [xclbinutil, "--output", outputXCLBIN, "--force"])
+  expectedMsg = "ERROR: The xclbin is missing platformVBNV information and at least one section required by the 'file' command to identify its file type and display file characteristics.\n"
+  compErrorMsg(step, [xclbinutil, "--file-check", "--input", outputXCLBIN], expectedMsg)
+
   # If the code gets this far, all is good.
   return False
 
@@ -103,6 +116,8 @@ def compErrorMsg(pretty_name, cmd, expectedMsg):
   o, e = proc.communicate()
   print(o.decode('ascii'))
   print(e.decode('ascii'))
+  if proc.returncode == 0:
+      raise Exception("Invalid xclbin passed file-check")
   if(e.decode('ascii') != expectedMsg):
       raise Exception("The error message for file-check on invalid xclbin does not match " + str(expectedMsg))
 
@@ -120,6 +135,7 @@ def execCmd(pretty_name, cmd):
 
   if errorCode != 0:
     raise Exception("Operation failed with the return code: " + str(errorCode))
+  return o.decode('ascii')
 
 # -- Start executing the script functions
 if __name__ == '__main__':
