@@ -323,14 +323,12 @@ static void zocl_fini_client_hw_ctxs(struct drm_zocl_dev *zdev,
 
 		if (slot && --slot->hwctx_ref_cnt == 0) {
 			/*
-			 * Slot 0's AIE device goes away with the libdfx overlay.
-			 * Detach zocl's pointer only so the next load creates
-			 * a new partition. Releasing it here double-frees.
+			 * Drop this slot's AIE state. zocl_destroy_aie releases
+			 * the partition unless libdfx owns it. libdfx's overlay
+			 * rmdir runs after this ioctl and is that partition's
+			 * aie_part_remove.
 			 */
-			if (s_id == 0)
-				zocl_detach_aie(slot);
-			else
-				zocl_destroy_aie(slot);
+			zocl_destroy_aie(slot);
 			zdev->slot_mask &= ~(1 << s_id);
 			zocl_slot_remove_xclbin_overlay(zdev, slot);
 		}
