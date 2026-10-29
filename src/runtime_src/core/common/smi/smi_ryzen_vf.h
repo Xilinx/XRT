@@ -12,6 +12,9 @@ public:
   config_gen_npu3_vf();
 
   xrt_core::smi::subcommand
+  create_examine_subcommand() override;
+
+  xrt_core::smi::subcommand
   create_configure_subcommand() override;
 
   std::optional<xrt_core::smi::subcommand>
