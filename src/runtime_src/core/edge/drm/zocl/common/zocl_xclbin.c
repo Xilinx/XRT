@@ -269,7 +269,7 @@ update_max_apt_number(struct drm_zocl_dev *zdev)
  * @param       slot_idx:	Specific slot index
  *
  */
-static void
+void
 zocl_clean_aperture(struct drm_zocl_dev *zdev, u32 slot_idx)
 {
 	int apt_idx = 0;
@@ -339,9 +339,28 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 	/* Now update the aperture for the new xclbin */
 	if (slot->ip) {
 		for (i = 0; i < slot->ip->m_count; ++i) {
+			size_t apt_size = CU_SIZE;
+
 			ip = &slot->ip->m_ip_data[i];
 			if (ip->m_base_address == EMPTY_APT_VALUE)
 				continue;
+
+			strncpy(kname, ip->m_name, sizeof(kname));
+			kname[sizeof(kname)-1] = '\0';
+			kname_p = &kname[0];
+			strncpy(kname, strsep(&kname_p, ":"), sizeof(kname));
+			kname[sizeof(kname)-1] = '\0';
+			krnl_info = zocl_query_kernel(slot, kname);
+			if (krnl_info && krnl_info->range >= CU_SIZE)
+				apt_size = krnl_info->range;
+
+			if (!zocl_apt_range_is_mmio(ip->m_base_address,
+						    apt_size)) {
+				DRM_WARN("IP %s at 0x%llx is not a register window, no aperture\n",
+					 kname, ip->m_base_address);
+				continue;
+			}
+
 			apt_idx = get_next_free_apt_index(zdev);
 			if (apt_idx < 0) {
 				DRM_ERROR("No more free apertures\n");
@@ -350,18 +369,8 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			apt = &zdev->cu_subdev.apertures[apt_idx];
 
 			apt->addr = ip->m_base_address;
-                        
-                        strncpy(kname, ip->m_name, sizeof(kname));
-		        kname[sizeof(kname)-1] = '\0';
-		        kname_p = &kname[0];
-		        strncpy(kname, strsep(&kname_p, ":"), sizeof(kname));
-		        kname[sizeof(kname)-1] = '\0';
-                        krnl_info = zocl_query_kernel(slot, kname);
-		        if (krnl_info && krnl_info->range >= CU_SIZE)
-                                apt->size = krnl_info->range;
-                        else
-			        apt->size = CU_SIZE;
-                        apt->prop = ip->properties;
+			apt->size = apt_size;
+			apt->prop = ip->properties;
 			apt->cu_idx = -1;
 			apt->slot_idx = slot->slot_idx;
 		}
@@ -371,7 +380,23 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 
 	if (slot->debug_ip) {
 		for (i = 0; i < slot->debug_ip->m_count; ++i) {
+			size_t apt_size = _64KB;
+
 			dbg_ip = &slot->debug_ip->m_debug_ip_data[i];
+			if (dbg_ip->m_type == AXI_MONITOR_FIFO_LITE
+			    || dbg_ip->m_type == AXI_MONITOR_FIFO_FULL)
+				/* FIFO_LITE has 4KB and FIFO FULL has 8KB
+				 * address range. Use both 8K is okay.
+				 */
+				apt_size = _8KB;
+
+			if (!zocl_apt_range_is_mmio(dbg_ip->m_base_address,
+						    apt_size)) {
+				DRM_WARN("Debug IP at 0x%llx is not a register window, no aperture\n",
+					 dbg_ip->m_base_address);
+				continue;
+			}
+
 			apt_idx = get_next_free_apt_index(zdev);
 			if (apt_idx < 0) {
 				DRM_ERROR("No more free apertures\n");
@@ -380,16 +405,10 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			apt = &zdev->cu_subdev.apertures[apt_idx];
 
 			apt->addr = dbg_ip->m_base_address;
+			apt->size = apt_size;
+			apt->prop = 0;
+			apt->cu_idx = -1;
 			apt->slot_idx = slot->slot_idx;
-			if (dbg_ip->m_type == AXI_MONITOR_FIFO_LITE
-			    || dbg_ip->m_type == AXI_MONITOR_FIFO_FULL)
-				/* FIFO_LITE has 4KB and FIFO FULL has 8KB
-				 * address range. Use both 8K is okay.
-				 */
-				apt->size = _8KB;
-			else
-				/* Others debug IPs have 64KB address range*/
-				apt->size = _64KB;
 		}
 		/* Update num_apts based on current index */
 		update_max_apt_number(zdev);
