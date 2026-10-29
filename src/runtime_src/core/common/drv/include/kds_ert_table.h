@@ -28,6 +28,13 @@ static const enum ert_cmd_state kds_ert_table[] = {
   [KDS_STAT_MAX] = ERT_CMD_STATE_MAX,
 };
 
+static inline enum ert_cmd_state kds_to_ert(enum kds_status s)
+{
+  if ((unsigned int)s >= KDS_STAT_MAX)
+    return ERT_CMD_STATE_ERROR;
+  return kds_ert_table[s];
+}
+
 static const enum kds_status ert_kds_table[] = {
   [ERT_CMD_STATE_NEW] = KDS_NEW,
   [ERT_CMD_STATE_QUEUED] = KDS_QUEUED,
