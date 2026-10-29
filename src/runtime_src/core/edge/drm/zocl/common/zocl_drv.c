@@ -21,6 +21,9 @@
 #include <linux/module.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/iommu.h>
+#include <linux/ioport.h>
+#include <linux/mm.h>
+#include <linux/overflow.h>
 #include <linux/pagemap.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
@@ -890,6 +893,42 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	return rc;
 }
 
+/* Aperture addresses come straight out of the IP_LAYOUT and DEBUG_IP_LAYOUT
+ * sections of a user supplied xclbin, so they cannot be trusted to describe a
+ * register window. Refuse anything the kernel knows to be System RAM, which
+ * would otherwise hand the caller a writable mapping of arbitrary memory.
+ * Addresses the kernel knows nothing about are still allowed, they are the
+ * undeclared PL windows the CUs actually live in.
+ *
+ * The whole pages the range falls in are checked, since those are what a
+ * mapping would hand out.
+ *
+ * @param	addr:	start of the register range
+ * @param	size:	size of the register range
+ *
+ * @return	true if the range may be mapped to user space.
+ */
+bool zocl_apt_range_is_mmio(phys_addr_t addr, size_t size)
+{
+	phys_addr_t start = round_down(addr, PAGE_SIZE);
+	phys_addr_t last;
+	size_t len;
+
+	if (!size || check_add_overflow(addr, (phys_addr_t)(size - 1), &last))
+		return false;
+
+	last |= (phys_addr_t)(PAGE_SIZE - 1);
+	len = last - start + 1;
+	if (!len)
+		return false;
+
+	if (region_intersects(start, len, IORESOURCE_SYSTEM_RAM,
+			      IORES_DESC_NONE) != REGION_DISJOINT)
+		return false;
+
+	return !pfn_valid(PHYS_PFN(start)) && !pfn_valid(PHYS_PFN(last));
+}
+
 /* This function map two types of kernel address to user space.
  * The first type is pysical registers of a hardware IP, like CUs.
  * The second type is GEM buffer.
@@ -908,7 +947,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct drm_zocl_bo  *bo = NULL;
 	unsigned long        vsize;
 	phys_addr_t          phy_addr;
-	int apt_idx;
+	unsigned long apt_idx;
 	int rc;
 
 	/* A GEM buffer object has a fake mmap offset start from page offset
@@ -949,17 +988,27 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * Could not map from the middle of an aperture.
 	 */
 	apt_idx = vma->vm_pgoff;
-	if (apt_idx < 0 || apt_idx >= zdev->cu_subdev.num_apts) {
+	if (apt_idx >= zdev->cu_subdev.num_apts) {
 		DRM_ERROR("The offset is not in the apertures list\n");
 		return -EINVAL;
 	}
 	phy_addr = apts[apt_idx].addr;
-	vma->vm_pgoff = phy_addr >> PAGE_SHIFT;
+	if (phy_addr == EMPTY_APT_VALUE) {
+		DRM_ERROR("Aperture %lu is not in use\n", apt_idx);
+		return -EINVAL;
+	}
 
 	vsize = vma->vm_end - vma->vm_start;
-	if (vsize > zdev->cu_subdev.apertures[apt_idx].size)
+	if (vsize > apts[apt_idx].size)
 		return -EINVAL;
 
+	if (!zocl_apt_range_is_mmio(phy_addr, vsize)) {
+		DRM_ERROR("Aperture %lu at %pa is not a register window\n",
+			  apt_idx, &phy_addr);
+		return -EINVAL;
+	}
+
+	vma->vm_pgoff = phy_addr >> PAGE_SHIFT;
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
         #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
         	vma->vm_flags |= VM_IO;

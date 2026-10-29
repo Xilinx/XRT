@@ -407,17 +407,25 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		/* Create the CUs for this slot (after INTC refresh so CUs register correctly) */
 		ret = zocl_create_cu(zdev, slot);
 		if (ret)
-			goto out0;
+			goto out_apt;
 
 		ret = zocl_kds_update(zdev, slot, &axlf_obj->kds_cfg);
 		if (ret)
-			goto out0;
+			goto out_apt;
 	}
 
 	DRM_INFO("xclbin %pUb successfully loaded to slot %d\n",
 			zocl_xclbin_get_uuid(slot), slot_id);
 
 	goto done;
+
+out_apt:
+	/* Only reached once the apertures hold this xclbin, drop them so a
+	 * failed load cannot leave a mappable address behind. The earlier
+	 * error paths must not come here, they can still be serving the
+	 * previous xclbin.
+	 */
+	zocl_clean_aperture(zdev, slot->slot_idx);
 
 out0:
 	/* The old overlay or PL may be gone, drop the stale CUs and IRQ routing. */

@@ -364,6 +364,7 @@ zocl_get_zdev(void)
 		return NULL;
 	return platform_get_drvdata(pdev);
 }
+bool zocl_apt_range_is_mmio(phys_addr_t addr, size_t size);
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
 int get_apt_index_by_addr_and_slot(struct drm_zocl_dev *zdev, phys_addr_t addr, int slot_idx);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);
