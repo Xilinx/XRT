@@ -1344,7 +1344,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 }
 
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
-		    int idx, unsigned long size, u32 *addrp)
+		    int idx, unsigned long size, u32 *addrp, bool *read_only)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 
@@ -1359,8 +1359,11 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
+	*read_only = false;
 	mutex_lock(&cu_mgmt->lock);
+	/* Published read range: shared CU may be mapped, but only read-only. */
 	if (cu_mgmt->xcus[idx]->read_regs.xcr_start) {
+		*read_only = true;
 		goto get_cu_addr;
 	}
 
@@ -1495,34 +1498,51 @@ u32 kds_get_cu_proto(struct kds_sched *kds, int idx)
 	return cu_mgmt->xcus[idx]->info.protocol;
 }
 
-int kds_set_cu_read_range(struct kds_sched *kds, u32 cu_idx, u32 start, u32 size)
+int kds_set_cu_read_range(struct kds_sched *kds, struct kds_client *client,
+			  u32 cu_idx, u32 start, u32 size)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	struct xrt_cu *xcu;
 
-	if (cu_idx >= MAX_CUS)
+	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx]))
 		return -EINVAL;
 
-	if (size % sizeof(u32))
+	if (!size || (size % sizeof(u32)))
 		return -EINVAL;
 
 	/* Registers at offset 0x0, 0x4, 0x8 and 0xc is for control. Not allow to read. */
-	if ((start < 0x10) || (start + size > cu_mgmt->xcus[cu_idx]->info.size))
+	if (start < 0x10)
 		return -EINVAL;
+
+	if (kds_test_refcnt(client, DOMAIN_PL, cu_idx) < 0)
+		return -EINVAL;
+
+	if (!kds_test_refcnt(client, DOMAIN_PL, cu_idx)) {
+		kds_err(client, "cu(%d) isn't reserved\n", cu_idx);
+		return -EINVAL;
+	}
 
 	/* To simplify the use case, only allow shared CU context to set read
 	 * only range. The exclusive CU context will keep old behavior.
 	 */
 	mutex_lock(&cu_mgmt->lock);
+	xcu = cu_mgmt->xcus[cu_idx];
+	if (!xcu || ((u64)start + size > xcu->info.size) ||
+	    ((u64)start + size - 1 > (u64)~0U)) {
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+
 	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK) {
 		mutex_unlock(&cu_mgmt->lock);
 		return -EINVAL;
 	}
-	mutex_unlock(&cu_mgmt->lock);
 
-	mutex_lock(&cu_mgmt->xcus[cu_idx]->read_regs.xcr_lock);
-	cu_mgmt->xcus[cu_idx]->read_regs.xcr_start = start;
-	cu_mgmt->xcus[cu_idx]->read_regs.xcr_end = start + size - 1;
-	mutex_unlock(&cu_mgmt->xcus[cu_idx]->read_regs.xcr_lock);
+	mutex_lock(&xcu->read_regs.xcr_lock);
+	xcu->read_regs.xcr_start = start;
+	xcu->read_regs.xcr_end = (u32)((u64)start + size - 1);
+	mutex_unlock(&xcu->read_regs.xcr_lock);
+	mutex_unlock(&cu_mgmt->lock);
 	return 0;
 }
 

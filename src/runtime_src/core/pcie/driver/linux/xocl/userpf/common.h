@@ -250,7 +250,8 @@ int xocl_kds_stop(struct xocl_dev *xdev);
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id);
 int xocl_kds_reconfig(struct xocl_dev *xdev);
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
-		     struct drm_file *filp, unsigned long size, u32 *addrp);
+		     struct drm_file *filp, unsigned long size, u32 *addrp,
+		     bool *read_only);
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist);
 u32 xocl_kds_get_open_clients(struct xocl_dev *xdev, pid_t **plist);
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds kds_cfg);
@@ -261,7 +262,8 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hd, xuid_t *uuid,
 			  struct ps_kernel_node *ps_kernel);
 int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd);
 int xocl_kds_xgq_query_mem(struct xocl_dev *xdev, struct mem_data *mem_data);
-int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
+int xocl_kds_set_cu_read_range(struct xocl_dev *xdev,
+			       struct kds_client *client, u32 cu_idx,
 			       u32 start, u32 size);
 
 #endif

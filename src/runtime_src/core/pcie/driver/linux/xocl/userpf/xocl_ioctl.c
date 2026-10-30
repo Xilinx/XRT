@@ -943,8 +943,8 @@ int xocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 	struct drm_xocl_set_cu_range *info = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	int ret = 0;
+	struct kds_client *client = filp->driver_priv;
 
-	ret = xocl_kds_set_cu_read_range(xdev, info->cu_index, info->start, info->size);
-	return ret;
+	return xocl_kds_set_cu_read_range(xdev, client, info->cu_index,
+					  info->start, info->size);
 }
