@@ -1375,7 +1375,7 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 		image->start_cuidx = start_cuidx;
 		image->num_cus = scu_data->pkd_num_instances;
-		strncpy((char *)image->sk_name, scu_data->pkd_sym_name,
+		strscpy((char *)image->sk_name, scu_data->pkd_sym_name,
 			PS_KERNEL_NAME_LENGTH - 1);
 		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
 

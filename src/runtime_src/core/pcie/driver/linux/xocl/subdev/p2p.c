@@ -1307,7 +1307,7 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 		return -ENODEV;
 
 	mutex_lock(&p2p->p2p_lock);
-	strncpy(p2p->bank_conf[idx].bank_tag, p_tag, MAX_BANK_TAG_LEN - 1);
+	strscpy(p2p->bank_conf[idx].bank_tag, p_tag, MAX_BANK_TAG_LEN - 1);
 	p2p->bank_conf[idx].size = sz;
 
 	p2p->exp_mem_sz = 0;
