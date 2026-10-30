@@ -389,7 +389,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 
-	ecmd->state = kds_ert_table[status];
+	ecmd->state = kds_to_ert(status);
 
 	if (xcmd->timestamp_enabled) {
 		/* Only start kernel command supports timestamps */
@@ -401,7 +401,8 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 		ts->skc_timestamps[ERT_CMD_STATE_NEW] = xcmd->timestamp[KDS_NEW];
 		ts->skc_timestamps[ERT_CMD_STATE_QUEUED] = xcmd->timestamp[KDS_QUEUED];
 		ts->skc_timestamps[ERT_CMD_STATE_RUNNING] = xcmd->timestamp[KDS_RUNNING];
-		ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
+		if ((unsigned int)status < KDS_STAT_MAX)
+			ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
 	}
 
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);

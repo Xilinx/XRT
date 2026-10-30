@@ -2258,6 +2258,9 @@ void set_xcmd_timestamp(struct kds_command *xcmd, enum kds_status s)
 	if (!xcmd->timestamp_enabled)
 		return;
 
+	if ((unsigned int)s >= KDS_STAT_MAX)
+		return;
+
 	xcmd->timestamp[s] = ktime_to_ns(ktime_get());
 }
 
