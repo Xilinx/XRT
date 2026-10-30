@@ -12,6 +12,7 @@ described below.
 
 The available reports and tests depend on your device and SKU. For every flag,
 report, and test name supported on your system, run ``xrt-smi <subcommand> --help``.
+Advanced (hidden) options are documented in :doc:`xrt-smi-npu-advanced`.
 
 **Global options**: These are the global options can be used with any command.
 
