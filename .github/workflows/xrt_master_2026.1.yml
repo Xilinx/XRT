@@ -43,6 +43,16 @@ jobs:
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -64,7 +74,7 @@ jobs:
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
+          token: ${{ steps.ghe-token.outputs.token }}      
           path: composite-workflows 
           ref: main
        
@@ -77,7 +87,7 @@ jobs:
           os_ver: ${{ matrix.os_ver }}  
           workspace: ${{ github.workspace }}
           buildNumber: ${{ env.XRT_VERSION_PATCH }}     
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          accessToken: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}
           appConfig: ${{ secrets.APP_CONFIG }} 
           appConfig1: ${{ secrets.APP_CONFIG1 }} 
@@ -88,6 +98,16 @@ jobs:
   windows-build:
     runs-on: Windows
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -112,7 +132,7 @@ jobs:
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
+          token: ${{ steps.ghe-token.outputs.token }}      
           path: composite-workflows 
           ref: main
        
@@ -122,7 +142,7 @@ jobs:
           workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
           buildNumber: ${{ github.run_number }}    
           release: ${{ env.RELEASE }}
-          accessToken: ${{ secrets.ACCESS_TOKEN }} 
+          accessToken: ${{ steps.ghe-token.outputs.token }} 
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
           build-cmd: "build22.bat -opt -hip"
@@ -131,6 +151,16 @@ jobs:
   apu-package-build:
     runs-on: apu
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -156,7 +186,7 @@ jobs:
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
           ref: main
@@ -169,7 +199,7 @@ jobs:
           buildNumber: ${{ env.XRT_VERSION_PATCH }}    
           apuPackage: 'True' 
           release: ${{ env.RELEASE }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          accessToken: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}
           appConfig: ${{ secrets.APP_CONFIG }} 
           appConfig1: ${{ secrets.APP_CONFIG1 }} 
@@ -180,6 +210,16 @@ jobs:
     needs: [build, apu-package-build, windows-build]    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -191,7 +231,7 @@ jobs:
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: main
@@ -204,7 +244,7 @@ jobs:
           env: ${{ env.ENV }}
           release: ${{ env.RELEASE }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          accessToken: ${{ steps.ghe-token.outputs.token }}
           NPATH: ${{ secrets.NPATH }}
           USER: ${{ secrets.USER }}
           github-server-url: ${{ secrets.SERVER_URL }}
@@ -213,6 +253,16 @@ jobs:
     needs: package-download    
     runs-on: [self-hosted, Ubuntu-22.04]
     steps: 
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -225,7 +275,7 @@ jobs:
         with:  
           repository: actions-int/extraction-action
           ref: 'v0.0.2' 
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/extraction-action
 
@@ -249,6 +299,16 @@ jobs:
       matrix:      
         board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -260,7 +320,7 @@ jobs:
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows   
           ref: main
@@ -281,7 +341,7 @@ jobs:
           USER: ${{ secrets.USER }}   
           board: ${{ matrix.board_list }}      
           runnerName: ${{ runner.name }}
-          accessToken: ${{ secrets.ACCESS_TOKEN }}  
+          accessToken: ${{ steps.ghe-token.outputs.token }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}   
           apiKey: ${{ secrets.apiKey }}    
           NPATH: ${{ secrets.NPATH }}
@@ -294,6 +354,16 @@ jobs:
       matrix:      
         os_list: ['centos_8.1'] 
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -305,7 +375,7 @@ jobs:
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
           ref: main
@@ -326,7 +396,7 @@ jobs:
           runnerName: ${{ runner.name }}
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
           apiKey: ${{ secrets.apiKey }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}   
+          accessToken: ${{ steps.ghe-token.outputs.token }}   
           USER: ${{ secrets.USER }}       
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}     
@@ -336,6 +406,16 @@ jobs:
     needs: [pcie-hw-tests, pcie-hw-emulation-tests]  
     if: always() 
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -348,7 +428,7 @@ jobs:
         with:  
           repository: actions-int/XOAH-URL-action
           ref: 'XOAH_URL_action' 
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/XOAH-URL-action
 
@@ -370,6 +450,26 @@ jobs:
     needs: test-summary    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
+      - name: Mint GHE token for devops
+        id: ghe-token-devops
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: devops
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -381,7 +481,7 @@ jobs:
         uses: actions/checkout@v4 
         with: 
           repository: devops/setenv-XRT
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token-devops.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           
@@ -389,7 +489,7 @@ jobs:
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: main
@@ -406,7 +506,7 @@ jobs:
           github_sha: ${{ github.sha }}
           github_workflow: ${{ github.workflow }}   
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          accessToken: ${{ steps.ghe-token.outputs.token }}
           NPATH: ${{ secrets.NPATH }}
           USER: ${{ secrets.USER }}
           github-server-url: ${{ secrets.SERVER_URL }}
@@ -418,6 +518,16 @@ jobs:
       matrix:        
         site: ['xco'] 
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -433,7 +543,7 @@ jobs:
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: main
@@ -447,7 +557,7 @@ jobs:
           release: ${{ env.RELEASE }}      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
-          accessToken: ${{ secrets.ACCESS_TOKEN }}      
+          accessToken: ${{ steps.ghe-token.outputs.token }}      
           buildNumber: ${{ env.XRT_VERSION_PATCH }}       
           runnerName: ${{ runner.name }}      
           branch: ${{ steps.extract_branch.outputs.branch }}    
@@ -460,6 +570,16 @@ jobs:
       matrix:        
         site: ['xsj', 'xir', 'xhd', 'xdc'] 
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -475,7 +595,7 @@ jobs:
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: main
@@ -489,7 +609,7 @@ jobs:
           release: ${{ env.RELEASE }}      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
-          accessToken: ${{ secrets.ACCESS_TOKEN }}      
+          accessToken: ${{ steps.ghe-token.outputs.token }}      
           buildNumber: ${{ env.XRT_VERSION_PATCH }}       
           runnerName: ${{ runner.name }}      
           branch: ${{ steps.extract_branch.outputs.branch }}    
@@ -499,6 +619,16 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]  
     needs: Release_to_xco  
     steps: 
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -510,7 +640,7 @@ jobs:
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: main
@@ -522,13 +652,33 @@ jobs:
           pipeline: 'xrt'        
           release: ${{ env.RELEASE }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
-          accessToken: ${{ secrets.ACCESS_TOKEN }}      
+          accessToken: ${{ steps.ghe-token.outputs.token }}      
           github-server-url: ${{ secrets.SERVER_URL }}
 
   gradle-artifactory-upload:    
     needs: Upload_packages_to_Artifactory    
     runs-on: [self-hosted, Ubuntu-22.04]   
     steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
+      - name: Mint GHE token for devops
+        id: ghe-token-devops
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: devops
+          permission-contents: read
+
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
@@ -544,7 +694,7 @@ jobs:
         uses: actions/checkout@v4 
         with: 
           repository: devops/gradle-artifactory-publish-script
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token-devops.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           
@@ -552,7 +702,7 @@ jobs:
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: main
@@ -567,7 +717,7 @@ jobs:
           workspace: ${{ github.workspace }}  
           buildNumber: ${{ env.XRT_VERSION_PATCH }} 
           branch: ${{ steps.extract_branch.outputs.branch }}
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          accessToken: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
           runnerName: ${{ runner.name }}
@@ -576,11 +726,21 @@ jobs:
     needs: [Release_to_all_sites, gradle-artifactory-upload]    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:    
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
       - name: Checkout private repository    
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: main
@@ -593,7 +753,7 @@ jobs:
           env: ${{ env.ENV }}
           release: ${{ env.RELEASE }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          accessToken: ${{ steps.ghe-token.outputs.token }}
           NPATH: ${{ secrets.NPATH }}
           USER: ${{ secrets.USER }}
           github-server-url: ${{ secrets.SERVER_URL }}
