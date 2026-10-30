@@ -308,7 +308,9 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     return cfg;
   }
 
-  // Skip UC logs for unsupported devices (Phoenix, Strix)
+  // Skip UC logs for unsupported devices (Phoenix, Strix).
+  // A platform part has no PCI device id. Enable logging there only when the
+  // shim reports a part string; any other query failure still skips.
   static bool
   skip_uc_log(const std::shared_ptr<xrt_core::device>& device)
   {
@@ -317,11 +319,18 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
 
     try {
       const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device.get());
-      return pcie_id.device_id == phoenix_device_id || pcie_id.device_id == strix_device_id;
+      return pcie_id.device_id == phoenix_device_id ||
+             pcie_id.device_id == strix_device_id;
     }
     catch (const std::exception&) {
-      // Skip on any error. e.g. device_query not supported
-      return true;
+      try {
+        const auto part = xrt_core::device_query_default<xrt_core::query::device_id_str>(
+            device, std::string{});
+        return part.empty();
+      }
+      catch (const std::exception&) {
+        return true;
+      }
     }
   }
 
