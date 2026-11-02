@@ -295,10 +295,19 @@ xrt_xclbin_get_section_hdr_next(const struct axlf *xclbin,
 	int found = -1;
 	bool match = false;
 
+	/* Sanity check. */
+	if (xclbin->m_header.m_numSections > XCLBIN_MAX_NUM_SECTION
+			|| xclbin->m_header.m_length < sizeof(struct axlf) +
+			xclbin->m_header.m_numSections * sizeof(struct axlf_section_header))
+		return NULL;
+
 	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
 		if (xclbin->m_sections[i].m_sectionKind == kind) {
-			if (match)
+			if (match) {
+				if (xrt_xclbin_check_section_hdr(&(xclbin->m_sections[i]), xclbin->m_header.m_length))
+					return NULL;
 				return (struct axlf_section_header *)&xclbin->m_sections[i];
+			}
 
 			if (&xclbin->m_sections[i] == cur) {
 				match = true;
@@ -312,6 +321,9 @@ xrt_xclbin_get_section_hdr_next(const struct axlf *xclbin,
 	if (found < 0)
 		return NULL;
 
+	if (xrt_xclbin_check_section_hdr(&(xclbin->m_sections[found]), xclbin->m_header.m_length))
+		return NULL;
+
 	return (struct axlf_section_header *)&xclbin->m_sections[found];
 }
 
@@ -319,6 +331,12 @@ int xrt_xclbin_get_section_num(const struct axlf *xclbin,
 	enum axlf_section_kind kind)
 {
 	int i, cnt = 0;
+
+	/* Sanity check. */
+	if (xclbin->m_header.m_numSections > XCLBIN_MAX_NUM_SECTION
+			|| xclbin->m_header.m_length < sizeof(struct axlf) +
+			xclbin->m_header.m_numSections * sizeof(struct axlf_section_header))
+		return 0;
 
 	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
 		if (xclbin->m_sections[i].m_sectionKind == kind)
