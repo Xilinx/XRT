@@ -47,7 +47,7 @@ struct XHwIcap_Bit_Header {
 
 int
 xrt_xclbin_parse_header(const unsigned char *data,
-	unsigned int size, struct XHwIcap_Bit_Header *header);
+	uint64_t size, struct XHwIcap_Bit_Header *header);
 
 void
 xrt_xclbin_free_header(struct XHwIcap_Bit_Header *header);

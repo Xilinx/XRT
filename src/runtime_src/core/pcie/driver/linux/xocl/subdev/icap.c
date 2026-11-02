@@ -1056,8 +1056,7 @@ static long icap_download(struct icap *icap, const char *buffer,
 	BUG_ON(!buffer);
 	BUG_ON(!length);
 
-	if (xrt_xclbin_parse_header(buffer,
-		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
+	if (xrt_xclbin_parse_header(buffer, length, &bit_header)) {
 		err = -EINVAL;
 		goto free_buffers;
 	}
@@ -4619,8 +4618,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	}
 
 	header = (char *)axlf + section->m_sectionOffset;
-	if (xrt_xclbin_parse_header(header,
-			DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
+	if (xrt_xclbin_parse_header(header, section->m_sectionSize,
+			&bit_header)) {
 		ICAP_ERR(icap, "parse header failed");
 		ret = -EINVAL;
 		goto failed;
