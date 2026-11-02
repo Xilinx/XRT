@@ -1027,6 +1027,14 @@ get_aie_dtrace_settings_memory_tile_input_ports()
   return value;
 }
 
+inline std::string
+get_aie_dtrace_settings_memory_tile_conflict_points()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.memory_tile_conflict_points", "");
+  return value;
+}
+
 // AIE_trace_settings
 
 inline std::string
