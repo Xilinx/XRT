@@ -308,9 +308,18 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     return cfg;
   }
 
-  // Skip UC logs for unsupported devices (Phoenix, Strix).
-  // A platform part has no PCI device id. Enable logging there only when the
-  // shim reports a part string; any other query failure still skips.
+  // The aie2ps parts whose shim already attaches a uC log buffer: T50, T20, T10.
+  static bool
+  platform_part_supports_uc_log(const std::string& part)
+  {
+    return part == "xc2ve3858"
+        || part == "xc2ve3558"
+        || part == "xc2ve3358";
+  }
+
+  // Skip UC logs for Phoenix and Strix. Every other PCI id keeps logging.
+  // A missing PCI sysfs node is the platform/VE2 case; enable logging only for
+  // the known aie2ps parts. Any other query failure still skips.
   static bool
   skip_uc_log(const std::shared_ptr<xrt_core::device>& device)
   {
@@ -319,18 +328,20 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
 
     try {
       const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device.get());
-      return pcie_id.device_id == phoenix_device_id ||
-             pcie_id.device_id == strix_device_id;
+      return pcie_id.device_id == phoenix_device_id || pcie_id.device_id == strix_device_id;
     }
-    catch (const std::exception&) {
+    catch (const xrt_core::query::sysfs_error&) {
       try {
         const auto part = xrt_core::device_query_default<xrt_core::query::device_id_str>(
             device, std::string{});
-        return part.empty();
+        return !platform_part_supports_uc_log(part);
       }
       catch (const std::exception&) {
         return true;
       }
+    }
+    catch (const std::exception&) {
+      return true;
     }
   }
 
