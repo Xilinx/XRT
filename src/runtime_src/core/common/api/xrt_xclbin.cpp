@@ -24,6 +24,7 @@
 #include "xclbin_int.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 
 #include <array>
 #include <cstring>
@@ -887,10 +888,14 @@ class xclbin_full : public xclbin_impl
     if (strncmp(tmp->m_magic, "xclbin2", strlen("xclbin2")) != 0) // Future: Do not hardcode "xclbin2"
       throw std::runtime_error("Invalid xclbin");
 
-    // Strict equality check would be best here, but accept legacy
+    // Strict exception would be best here, but accept legacy
     // xclbins where m_length does not match the actual file size
-    if (m_axlf.size() < tmp->m_header.m_length)
-      throw std::runtime_error("xclbin declared length is greater than buffer size");
+    // Ignoring m_length is safe as copying is guarded by m_axlf.size()
+    if (m_axlf.size() != tmp->m_header.m_length) {
+      auto fmt = boost::format("xclbin declared length %d does not match buffer size %d")
+        % tmp->m_header.m_length % m_axlf.size();
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", fmt.str());
+    }
 
     // Ensure the section header array fits within the buffer before iterating
     static const uint64_t max_sections_allowed = 10000;
