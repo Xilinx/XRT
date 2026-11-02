@@ -216,11 +216,12 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx);
 
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
-		    int idx, unsigned long size, u32 *addrp);
+		    int idx, unsigned long size, u32 *addrp, bool *read_only);
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
 /* Use this function in xclbin download flow for config commands */
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd);
-int kds_set_cu_read_range(struct kds_sched *kds, u32 cu_idx, u32 start, u32 size);
+int kds_set_cu_read_range(struct kds_sched *kds, struct kds_client *client,
+			 u32 cu_idx, u32 start, u32 size);
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
 

@@ -1083,14 +1083,15 @@ int xocl_kds_reconfig(struct xocl_dev *xdev)
 }
 
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
-		     struct drm_file *filp, unsigned long size, u32 *addrp)
+		     struct drm_file *filp, unsigned long size, u32 *addrp,
+		     bool *read_only)
 {
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = filp->driver_priv;
 	int ret;
 
 	mutex_lock(&client->lock);
-	ret = kds_map_cu_addr(kds, client, cu_idx, size, addrp);
+	ret = kds_map_cu_addr(kds, client, cu_idx, size, addrp, read_only);
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -2583,9 +2584,10 @@ out:
 	return ret;
 }
 
-int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
+int xocl_kds_set_cu_read_range(struct xocl_dev *xdev,
+			       struct kds_client *client, u32 cu_idx,
 			       u32 start, u32 size)
 {
-	return kds_set_cu_read_range(&XDEV(xdev)->kds, cu_idx, start, size);
+	return kds_set_cu_read_range(&XDEV(xdev)->kds, client, cu_idx, start, size);
 }
 
