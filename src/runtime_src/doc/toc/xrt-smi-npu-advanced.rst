@@ -9,13 +9,14 @@ xrt-smi advanced (NPU)
 This page lists **advanced** (hidden) ``xrt-smi`` options for Ryzen client NPUs.
 Common options are documented in :doc:`xrt-smi-npu`.
 
-**Disclaimer:** Advanced commands are subject to change and can destabilize the system.
-Use them only if you understand the risks.
+.. warning::
+   Advanced commands are subject to change and can destabilize the system.
+   Use them only if you understand the risks.
 
 Availability of reports, tests, and configure flags depends on your device and SKU.
 Run ``xrt-smi --advanced <subcommand> --help`` on your system for the exact list.
 
-Set the environment variable ``XRTSMIAdvanced=1``, then pass ``--advanced`` before the subcommand.
+Please set the environment variable ``XRTSMIAdvanced=1`` before invoking ``xrt-smi`` with advanced switch.
 
 
 xrt-smi examine (advanced)
@@ -25,15 +26,15 @@ xrt-smi examine (advanced)
 
 - ``telemetry``: Telemetry data for the device
 - ``preemption``: Preemption telemetry data for the device
-- ``clocks``: Clock frequency information
+- ``clocks``: Clock frequency information for the device
 - ``debug``: Debug configuration settings for the device
 
 **Advanced options**
 
 - ``--watch``: Refresh interval in seconds between examine updates. Exit with Ctrl+C.
-- ``--firmware-log``: Show status|watch firmware log data
-- ``--event-trace``: Show status|watch event trace data
-- ``--context-health``: Show status|watch context health data
+- ``--firmware-log``: Show status (enabled|disabled) or watch firmware log data
+- ``--event-trace``: Show status (enabled|disabled) or watch event trace data
+- ``--context-health``: Show context health data
 
 
 xrt-smi validate (advanced)
@@ -44,7 +45,7 @@ xrt-smi validate (advanced)
 - ``df-bw``: Run bandwidth test on data fabric
 - ``shim-dma-bw``: Run 2xRead/1xWrite bandwidth test for SHIM DMA
 - ``sanity``: Run a small model and validate sanity of the device
-- ``preemption-overhead``: Measure preemption overhead at noop and memtile levels
+- ``preemption-overhead``: Measure preemption overhead for the device
 - ``aie-reconfig-overhead``: Run end-to-end array reconfiguration overhead through shim DMA
 - ``runlist-latency``: Run end-to-end latency test using runlist
 - ``runlist-throughput``: Run end-to-end throughput test using runlist
@@ -67,4 +68,4 @@ xrt-smi configure (advanced)
 - ``--force-preemption``: Force enable|disable and see status of preemption
 - ``--event-trace``: Enable|disable event tracing
 - ``--firmware-log``: Enable|disable firmware logging
-- ``--auto-coredump``: Enable|disable automatic coredump on error
+- ``--auto-coredump``: Enable|disable automatic device coredump on device error
