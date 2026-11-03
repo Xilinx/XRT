@@ -166,17 +166,25 @@ platform_repo_paths()
   return paths;
 }
 
+// Normalize a relative path and throw if any component is exactly ".."
+// (CVE-2026-28238 / SWSPLAT-9629). Checks components rather than substrings
+// so that valid names like "shell..xsabin" are not incorrectly rejected.
+static sfs::path
+normalize_and_reject_traversal(const std::string& file)
+{
+  auto path = sfs::path(file).lexically_normal();
+  for (const auto& component : path)
+    if (component == "..")
+      throw std::runtime_error("Invalid path '" + file + "': path traversal not allowed");
+  return path;
+}
+
 // Return the full path to the file if it exists in a platform
 // repository, else throw.
 static sfs::path
 platform_repo_path(const std::string& file)
 {
-  // Reject path traversal sequences: normalize first, then verify no ".." remains
-  // (CVE-2026-28238 / SWSPLAT-9629)
-  auto xfile = sfs::path(file).lexically_normal();
-  if (xfile.string().find("..") != std::string::npos)
-    throw std::runtime_error("Invalid path '" + file + "': path traversal not allowed");
-
+  auto xfile = normalize_and_reject_traversal(file);
   for (const auto& path : platform_repo_paths()) {
     auto xpath = path / xfile;
     if (sfs::exists(xpath))
@@ -195,15 +203,11 @@ platform_path(const std::string& file_name)
   sfs::path xpath{file_name};
 
   if (!xpath.is_absolute()) {
-    // Normalize and reject traversal sequences before any filesystem access
-    // (CVE-2026-28238 / SWSPLAT-9629)
-    auto normalized = xpath.lexically_normal();
-    if (normalized.string().find("..") != std::string::npos)
-      throw std::runtime_error("Invalid path '" + file_name + "': path traversal not allowed");
+    xpath = normalize_and_reject_traversal(file_name);
     // Check in CWD first; if not present, fall through to platform repo lookup
-    if (sfs::exists(normalized))
-      return normalized;
-    return platform_repo_path(normalized.string());
+    if (sfs::exists(xpath))
+      return xpath;
+    return platform_repo_path(xpath.string());
   }
 
   if (sfs::exists(xpath))
