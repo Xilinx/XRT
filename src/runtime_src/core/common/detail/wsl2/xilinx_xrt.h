@@ -35,6 +35,18 @@
 // whatever NPU-adapter-specific queries (beyond path discovery) need to
 // be added here — they are not currently called by xilinx_xrt()/
 // platform_repo_path().
+//
+// Self-guarded against XRT_WSL2_HAS_DXG: the dispatch header
+// (detail/xilinx_xrt.h) only ever #includes this file behind that same
+// macro, so this guard is a no-op for every real build. It matters for
+// tooling that parses this file directly without going through the
+// dispatch header first (e.g. a diff-based clang-tidy pass that falls
+// back to a neighboring file's compile flags for a new header) — those
+// flags never define XRT_WSL2_HAS_DXG and have no access to the vendor
+// wsl/dxg headers below, so without this guard the file is unparseable
+// noise to such tools. With it, the file compiles to nothing under any
+// flag set that doesn't define the macro.
+#ifdef XRT_WSL2_HAS_DXG
 
 #include "core/common/debug.h"
 #include "core/common/module_loader.h"
@@ -102,6 +114,23 @@ struct adapter
     rhs.m_info.hAdapter = 0;
   }
 
+  adapter& operator=(adapter&& rhs) noexcept
+  {
+    if (this == &rhs)
+      return *this;
+
+    if (m_info.hAdapter) {
+      D3DKMT_CLOSEADAPTER close_adapter_args = {};
+      close_adapter_args.hAdapter = m_info.hAdapter;
+      D3DKMTCloseAdapter(&close_adapter_args);
+    }
+
+    m_info = std::move(rhs.m_info);
+    // Avoid double close
+    rhs.m_info.hAdapter = 0;
+    return *this;
+  }
+
   // Not copyable
   adapter(const adapter&) = delete;
   adapter& operator=(const adapter&) = delete;
@@ -143,6 +172,7 @@ struct adapter_list
   std::vector<adapter> m_adapters;
 
   adapter_list()
+    : m_adapters()
   {
     // Determine size of adapter list
     D3DKMT_ENUMADAPTERS3 enum_adapters_args = {};
@@ -234,3 +264,5 @@ platform_repo_path()
 }
 
 } // xrt_core::detail
+
+#endif // XRT_WSL2_HAS_DXG
