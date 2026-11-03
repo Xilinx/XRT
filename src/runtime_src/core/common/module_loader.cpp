@@ -171,8 +171,14 @@ platform_repo_paths()
 static sfs::path
 platform_repo_path(const std::string& file)
 {
+  // Reject path traversal sequences: normalize first, then verify no ".." remains
+  // (CVE-2026-28238 / SWSPLAT-9629)
+  auto xfile = sfs::path(file).lexically_normal();
+  if (xfile.string().find("..") != std::string::npos)
+    throw std::runtime_error("Invalid path '" + file + "': path traversal not allowed");
+
   for (const auto& path : platform_repo_paths()) {
-    auto xpath = path / file;
+    auto xpath = path / xfile;
     if (sfs::exists(xpath))
       return xpath;
   }
@@ -187,11 +193,21 @@ static sfs::path
 platform_path(const std::string& file_name)
 {
   sfs::path xpath{file_name};
+
+  if (!xpath.is_absolute()) {
+    // Normalize and reject traversal sequences before any filesystem access
+    // (CVE-2026-28238 / SWSPLAT-9629)
+    auto normalized = xpath.lexically_normal();
+    if (normalized.string().find("..") != std::string::npos)
+      throw std::runtime_error("Invalid path '" + file_name + "': path traversal not allowed");
+    // Check in CWD first; if not present, fall through to platform repo lookup
+    if (sfs::exists(normalized))
+      return normalized;
+    return platform_repo_path(normalized.string());
+  }
+
   if (sfs::exists(xpath))
     return xpath;
-
-  if (!xpath.is_absolute())
-    return platform_repo_path(file_name);
 
   throw std::runtime_error("No such file '" + xpath.string() + "'");
 }
