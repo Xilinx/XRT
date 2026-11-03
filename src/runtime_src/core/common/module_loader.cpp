@@ -204,7 +204,8 @@ platform_path(const std::string& file_name)
 
   if (!xpath.is_absolute()) {
     xpath = normalize_and_reject_traversal(file_name);
-    // Check in CWD first; if not present, fall through to platform repo lookup
+    // Check in CWD first; if not present, fall through
+    // to platform repo lookup
     if (sfs::exists(xpath))
       return xpath;
     return platform_repo_path(xpath.string());
@@ -389,12 +390,7 @@ xrt_path_or_error(const std::string& file)
   if (path.is_absolute())
     throw std::runtime_error("Invalid path '" + path.string() + "' cannot be absolute");
 
-  // May not contain any ".." to escape xilinx_xrt
-  auto normalize = path.lexically_normal();
-  if (normalize.string().find("..") != std::string::npos)
-    throw std::runtime_error("Invalid path '" + normalize.string() + "' escapes xrt");
-
-  return xilinx_xrt() / normalize;
+  return xilinx_xrt() / normalize_and_reject_traversal(file);
 }
 
 sfs::path
