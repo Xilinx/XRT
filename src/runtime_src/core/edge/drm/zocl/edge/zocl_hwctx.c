@@ -457,7 +457,9 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
             xcmd->cb.notify_host(xcmd, xcmd->status);
             goto out1;
         case ERT_START_CU:
-            start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            if (ret)
+                goto out1;
             break;
         case ERT_EXEC_WRITE:
             DRM_WARN_ONCE("ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL");
@@ -467,10 +469,14 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
 		    __attribute__ ((__fallthrough__));
 #endif
         case ERT_START_KEY_VAL:
-            start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            if (ret)
+                goto out1;
             break;
         case ERT_START_FA:
-            start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            if (ret)
+                goto out1;
             break;
         case ERT_START_COPYBO:
             ret = copybo_hwctx_ecmd2xcmd(zdev, filp, to_copybo_pkg(ecmd), xcmd);

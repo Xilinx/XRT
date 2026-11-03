@@ -2165,9 +2165,18 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 	memcpy(xcmd->info, ecmd->data, xcmd->isize);
 }
 
-void start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* ecmd->count must cover the mandatory + extra CU masks before any
+	 * payload word; otherwise (count - num_mask) underflows below and
+	 * turns into a multi-GB memcpy().
+	 */
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START_SK;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2178,16 +2187,25 @@ void start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	ecmd->type = ERT_SCU;
+	return 0;
 }
 
-void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* Same underflow guard as above, plus the 4 control registers this
+	 * variant additionally skips over.
+	 */
+	if (ecmd->count < num_mask + 4)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2198,7 +2216,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	/* Copy resigter map into info and isize is the size of info in bytes.
 	 *
@@ -2211,11 +2229,17 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
 	xcmd->payload_type = REGMAP;
 	ecmd->type = ERT_CU;
+	return 0;
 }
 
-void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			     struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2226,7 +2250,7 @@ void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	/* Copy resigter map into info and isize is the size of info in bytes.
 	 *
@@ -2238,11 +2262,17 @@ void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	xcmd->payload_type = KEY_VAL;
 	ecmd->type = ERT_CU;
+	return 0;
 }
 
-void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2253,7 +2283,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	/* Copy descriptor into info and isize is the size of info in bytes.
 	 *
@@ -2263,6 +2293,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	ecmd->type = ERT_CTRL;
+	return 0;
 }
 
 void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd, struct kds_command *xcmd)
