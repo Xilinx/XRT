@@ -65,7 +65,7 @@ xrt-smi configure (advanced)
 
 **Advanced options**
 
-- ``--force-preemption``: Force enable|disable and see status of preemption
+- ``--force-preemption``: Force enable|disable and see status of preemption. Enabling forces preemption at every point to validate model correctness; requires a single active context on the NPU. 
 - ``--event-trace``: Enable|disable event tracing
 - ``--firmware-log``: Enable|disable firmware logging
 - ``--auto-coredump``: Enable|disable automatic device coredump on device error
