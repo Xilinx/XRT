@@ -417,8 +417,8 @@ zocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_set_cu_range *info = data;
-	int ret = 0;
+	struct kds_client *client = filp->driver_priv;
 
-	ret = zocl_kds_set_cu_read_range(zdev, info->cu_index, info->start, info->size);
-	return ret;
+	return zocl_kds_set_cu_read_range(zdev, client, info->cu_index,
+					  info->start, info->size);
 }

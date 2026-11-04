@@ -128,15 +128,16 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	struct XHwIcap_Bit_Header bit_header = { 0 };
 	char *data = NULL;
 	size_t i;
+	int err = 0;
 
 	if (length <= 0)
 		return -EINVAL;
 
 	memset(&bit_header, 0, sizeof(bit_header));
-	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
-	    &bit_header)) {
+	if (xrt_xclbin_parse_header(buffer, length, &bit_header)) {
 		DRM_ERROR("bitstream header parse failed");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	/* HeaderLength and BitstreamLength are 32-bit. Adding them in
@@ -146,7 +147,8 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	if ((uint64_t)bit_header.HeaderLength +
 	    (uint64_t)bit_header.BitstreamLength > (uint64_t)length) {
 		DRM_ERROR("bitstream header+stream length parse failed");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	/*
@@ -158,9 +160,14 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 
 	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
 	if (slot->pr_isolation_addr)
-		return zocl_load_partial(zdev, data, bit_header.BitstreamLength, slot);
-	/* 0 is for full bitstream */
-	return zocl_fpga_mgr_load(zdev, buffer, length, 0);
+		err = zocl_load_partial(zdev, data, bit_header.BitstreamLength, slot);
+	else
+		/* 0 is for full bitstream */
+		err = zocl_fpga_mgr_load(zdev, buffer, length, 0);
+
+done:
+	xrt_xclbin_free_header(&bit_header);
+	return err;
 }
 
 int
@@ -487,6 +494,11 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 		return -ENOMEM;
 
 	num_cus = kds_ip_layout2cu_info(slot->ip, cu_info, MAX_CUS);
+	if (num_cus < 0) {
+		DRM_ERROR("More than %d CUs found\n", MAX_CUS);
+		kfree(cu_info);
+		return num_cus;
+	}
 
 	for (i = 0; i < num_cus; ++i) {
 

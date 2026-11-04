@@ -49,8 +49,8 @@ struct xcl_bo_flags
       // extension
       uint32_t access : 2;  // [33-32]
       uint32_t dir    : 2;  // [35-34]
-      uint32_t use    : 4;  // [39-36]
-      uint32_t unused : 24; // [63-40]
+      uint32_t use    : 5;  // [40-36]
+      uint32_t unused : 23; // [63-41]
     };
   };
 };
@@ -137,6 +137,14 @@ struct xcl_bo_flags
  *
  * XRT_BO_USE_CTRLPKT indicates that the buffer will be used to hold
  * control packets for firmware.
+ *
+ * XRT_BO_USE_HASBO indicates the buffer will be used as a user queue
+ * for sending commands to firmware.
+ *
+ * XRT_BO_USE_CRASHDUMP is a special BO used as crashdump buffer.
+ *
+ * XRT_BO_USE_HEALTHBO indicates the buffer will be used to exchange
+ * healtdata between userspace and firmware.
  */
 
 // This file is used in driver as well, so using #define instead of
@@ -157,6 +165,9 @@ struct xcl_bo_flags
 #define XRT_BO_USE_CTRL_SCRATCH_PAD 11
 #define XRT_BO_USE_PDI              12
 #define XRT_BO_USE_CTRLPKT          13
+#define XRT_BO_USE_HSABO            14
+#define XRT_BO_USE_CRASHDUMP        15
+#define XRT_BO_USE_HEALTHBO         16
 // NOLINTEND
 
 /**

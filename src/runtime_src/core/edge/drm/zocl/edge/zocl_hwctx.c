@@ -317,7 +317,7 @@ static void notify_hwctx_execbuf(struct kds_command *xcmd, enum kds_status statu
     struct kds_client *client = xcmd->client;
     struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 
-    ecmd->state = kds_ert_table[status];
+    ecmd->state = kds_to_ert(status);
 
     if (xcmd->timestamp_enabled) {
         /* Only start kernel command supports timestamps */
@@ -329,7 +329,8 @@ static void notify_hwctx_execbuf(struct kds_command *xcmd, enum kds_status statu
         ts->skc_timestamps[ERT_CMD_STATE_NEW] = xcmd->timestamp[KDS_NEW];
         ts->skc_timestamps[ERT_CMD_STATE_QUEUED] = xcmd->timestamp[KDS_QUEUED];
         ts->skc_timestamps[ERT_CMD_STATE_RUNNING] = xcmd->timestamp[KDS_RUNNING];
-        ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
+        if ((unsigned int)status < KDS_STAT_MAX)
+            ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
     }
 
     ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
@@ -456,7 +457,9 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
             xcmd->cb.notify_host(xcmd, xcmd->status);
             goto out1;
         case ERT_START_CU:
-            start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            if (ret)
+                goto out1;
             break;
         case ERT_EXEC_WRITE:
             DRM_WARN_ONCE("ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL");
@@ -466,10 +469,14 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
 		    __attribute__ ((__fallthrough__));
 #endif
         case ERT_START_KEY_VAL:
-            start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            if (ret)
+                goto out1;
             break;
         case ERT_START_FA:
-            start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            if (ret)
+                goto out1;
             break;
         case ERT_START_COPYBO:
             ret = copybo_hwctx_ecmd2xcmd(zdev, filp, to_copybo_pkg(ecmd), xcmd);

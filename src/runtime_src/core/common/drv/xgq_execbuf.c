@@ -30,6 +30,12 @@ int xgq_exec_convert_start_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 	 * first 4 control registers
 	 */
 	num_mask = 1 + ecmd->extra_cu_masks;
+	/* ecmd->count must cover num_mask plus the 4 skipped control
+	 * registers, otherwise this underflows into a huge memcpy() below.
+	 */
+	if (ecmd->count < num_mask + 4)
+		return -EINVAL;
+
 	payload_size = (ecmd->count - num_mask - 4) * sizeof(u32);
 	memcpy(xgq_cmd->data, &ecmd->data[4 + ecmd->extra_cu_masks], payload_size);
 
@@ -49,6 +55,9 @@ int xgq_exec_convert_start_scu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 	int payload_size = 0;
 
 	num_mask = 1 + ecmd->extra_cu_masks;
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	payload_size = (ecmd->count - num_mask) * sizeof(u32);
 	memcpy(xgq_cmd->data, &ecmd->data[ecmd->extra_cu_masks], payload_size);
 
@@ -67,6 +76,9 @@ int xgq_exec_convert_start_kv_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 	int payload_size = 0;
 
 	num_mask = 1 + ecmd->extra_cu_masks;
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	payload_size = (ecmd->count - num_mask) * sizeof(u32);
 	memcpy(xgq_cmd->data, &ecmd->data[ecmd->extra_cu_masks], payload_size);
 

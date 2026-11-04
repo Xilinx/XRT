@@ -13,7 +13,13 @@
 #ifndef _XRT_XCLBIN_H
 #define _XRT_XCLBIN_H
 
+#if defined(__KERNEL__)
 #include <linux/types.h>
+#elif defined(__cplusplus)
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
 
 /* Used for parsing bitstream header */
 #define XHI_EVEN_MAGIC_BYTE     0x0f
@@ -47,7 +53,7 @@ struct XHwIcap_Bit_Header {
 
 int
 xrt_xclbin_parse_header(const unsigned char *data,
-	unsigned int size, struct XHwIcap_Bit_Header *header);
+	uint64_t size, struct XHwIcap_Bit_Header *header);
 
 void
 xrt_xclbin_free_header(struct XHwIcap_Bit_Header *header);
