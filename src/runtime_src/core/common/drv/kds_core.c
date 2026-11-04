@@ -2032,6 +2032,10 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
 		info.intr_id = (ip->properties & IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
 
+		/* Reject before sort writes cu_info[num_cus] */
+		if (num_cus >= num_info)
+			return -EINVAL;
+
 		/* Rules to determine CUs ordering:
 		 * Sort CU in interrupt ID increase order.
 		 * If interrupt ID is the same, sort CU in address increase order.
@@ -2130,6 +2134,10 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 		info.intr_enable = 0;
 		info.protocol = CTRL_HS;
 		info.intr_id = 0;
+
+		/* Reject before write to cu_info[num_cus] */
+		if (num_cus >= num_info)
+			return -EINVAL;
 
 		memcpy(&cu_info[num_cus], &info, sizeof(info));
 		cu_info[num_cus].cu_idx = num_cus;

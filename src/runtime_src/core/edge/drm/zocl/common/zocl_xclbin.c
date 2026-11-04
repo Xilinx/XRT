@@ -494,6 +494,11 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 		return -ENOMEM;
 
 	num_cus = kds_ip_layout2cu_info(slot->ip, cu_info, MAX_CUS);
+	if (num_cus < 0) {
+		DRM_ERROR("More than %d CUs found\n", MAX_CUS);
+		kfree(cu_info);
+		return num_cus;
+	}
 
 	for (i = 0; i < num_cus; ++i) {
 

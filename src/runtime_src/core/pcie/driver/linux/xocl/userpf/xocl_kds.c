@@ -1485,6 +1485,8 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
  		goto done;
 
 	num_cus = kds_ip_layout2cu_info(ip_layout, cu_info, num_info);
+	if (num_cus < 0)
+		return num_cus;
 
 	/*
 	 * Get CU metadata from XML,
@@ -1538,6 +1540,8 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 	if (!ip_layout)
 		goto done;
 	num_cus = kds_ip_layout2scu_info(ip_layout, cu_info, num_info);
+	if (num_cus < 0)
+		return num_cus;
 
 	/*
 	 * Get CU metadata from XML,
@@ -1677,6 +1681,11 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, 0, ip_layout, cu_info, MAX_CUS);
+	if (num_cus < 0) {
+		userpf_err(xdev, "More than %d CUs found\n", MAX_CUS);
+		kfree(cu_info);
+		return num_cus;
+	}
 
 	/* We have to reserve the subdevices before create them */
 	xocl_kds_reserve_cu_subdevices(xdev, cu_info, num_cus);
@@ -2264,6 +2273,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, slot_hdl, ip_layout, cu_info, MAX_CUS);
+	if (num_cus < 0) {
+		userpf_err(xdev, "More than %d CUs found\n", MAX_CUS);
+		ret = num_cus;
+		goto out;
+	}
 
 	/* The XGQ ERT doesn't support more than 64 CUs. Let this hardcoding.
 	 * We will re-looking at this once at supporting multiple xclbins.
@@ -2294,6 +2308,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		return -ENOMEM;
 	}
 	num_scus = xocl_kds_fill_scu_info(xdev, slot_hdl, ip_layout, scu_info, MAX_CUS);
+	if (num_scus < 0) {
+		userpf_err(xdev, "More than %d PS kernels found\n", MAX_CUS);
+		ret = num_scus;
+		goto out;
+	}
 
 	/* Count number of out of control CU */
 	num_ooc_cus = 0;
