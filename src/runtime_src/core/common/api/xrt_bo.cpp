@@ -37,6 +37,7 @@
 
 #include <cstdlib>
 #include <map>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
@@ -252,6 +253,7 @@ protected:
   mutable uint32_t grpid = no_group;               // NOLINT memory group index
   mutable bo::flags flags = no_flags;              // NOLINT flags per bo properties
   mutable std::unique_ptr<xrt_core::shared_handle> shared_handle; // NOLINT
+  mutable std::once_flag export_once; // NOLINT one-time export of shared_handle
 
 public:
   // No handle
@@ -372,8 +374,12 @@ public:
   virtual export_handle
   export_buffer() const
   {
-    if (!shared_handle)
+    // One fd per allocation. Concurrent first exports must not each call
+    // share(): the losing unique_ptr closes its fd while another thread
+    // is still importing that number (AIESW-47985).
+    std::call_once(export_once, [this] {
       shared_handle = handle->share();
+    });
 
     return shared_handle->get_export_handle();
   }
