@@ -123,13 +123,13 @@ void set_xcmd_timestamp(struct kds_command *xcmd, enum kds_status s);
 /* execbuf command related funtions */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd);
-void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd);
-void start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd);
-void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			     struct kds_command *xcmd);
-void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			struct kds_command *xcmd);
 void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd,
 		     struct kds_command *xcmd);

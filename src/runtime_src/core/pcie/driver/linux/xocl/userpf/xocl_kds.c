@@ -145,9 +145,7 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 	ecmd->opcode = ERT_START_CU;
 	ecmd->type = ERT_CU;
 
-	start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
-
-	return 0;
+	return start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 }
 
 static int
@@ -160,12 +158,12 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 	}
 
 	if (ecmd->opcode == ERT_SK_START) {
-		start_skrnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
-	} else {
-		xcmd->opcode = OP_CONFIG_SK;
-		ecmd->type = ERT_CTRL;
-		xcmd->execbuf = (u32 *)ecmd;
+		return start_skrnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	}
+
+	xcmd->opcode = OP_CONFIG_SK;
+	ecmd->type = ERT_CTRL;
+	xcmd->execbuf = (u32 *)ecmd;
 
 	return 0;
 }
@@ -655,7 +653,10 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->cu_mask[0] = kecmd->cu_mask;
 		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
-		xcmd->isize = xgq_exec_convert_start_scu_cmd(xcmd->info, kecmd);
+		ret = xgq_exec_convert_start_scu_cmd(xcmd->info, kecmd);
+		if (ret < 0)
+			break;
+		xcmd->isize = ret;
 		ret = 1; /* hack */
 		break;
 	case ERT_START_CU:
@@ -667,7 +668,10 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->cu_mask[0] = kecmd->cu_mask;
 		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
-		xcmd->isize = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
+		ret = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
+		if (ret < 0)
+			break;
+		xcmd->isize = ret;
 		ret = 1; /* hack */
 		break;
 	case ERT_CLK_CALIB:
@@ -707,7 +711,10 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->cu_mask[0] = kecmd->cu_mask;
 		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
-		xcmd->isize = xgq_exec_convert_start_kv_cu_cmd(xcmd->info, kecmd);
+		ret = xgq_exec_convert_start_kv_cu_cmd(xcmd->info, kecmd);
+		if (ret < 0)
+			break;
+		xcmd->isize = ret;
 		ret = 1;
 		break;
 	case ERT_START_COPYBO:
@@ -835,20 +842,28 @@ int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 		goto out1;
 	case ERT_START_CU:
-		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		break;
 	case ERT_EXEC_WRITE:
 		userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
 		/* PS ERT is not sync with host. Have to skip 6 data */
 		if (!xocl_ps_sched_on(xdev))
 			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
-		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		break;
 	case ERT_START_KEY_VAL:
-		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		break;
 	case ERT_START_FA:
-		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		/* ERT doesn't support Fast adapter command */
 		xcmd->type = KDS_CU;
 		break;
