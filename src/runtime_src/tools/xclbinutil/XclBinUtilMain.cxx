@@ -594,6 +594,8 @@ int main_(int argc, const char** argv) {
 
     else if (!xclBin.checkForValidSection())
       throw std::runtime_error("ERROR: The xclbin is missing at least one section required by the 'file' command to identify its file type and display file characteristics.");
+
+    XUtil::QUIET("The xclbin is compliant with the Linux 'file' command requirements.");
   }
   XUtil::QUIET("Leaving xclbinutil.");
 
