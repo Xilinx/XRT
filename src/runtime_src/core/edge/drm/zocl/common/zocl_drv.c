@@ -845,6 +845,21 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	gem_obj = vma->vm_private_data;
 	bo = to_zocl_bo(gem_obj);
 
+	if (is_imported_bo(bo)) {
+		/*
+		 * The exporter owns the memory and its cache attributes, so
+		 * it must create the mapping. drm_gem_mmap() forced WC on
+		 * vm_page_prot and took a GEM reference the dma-buf vma
+		 * does not need.
+		 */
+		vma->vm_page_prot = prot;
+		vma->vm_private_data = NULL;
+		vma->vm_ops = NULL;
+		rc = dma_buf_mmap(bo->dma_buf, vma, 0);
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+		return rc;
+	}
+
 	if (bo->flags & ZOCL_BO_FLAGS_CACHEABLE)
 		/**
 		 * Resume the protection field from mmap(). Most likely
