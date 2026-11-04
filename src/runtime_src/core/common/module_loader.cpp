@@ -176,6 +176,7 @@ normalize_and_reject_traversal(const std::string& file)
   for (const auto& component : path)
     if (component == "..")
       throw std::runtime_error("Invalid path '" + file + "': path traversal not allowed");
+
   return path;
 }
 
@@ -200,14 +201,13 @@ platform_repo_path(const std::string& file)
 static sfs::path
 platform_path(const std::string& file_name)
 {
-  sfs::path xpath{file_name};
+  sfs::path xpath{normalize_and_reject_traversal(file_name)};
 
   if (!xpath.is_absolute()) {
-    xpath = normalize_and_reject_traversal(file_name);
-    // Check in CWD first; if not present, fall through
-    // to platform repo lookup
+    // Check in CWD first; if not present, fall through to platform repo lookup
     if (sfs::exists(xpath))
       return xpath;
+
     return platform_repo_path(xpath.string());
   }
 
