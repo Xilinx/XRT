@@ -117,7 +117,7 @@ def compErrorMsg(pretty_name, cmd, expectedMsg):
   print(o.decode('ascii'))
   print(e.decode('ascii'))
   if proc.returncode == 0:
-      raise Exception("Invalid xclbin passed file-check")
+      raise Exception("File-check unexpectedly succeeded for an invalid xclbin")
   if(e.decode('ascii') != expectedMsg):
       raise Exception("The error message for file-check on invalid xclbin does not match " + str(expectedMsg))
 
