@@ -467,13 +467,29 @@ static inline void
 zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 {
 	struct kds_command *xcmd;
-	int mask_idx = 0;
-	int bit_idx = 0;
+	u32 cu_idx;
+	int mask_idx;
+	int bit_idx;
 
 #if 0
 	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, 0, KDS_COMPLETED);
 	return;
 #endif
+	if (ZCU_XGQ_FAST_PATH(zcu_xgq)) {
+		cmd->cu_domain = zcu_xgq->zxc_cu_domain;
+		cu_idx = zcu_xgq->zxc_cu_idx;
+	} else {
+		cu_idx = cmd->cu_idx;
+	}
+	/* Peer cu_idx is 12 bits; cu_mask[] only covers MAX_CU_NUM. */
+	if (cu_idx >= MAX_CU_NUM) {
+		zcu_xgq_err(zcu_xgq, "Invalid CU index: %u", cu_idx);
+		zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -EINVAL, KDS_COMPLETED);
+		return;
+	}
+	mask_idx = cu_idx / 32;
+	bit_idx = cu_idx % 32;
+
 	xcmd = kds_alloc_command(zcu_xgq->zxc_client_hdl, 0);
 	if (!xcmd) {
 		zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOMEM, KDS_COMPLETED);
@@ -490,14 +506,6 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 	xcmd->priv = zcu_xgq;
 	xcmd->response_size = 0;
 
-	if (ZCU_XGQ_FAST_PATH(zcu_xgq)) {
-		cmd->cu_domain = zcu_xgq->zxc_cu_domain;
-		mask_idx = zcu_xgq->zxc_cu_idx / 32;
-		bit_idx = zcu_xgq->zxc_cu_idx % 32;
-	} else {
-		mask_idx = cmd->cu_idx / 32;
-		bit_idx = cmd->cu_idx % 32;
-	}
 	if (cmd->cu_domain != 0) {
 		xcmd->type = KDS_SCU;
 		xcmd->opcode = OP_START_SK;
@@ -505,12 +513,8 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 		xcmd->type = KDS_CU;
 		xcmd->opcode = OP_START;
 	}
-	xcmd->cu_mask[mask_idx] = 1 << bit_idx;
-	if (mask_idx < 4) {
-		xcmd->num_mask = mask_idx + 1;
-	} else {
-		xcmd->num_mask = 0;
-	}
+	xcmd->cu_mask[mask_idx] = 1U << bit_idx;
+	xcmd->num_mask = mask_idx + 1;
 
 	kds_add_command(&zcu_xgq->zxc_zdev->kds, xcmd);
 }

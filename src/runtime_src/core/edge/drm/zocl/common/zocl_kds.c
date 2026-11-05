@@ -186,19 +186,27 @@ zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	struct kds_sched *kds = &zdev->kds;
 	struct drm_zocl_slot *slot = NULL;
 	struct kds_cu_mgmt *cu_mgmt = NULL;
-	u32 slot_idx = 0xFFFF;
+	struct xrt_cu *xcu = NULL;
+	u32 slot_idx;
 
 	if (!kds)
 		return NULL;
 
 	cu_mgmt = &kds->cu_mgmt;
-	if (cu_mgmt) {
-		struct xrt_cu *xcu = cu_mgmt->xcus[cu_idx];
+	if (!cu_mgmt)
+		return NULL;
 
-		/* Found the cu Index. Extract slot id out of it */
-		if (xcu)
-			slot_idx = xcu->info.slot_idx;
-	}
+	if (cu_idx < 0 || cu_idx >= MAX_CUS)
+		return NULL;
+
+	xcu = cu_mgmt->xcus[cu_idx];
+	if (!xcu)
+		return NULL;
+
+	/* Found the cu Index. Extract slot id out of it */
+	slot_idx = xcu->info.slot_idx;
+	if (slot_idx >= MAX_PR_SLOT_NUM)
+		return NULL;
 
 	slot = zdev->pr_slot[slot_idx];
 	if (slot) {
