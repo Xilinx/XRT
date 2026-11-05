@@ -19,7 +19,7 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-#ifndef __NONE_PETALINUX__
+#ifndef ZOCL_AIE_STUBS
 #include <linux/xlnx-ai-engine.h>
 #endif
 
@@ -520,9 +520,20 @@ zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclb
 	struct device *aie_dev;
 	int rval = 0;
 
+#ifdef ZOCL_DISABLE_AIE
+	/*
+	 * The AIE array is owned by firmware on this platform. Do not request
+	 * an AIE partition: slot->aie stays NULL, the AIE ioctls return
+	 * -ENODEV, and PL-only xclbins still load.
+	 */
+	DRM_INFO("AIE support disabled in zocl, skip AIE partition request.\n");
+	return 0;
+#endif
+
 	rval = xrt_xclbin_section_info(axlf, AIE_METADATA, &offset, &size);
 	if (rval)
 		return rval;
+
 	mutex_lock(&slot->aie_lock);
 
 	/* AIE is reset and no PDI is loaded after reset */
