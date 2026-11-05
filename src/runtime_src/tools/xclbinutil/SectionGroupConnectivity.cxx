@@ -61,11 +61,17 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
 
   XUtil::TRACE(boost::format("m_count: %d") % (unsigned int)pHdr->m_count);
 
+  // Validate that m_count is not negative
+  if (pHdr->m_count < 0) {
+    auto errMsg = boost::format("ERROR: m_count is negative (%d)") % pHdr->m_count;
+    throw std::runtime_error(errMsg.str());
+  }
+
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr));
   connectivity.put("m_count", (boost::format("%d") % (unsigned int)pHdr->m_count).str());
 
-  uint64_t expectedSize = ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr) + (sizeof(connection) * pHdr->m_count);
+  uint64_t expectedSize = ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr) + (sizeof(connection) * (uint64_t)pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
     auto errMsg = boost::format("ERROR: Section size (%d) does not match expected section size (%d).") % _sectionSize % expectedSize;
