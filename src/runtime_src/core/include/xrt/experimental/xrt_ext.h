@@ -109,6 +109,21 @@ public:
   }
 
   /**
+   * @enum use_mode - what the buffer's content is for
+   *
+   * @var debug
+   *   Buffer receives debug data from driver or firmware
+   *
+   * A use mode reaches the buffer use flags in xrt_mem.h, which the
+   * access mode constructors do not.  It decides both how the buffer
+   * is allocated and how the device is given access to it.
+   */
+  enum class use_mode : uint64_t
+  {
+    debug = XRT_BO_USE_DEBUG
+  };
+
+  /**
    * bo() - Constructor with user host buffer and access mode
    *
    * @param device
@@ -208,6 +223,26 @@ public:
    */
   XRT_API_EXPORT
   bo(const xrt::hw_context& hwctx, size_t sz, access_mode access);
+
+  /**
+   * bo() - Constructor for a buffer object with a specific use mode
+   *
+   * @param hwctx
+   *  The hardware context that this buffer object uses for queue
+   *  operations such as syncing and residency operations.
+   * @param sz
+   *  Size of buffer
+   * @param use
+   *  What the buffer's content is for (see `enum use_mode`)
+   *
+   * A debug buffer receives data written by driver or firmware rather
+   * than by a kernel, so it is attached to the hardware context for its
+   * lifetime instead of being passed as a kernel argument.  Supported on
+   * specific platforms only.  The access mode constructors cover the
+   * ordinary case of a buffer that is a kernel argument.
+   */
+  XRT_API_EXPORT
+  bo(const xrt::hw_context& hwctx, size_t sz, use_mode use);
 
   /**
    * bo() - Constructor for buffer object
