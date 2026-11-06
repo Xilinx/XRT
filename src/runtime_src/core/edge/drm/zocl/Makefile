@@ -40,6 +40,12 @@ endif
 
 ccflags-y += -Wall
 
+# ZOCL_DISABLE_AIE=1 builds zocl without the xilinx_aie module dependency
+# (use when the AIE array is owned by firmware, not by zocl).
+ifeq ($(ZOCL_DISABLE_AIE),1)
+	ccflags-y += -DZOCL_DISABLE_AIE
+endif
+
 # ENABLE_KERNEL_DEBUG turns on UBSAN. GCC then embeds absolute
 # kernel-source paths in zocl.ko and those strings are not
 # rewritten by -ffile-prefix-map, so do_package_qa fails with [buildpaths].
