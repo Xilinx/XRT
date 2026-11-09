@@ -27,6 +27,24 @@ config_gen_npu3_pf()
 }
 
 subcommand
+config_gen_npu3_pf::create_examine_subcommand()
+{
+  // context-health is VF-only (requires a user DRM handle / live contexts).
+  std::map<std::string, std::shared_ptr<option>> examine_suboptions;
+  examine_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  examine_suboptions.emplace("json", std::make_shared<option>("json", "", "JSON ABI version for file output. Valid values are:\n"
+                                "\tdefault - Latest JSON schema (default)", "common", "default", "string"));
+  examine_suboptions.emplace("output", std::make_shared<option>("output", "o", "Direct the output to the given file", "common", "", "string"));
+  examine_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
+  examine_suboptions.emplace("watch", std::make_shared<option>("watch", "", "Refresh interval in seconds between examine updates. Exit with Ctrl+C.", "hidden", "0", "string"));
+  examine_suboptions.emplace("report", std::make_shared<listable_description_option>("report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", get_examine_report_desc()));
+  examine_suboptions.emplace("firmware-log", std::make_shared<option>("firmware-log", "", "Show status|watch firmware log data", "hidden", "", "string", true));
+  examine_suboptions.emplace("event-trace", std::make_shared<option>("event-trace", "", "Show status|watch event trace data", "hidden", "", "string", true));
+
+  return {"examine", "This command will 'examine' the state of the system/device and will generate a report of interest in a text or JSON format.", "common", std::move(examine_suboptions)};
+}
+
+subcommand
 config_gen_npu3_pf::create_configure_subcommand()
 {
   std::map<std::string, std::shared_ptr<option>> configure_suboptions;
