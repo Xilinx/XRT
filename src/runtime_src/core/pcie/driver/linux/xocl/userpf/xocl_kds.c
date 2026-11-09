@@ -145,9 +145,7 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 	ecmd->opcode = ERT_START_CU;
 	ecmd->type = ERT_CU;
 
-	start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
-
-	return 0;
+	return start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 }
 
 static int
@@ -160,12 +158,12 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 	}
 
 	if (ecmd->opcode == ERT_SK_START) {
-		start_skrnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
-	} else {
-		xcmd->opcode = OP_CONFIG_SK;
-		ecmd->type = ERT_CTRL;
-		xcmd->execbuf = (u32 *)ecmd;
+		return start_skrnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	}
+
+	xcmd->opcode = OP_CONFIG_SK;
+	ecmd->type = ERT_CTRL;
+	xcmd->execbuf = (u32 *)ecmd;
 
 	return 0;
 }
@@ -479,7 +477,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 		if (xcmd->opcode == OP_GET_STAT)
 			read_ert_stat(xcmd);
 
-		ecmd->state = kds_ert_table[status];
+		ecmd->state = kds_to_ert(status);
 	}
 
 	if (xcmd->timestamp_enabled) {
@@ -492,7 +490,8 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 		ts->skc_timestamps[ERT_CMD_STATE_NEW] = xcmd->timestamp[KDS_NEW];
 		ts->skc_timestamps[ERT_CMD_STATE_QUEUED] = xcmd->timestamp[KDS_QUEUED];
 		ts->skc_timestamps[ERT_CMD_STATE_RUNNING] = xcmd->timestamp[KDS_RUNNING];
-		ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
+		if ((unsigned int)status < KDS_STAT_MAX)
+			ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
 	}
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
@@ -529,7 +528,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 		client_stat_inc(client, hw_ctx, scu_c_cnt[xcmd->cu_idx]);
 	}
 
-	ecmd->state = kds_ert_table[status];
+	ecmd->state = kds_to_ert(status);
 
 	if (xcmd->timestamp_enabled) {
 		/* Only start kernel command supports timestamps */
@@ -541,7 +540,8 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 		ts->skc_timestamps[ERT_CMD_STATE_NEW] = xcmd->timestamp[KDS_NEW];
 		ts->skc_timestamps[ERT_CMD_STATE_QUEUED] = xcmd->timestamp[KDS_QUEUED];
 		ts->skc_timestamps[ERT_CMD_STATE_RUNNING] = xcmd->timestamp[KDS_RUNNING];
-		ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
+		if ((unsigned int)status < KDS_STAT_MAX)
+			ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
 	}
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
@@ -653,7 +653,10 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->cu_mask[0] = kecmd->cu_mask;
 		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
-		xcmd->isize = xgq_exec_convert_start_scu_cmd(xcmd->info, kecmd);
+		ret = xgq_exec_convert_start_scu_cmd(xcmd->info, kecmd);
+		if (ret < 0)
+			break;
+		xcmd->isize = ret;
 		ret = 1; /* hack */
 		break;
 	case ERT_START_CU:
@@ -665,7 +668,10 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->cu_mask[0] = kecmd->cu_mask;
 		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
-		xcmd->isize = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
+		ret = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
+		if (ret < 0)
+			break;
+		xcmd->isize = ret;
 		ret = 1; /* hack */
 		break;
 	case ERT_CLK_CALIB:
@@ -705,7 +711,10 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->cu_mask[0] = kecmd->cu_mask;
 		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
-		xcmd->isize = xgq_exec_convert_start_kv_cu_cmd(xcmd->info, kecmd);
+		ret = xgq_exec_convert_start_kv_cu_cmd(xcmd->info, kecmd);
+		if (ret < 0)
+			break;
+		xcmd->isize = ret;
 		ret = 1;
 		break;
 	case ERT_START_COPYBO:
@@ -833,20 +842,28 @@ int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 		goto out1;
 	case ERT_START_CU:
-		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		break;
 	case ERT_EXEC_WRITE:
 		userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
 		/* PS ERT is not sync with host. Have to skip 6 data */
 		if (!xocl_ps_sched_on(xdev))
 			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
-		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		break;
 	case ERT_START_KEY_VAL:
-		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		break;
 	case ERT_START_FA:
-		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		ret = start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
 		/* ERT doesn't support Fast adapter command */
 		xcmd->type = KDS_CU;
 		break;
@@ -1081,14 +1098,15 @@ int xocl_kds_reconfig(struct xocl_dev *xdev)
 }
 
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
-		     struct drm_file *filp, unsigned long size, u32 *addrp)
+		     struct drm_file *filp, unsigned long size, u32 *addrp,
+		     bool *read_only)
 {
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = filp->driver_priv;
 	int ret;
 
 	mutex_lock(&client->lock);
-	ret = kds_map_cu_addr(kds, client, cu_idx, size, addrp);
+	ret = kds_map_cu_addr(kds, client, cu_idx, size, addrp, read_only);
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -1234,7 +1252,7 @@ static void xocl_cfg_notify(struct kds_command *xcmd, enum kds_status status)
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 
-	ecmd->state = kds_ert_table[status];
+	ecmd->state = kds_to_ert(status);
 
 	complete(&kds->comp);
 }
@@ -1467,6 +1485,8 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
  		goto done;
 
 	num_cus = kds_ip_layout2cu_info(ip_layout, cu_info, num_info);
+	if (num_cus < 0)
+		return num_cus;
 
 	/*
 	 * Get CU metadata from XML,
@@ -1520,6 +1540,8 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 	if (!ip_layout)
 		goto done;
 	num_cus = kds_ip_layout2scu_info(ip_layout, cu_info, num_info);
+	if (num_cus < 0)
+		return num_cus;
 
 	/*
 	 * Get CU metadata from XML,
@@ -1659,6 +1681,11 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, 0, ip_layout, cu_info, MAX_CUS);
+	if (num_cus < 0) {
+		userpf_err(xdev, "More than %d CUs found\n", MAX_CUS);
+		kfree(cu_info);
+		return num_cus;
+	}
 
 	/* We have to reserve the subdevices before create them */
 	xocl_kds_reserve_cu_subdevices(xdev, cu_info, num_cus);
@@ -2246,6 +2273,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, slot_hdl, ip_layout, cu_info, MAX_CUS);
+	if (num_cus < 0) {
+		userpf_err(xdev, "More than %d CUs found\n", MAX_CUS);
+		ret = num_cus;
+		goto out;
+	}
 
 	/* The XGQ ERT doesn't support more than 64 CUs. Let this hardcoding.
 	 * We will re-looking at this once at supporting multiple xclbins.
@@ -2276,6 +2308,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		return -ENOMEM;
 	}
 	num_scus = xocl_kds_fill_scu_info(xdev, slot_hdl, ip_layout, scu_info, MAX_CUS);
+	if (num_scus < 0) {
+		userpf_err(xdev, "More than %d PS kernels found\n", MAX_CUS);
+		ret = num_scus;
+		goto out;
+	}
 
 	/* Count number of out of control CU */
 	num_ooc_cus = 0;
@@ -2581,9 +2618,10 @@ out:
 	return ret;
 }
 
-int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
+int xocl_kds_set_cu_read_range(struct xocl_dev *xdev,
+			       struct kds_client *client, u32 cu_idx,
 			       u32 start, u32 size)
 {
-	return kds_set_cu_read_range(&XDEV(xdev)->kds, cu_idx, start, size);
+	return kds_set_cu_read_range(&XDEV(xdev)->kds, client, cu_idx, start, size);
 }
 

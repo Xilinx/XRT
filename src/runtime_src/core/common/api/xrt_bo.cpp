@@ -37,6 +37,7 @@
 
 #include <cstdlib>
 #include <map>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
@@ -252,6 +253,7 @@ protected:
   mutable uint32_t grpid = no_group;               // NOLINT memory group index
   mutable bo::flags flags = no_flags;              // NOLINT flags per bo properties
   mutable std::unique_ptr<xrt_core::shared_handle> shared_handle; // NOLINT
+  mutable std::once_flag export_once; // NOLINT one-time export of shared_handle
 
 public:
   // No handle
@@ -369,13 +371,25 @@ public:
     throw xrt_core::error("buffer is not mapped");
   }
 
-  export_handle
+  virtual export_handle
   export_buffer() const
   {
-    if (!shared_handle)
+    // One fd per allocation. Concurrent first exports must not each call
+    // share(): the losing unique_ptr closes its fd while another thread
+    // is still importing that number (AIESW-47985).
+    std::call_once(export_once, [this] {
       shared_handle = handle->share();
+    });
 
     return shared_handle->get_export_handle();
+  }
+
+  // Returns the underlying allocation for this BO.
+  // For a regular BO this is itself; buffer_sub overrides to walk to the backing allocation.
+  virtual std::shared_ptr<bo_impl>
+  get_allocation()
+  {
+    return shared_from_this();
   }
 
   virtual void
@@ -970,6 +984,22 @@ public:
     return true;
   }
 
+  export_handle
+  export_buffer() const override
+  {
+    throw xrt_core::error(-EINVAL,
+      "Export of a sub-buffer is not supported. "
+      "Call get_allocation() to obtain the underlying buffer, export that, "
+      "then recreate the sub-buffer on the import side using the original offset and size.");
+  }
+
+  std::shared_ptr<bo_impl>
+  get_allocation() override
+  {
+    // Walk to the backing allocation, handling nested sub-buffers.
+    return m_parent->get_allocation();
+  }
+
   size_t
   get_offset() const override
   {
@@ -979,7 +1009,12 @@ public:
   uint64_t
   get_address() const override
   {
-    return bo_impl::get_address() + m_offset;
+    // Compose through the parent, which may itself be a sub-buffer.  The
+    // base implementation resolves the address from the shim handle, and
+    // bo_impl(parent, size) copies that handle transitively, so it yields
+    // the root buffer's address and drops any intermediate offset.  This
+    // matches how m_hbuf and sync() already recurse through m_parent.
+    return m_parent->get_address() + m_offset;
   }
 
   void
@@ -1556,6 +1591,13 @@ export_buffer()
   return xdp::native::profiling_wrapper("xrt::bo::export_buffer", [this]{
     return handle->export_buffer();
   });
+}
+
+bo
+bo::
+get_allocation()
+{
+  return bo{handle->get_allocation()};
 }
 
 void

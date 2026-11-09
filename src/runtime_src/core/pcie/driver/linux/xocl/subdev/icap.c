@@ -1056,13 +1056,13 @@ static long icap_download(struct icap *icap, const char *buffer,
 	BUG_ON(!buffer);
 	BUG_ON(!length);
 
-	if (xrt_xclbin_parse_header(buffer,
-		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
+	if (xrt_xclbin_parse_header(buffer, length, &bit_header)) {
 		err = -EINVAL;
 		goto free_buffers;
 	}
 
-	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
+	if ((uint64_t)bit_header.HeaderLength +
+	    (uint64_t)bit_header.BitstreamLength > length) {
 		err = -EINVAL;
 		goto free_buffers;
 	}
@@ -4618,14 +4618,15 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	}
 
 	header = (char *)axlf + section->m_sectionOffset;
-	if (xrt_xclbin_parse_header(header,
-			DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
+	if (xrt_xclbin_parse_header(header, section->m_sectionSize,
+			&bit_header)) {
 		ICAP_ERR(icap, "parse header failed");
 		ret = -EINVAL;
 		goto failed;
 	}
 
-	icap->rp_bit_len = bit_header.HeaderLength + bit_header.BitstreamLength;
+	icap->rp_bit_len = (uint64_t)bit_header.HeaderLength +
+		(uint64_t)bit_header.BitstreamLength;
 	if (icap->rp_bit_len > section->m_sectionSize) {
 		ICAP_ERR(icap, "bitstream is too big");
 		ret = -EINVAL;

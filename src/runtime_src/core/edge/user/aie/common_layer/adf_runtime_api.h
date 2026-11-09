@@ -58,6 +58,7 @@ private:
   const graph_config* pGraphConfig;
   bool isConfigured;
   bool isRunning;
+  bool isInfiniteRun; //graph was started with a negative iteration count, cores never report done
   unsigned long long startTime;
 
   std::vector<XAie_LocType> coreTiles;

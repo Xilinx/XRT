@@ -20,18 +20,36 @@ namespace xrt_core { class device; }
 
 namespace xrt_core::tools::xrt_smi{
 
-constexpr uint8_t npu3_rbe_header_magic = 0xCA; // NOLINT This is hardcoded. Ideally this should come from the config json. TODO: remove this once this is a part of json
-constexpr uint8_t npu3_rbe_footer_magic = 0xBA; // NOLINT This is hardcoded. Ideally this should come from the config json. TODO: remove this once this is a part of json
-constexpr size_t npu3_rbe_header_bytes = 8;  // NOLINT RBE header: magic(1) + payload_words(2) + seq_num(2) + reserved(3)
-constexpr size_t npu3_event_header_bytes = 12; // NOLINT Event header: timestamp(8) + unique_id(4)
-constexpr size_t npu3_rbe_footer_bytes = 8;  // NOLINT RBE footer: reserved(3) + seq_num(2) + payload_words(2) + magic(1)
+// NPU3 event-trace record layout (one entry in the device buffer):
+//
+//   +-- header_bytes (8) -------------------------------------+
+//   | magic(1) | payload_words(1) | seq_num(2) | reserved(4) |
+//   +---------------------------------------------------------+
+//   +-- payload_words * 8 bytes -------------------------------+
+//   | +-- event_header_bytes (12) ----+                       |
+//   | | timestamp(8) | event_id(4)     |  <- parse starts here |
+//   | +-------------------------------+                       |
+//   | event args (size/format from trace_events.json)         |
+//   +---------------------------------------------------------+
+//   +-- footer_bytes (8) -------------------------------------+
+//   | reserved(3) | seq_num(2) | payload_words(2) | magic(1)|
+//   +---------------------------------------------------------+
+//
+// Entry size = header_bytes + (payload_words * 8) + footer_bytes
+// min_entry_bytes = header_bytes + event_header_bytes (fixed prefix before args)
+
+constexpr uint8_t header_magic = 0xCA; // NOLINT hardcoded; TODO: load from config json
+constexpr uint8_t footer_magic = 0xBA; // NOLINT hardcoded; TODO: load from config json
+constexpr size_t header_bytes = 8;     // NOLINT see layout above
+constexpr size_t event_header_bytes = 12; // NOLINT see layout above
+constexpr size_t footer_bytes = 8;     // NOLINT see layout above
+constexpr size_t min_entry_bytes = header_bytes + event_header_bytes;
 
 
 /**
  * @brief NPU3-specific event trace configuration
- * 
- * Handles NPU3 format with variable-size events and struct-based payload.
- * Format: [timestamp:8][magic:0xAA][category_id:2][payload_size:1][payload:variable]
+ *
+ * Handles NPU3 variable-size records; see byte layout above header_bytes.
  */
 class config_npu3 : public event_trace_config {
 public:
@@ -57,8 +75,8 @@ public:
     uint64_t timestamp;
     uint32_t event_id;         // unique_id from event header
     const uint8_t* payload_ptr;
-    uint8_t payload_words;    // number of 64-bit words (from RBE header, 1 byte)
-    uint16_t sequence_number; // sequence number (from RBE header, 2 bytes)
+    uint8_t payload_words;    // number of 64-bit words (from record header, 1 byte)
+    uint16_t sequence_number; // sequence number (from record header, 2 bytes)
   };
 
 public:
@@ -124,6 +142,7 @@ private:
   std::string 
   extract_arg_value(const uint8_t* payload_ptr,
                     size_t& offset,
+                    size_t payload_size,
                     const event_arg_npu3& arg) const;
 
   size_t 
@@ -165,6 +184,14 @@ public:
         size_t buf_size) const override;
 
 private:
+  struct located_entry {
+    const uint8_t* ptr;
+    size_t size;
+  };
+
+  std::optional<located_entry>
+  locate_entry(const uint8_t* data_ptr, size_t buf_size, size_t offset) const;
+
   event_data_t parse_payload(const uint8_t* buffer_ptr) const;
 
   std::string format_event(const event_data_t& event_data) const;

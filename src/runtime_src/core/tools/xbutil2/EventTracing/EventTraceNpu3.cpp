@@ -160,11 +160,16 @@ decode_event(const event_data_t& event_data) const
     decoded.description = event.description;
     decoded.categories = event.categories;
     
+    const size_t payload_bytes = static_cast<size_t>(event_data.payload_words) * 8; //NOLINT
+    const size_t payload_size = payload_bytes > event_header_bytes
+      ? payload_bytes - event_header_bytes 
+      : 0;
+
     // Extract arguments from struct payload
     size_t offset = 0;
     for (const auto& arg : event.args) {
       try {
-        std::string value = extract_arg_value(event_data.payload_ptr, offset, arg);
+        std::string value = extract_arg_value(event_data.payload_ptr, offset, payload_size, arg);
         decoded.args[arg.name] = value;
       } catch (const std::exception& e) {
         decoded.args[arg.name] = "ERROR: " + std::string(e.what());
@@ -205,6 +210,7 @@ std::string
 config_npu3::
 extract_arg_value(const uint8_t* payload_ptr,
                   size_t& offset,
+                  size_t payload_size,
                   const event_arg_npu3& arg) const
 {
   size_t type_size = get_type_size(arg.type);
@@ -216,6 +222,9 @@ extract_arg_value(const uint8_t* payload_ptr,
     for (uint32_t i = 0; i < arg.count; ++i) {
       if (i > 0) ss << ",";
       
+      if (offset + type_size > payload_size)
+        throw std::runtime_error("payload truncated");
+
       uint64_t value = 0;
       std::memcpy(&value, payload_ptr + offset, type_size);
       offset += type_size;
@@ -238,6 +247,9 @@ extract_arg_value(const uint8_t* payload_ptr,
     ss << "]";
   } else {
     // Single value
+    if (offset + type_size > payload_size)
+      throw std::runtime_error("payload truncated");
+
     uint64_t value = 0;
     std::memcpy(&value, payload_ptr + offset, type_size);
     offset += type_size;
@@ -312,6 +324,26 @@ parser_npu3(config_npu3 config)
   : m_config(std::move(config))
 {}
 
+std::optional<parser_npu3::located_entry>
+parser_npu3::
+locate_entry(const uint8_t* data_ptr, size_t buf_size, size_t offset) const
+{
+  if (offset >= buf_size || data_ptr[offset] != header_magic)
+    return std::nullopt;
+
+  if (offset + min_entry_bytes > buf_size)
+    return std::nullopt;
+
+  const uint8_t payload_words = data_ptr[offset + 1];
+  const size_t entry_size = header_bytes
+                            + (static_cast<size_t>(payload_words) * 8) //NOLINT
+                            + footer_bytes;
+  if (offset + entry_size > buf_size)
+    return std::nullopt;
+
+  return located_entry{data_ptr + offset, entry_size};
+}
+
 parser_npu3::event_data_t
 parser_npu3::
 parse_payload(const uint8_t* buffer_ptr) const
@@ -346,19 +378,19 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
 
   std::optional<uint16_t> prev_seq;
   for (size_t offset = 0; offset < buf_size; ) {
-    if (data_ptr[offset] != npu3_rbe_header_magic) {
-      offset++;
+    const auto located = locate_entry(data_ptr, buf_size, offset);
+    if (!located) {
+      ++offset;
       continue;
     }
-    auto event_data = parse_payload(data_ptr + offset);
-    const size_t entry_size = npu3_rbe_header_bytes 
-                              + (static_cast<size_t>(event_data.payload_words) * 8) //NOLINT
-                              + npu3_rbe_footer_bytes; 
+
+    const auto event_data = parse_payload(located->ptr);
     if (prev_seq)
       ss << format_sequence_gap(*prev_seq, event_data.sequence_number);
+
     prev_seq = event_data.sequence_number;
     ss << format_event(event_data);
-    offset += entry_size;
+    offset += located->size;
   }
   return ss.str();
 }

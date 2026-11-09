@@ -21,11 +21,17 @@
 #include <linux/module.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/iommu.h>
+#include <linux/ioport.h>
+#include <linux/mm.h>
+#include <linux/overflow.h>
 #include <linux/pagemap.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/irq.h>
+#include <linux/irqdomain.h>
 #include <linux/poll.h>
 #include <linux/spinlock.h>
 #include "zocl_drv.h"
@@ -244,6 +250,8 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		mutex_init(&zocl_slot->aie_lock);
 
 		zocl_slot->slot_idx = i;
+		/* 0 is a valid overlay id */
+		zocl_slot->partial_overlay_id = -1;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -840,6 +848,21 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	gem_obj = vma->vm_private_data;
 	bo = to_zocl_bo(gem_obj);
 
+	if (is_imported_bo(bo)) {
+		/*
+		 * The exporter owns the memory and its cache attributes, so
+		 * it must create the mapping. drm_gem_mmap() forced WC on
+		 * vm_page_prot and took a GEM reference the dma-buf vma
+		 * does not need.
+		 */
+		vma->vm_page_prot = prot;
+		vma->vm_private_data = NULL;
+		vma->vm_ops = NULL;
+		rc = dma_buf_mmap(bo->dma_buf, vma, 0);
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+		return rc;
+	}
+
 	if (bo->flags & ZOCL_BO_FLAGS_CACHEABLE)
 		/**
 		 * Resume the protection field from mmap(). Most likely
@@ -885,6 +908,42 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	return rc;
 }
 
+/* Aperture addresses come straight out of the IP_LAYOUT and DEBUG_IP_LAYOUT
+ * sections of a user supplied xclbin, so they cannot be trusted to describe a
+ * register window. Refuse anything the kernel knows to be System RAM, which
+ * would otherwise hand the caller a writable mapping of arbitrary memory.
+ * Addresses the kernel knows nothing about are still allowed, they are the
+ * undeclared PL windows the CUs actually live in.
+ *
+ * The whole pages the range falls in are checked, since those are what a
+ * mapping would hand out.
+ *
+ * @param	addr:	start of the register range
+ * @param	size:	size of the register range
+ *
+ * @return	true if the range may be mapped to user space.
+ */
+bool zocl_apt_range_is_mmio(phys_addr_t addr, size_t size)
+{
+	phys_addr_t start = round_down(addr, PAGE_SIZE);
+	phys_addr_t last;
+	size_t len;
+
+	if (!size || check_add_overflow(addr, (phys_addr_t)(size - 1), &last))
+		return false;
+
+	last |= (phys_addr_t)(PAGE_SIZE - 1);
+	len = last - start + 1;
+	if (!len)
+		return false;
+
+	if (region_intersects(start, len, IORESOURCE_SYSTEM_RAM,
+			      IORES_DESC_NONE) != REGION_DISJOINT)
+		return false;
+
+	return !pfn_valid(PHYS_PFN(start)) && !pfn_valid(PHYS_PFN(last));
+}
+
 /* This function map two types of kernel address to user space.
  * The first type is pysical registers of a hardware IP, like CUs.
  * The second type is GEM buffer.
@@ -903,7 +962,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct drm_zocl_bo  *bo = NULL;
 	unsigned long        vsize;
 	phys_addr_t          phy_addr;
-	int apt_idx;
+	unsigned long apt_idx;
 	int rc;
 
 	/* A GEM buffer object has a fake mmap offset start from page offset
@@ -944,17 +1003,27 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * Could not map from the middle of an aperture.
 	 */
 	apt_idx = vma->vm_pgoff;
-	if (apt_idx < 0 || apt_idx >= zdev->cu_subdev.num_apts) {
+	if (apt_idx >= zdev->cu_subdev.num_apts) {
 		DRM_ERROR("The offset is not in the apertures list\n");
 		return -EINVAL;
 	}
 	phy_addr = apts[apt_idx].addr;
-	vma->vm_pgoff = phy_addr >> PAGE_SHIFT;
+	if (phy_addr == EMPTY_APT_VALUE) {
+		DRM_ERROR("Aperture %lu is not in use\n", apt_idx);
+		return -EINVAL;
+	}
 
 	vsize = vma->vm_end - vma->vm_start;
-	if (vsize > zdev->cu_subdev.apertures[apt_idx].size)
+	if (vsize > apts[apt_idx].size)
 		return -EINVAL;
 
+	if (!zocl_apt_range_is_mmio(phy_addr, vsize)) {
+		DRM_ERROR("Aperture %lu at %pa is not a register window\n",
+			  apt_idx, &phy_addr);
+		return -EINVAL;
+	}
+
+	vma->vm_pgoff = phy_addr >> PAGE_SHIFT;
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
         #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
         	vma->vm_flags |= VM_IO;
@@ -1312,6 +1381,309 @@ static const struct of_device_id zocl_drm_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, zocl_drm_of_match);
 
+int zocl_of_parse_cu_irqs(struct device_node *np, u32 *virqs, u32 *hw_ids, int max)
+{
+	int i, n = 0;
+	int count;
+
+	if (!np || !virqs || !hw_ids || max <= 0)
+		return -EINVAL;
+
+	count = of_irq_count(np);
+	if (count <= 0)
+		return 0;
+
+	for (i = 0; i < count && n < max; i++) {
+		struct of_phandle_args oirq;
+		unsigned int virq;
+		u32 hw_id;
+		int j, ret;
+		bool dup = false;
+
+		ret = of_irq_parse_one(np, i, &oirq);
+		if (ret) {
+			DRM_WARN("CU IRQ specifier %d: parse failed (%d)\n", i, ret);
+			continue;
+		}
+
+		/*
+		 * Only an AXI INTC specifier carries intr_id; else use list
+		 * position, which is an ID only for a dense list.
+		 */
+		if (of_property_present(oirq.np, "xlnx,num-intr-inputs") &&
+		    oirq.args_count >= 1)
+			hw_id = oirq.args[0];
+		else
+			hw_id = i;
+
+		if (hw_id >= MAX_CU_NUM) {
+			DRM_WARN("CU IRQ specifier %d: hw id %u exceeds %d, skip\n",
+				 i, hw_id, MAX_CU_NUM);
+			of_node_put(oirq.np);
+			continue;
+		}
+
+		for (j = 0; j < n; j++) {
+			if (hw_ids[j] == hw_id) {
+				DRM_WARN("CU IRQ specifier %d: duplicate hw id %u, skip\n",
+					 i, hw_id);
+				dup = true;
+				break;
+			}
+		}
+		if (dup) {
+			of_node_put(oirq.np);
+			continue;
+		}
+
+		virq = irq_create_of_mapping(&oirq);
+		of_node_put(oirq.np);
+		if (!virq) {
+			DRM_WARN("CU IRQ specifier %d: map hw id %u failed\n", i, hw_id);
+			continue;
+		}
+
+		virqs[n] = virq;
+		hw_ids[n] = hw_id;
+		n++;
+	}
+
+	return n;
+}
+
+static int zocl_cu_intc_setup(struct drm_zocl_dev *zdev, struct platform_device *pdev)
+{
+	struct device_node *fpga_np;
+	u32 hw_ids[MAX_CU_NUM];
+	int index, irq, ret, n = 0;
+
+	fpga_np = of_find_node_by_name(NULL, "fpga_accelerator");
+	if (fpga_np && of_property_present(fpga_np, "interrupts-extended")) {
+		n = zocl_of_parse_cu_irqs(fpga_np, zdev->cu_subdev.irq, hw_ids,
+					  MAX_CU_NUM);
+		if (n < 0)
+			n = 0;
+		for (index = 0; index < n; index++)
+			DRM_DEBUG("CU hw_id %u IRQ %u\n", hw_ids[index],
+				  zdev->cu_subdev.irq[index]);
+	} else {
+		for (index = 0; index < MAX_CU_NUM; index++) {
+			irq = platform_get_irq(pdev, index);
+			if (irq < 0)
+				break;
+			DRM_DEBUG("CU(%d) IRQ %d\n", index, irq);
+			zdev->cu_subdev.irq[index] = irq;
+			hw_ids[index] = index;
+			n++;
+		}
+	}
+	if (fpga_np)
+		of_node_put(fpga_np);
+
+	zdev->cu_subdev.cu_num = n;
+	if (!zdev->cu_subdev.cu_num)
+		return 0;
+
+	ret = zocl_ert_create_intc(&pdev->dev, zdev->cu_subdev.irq,
+				   zdev->cu_subdev.cu_num, 0,
+				   ERT_CU_INTC_DEV_NAME, &zdev->cu_intc, hw_ids);
+	if (ret)
+		DRM_ERROR("Failed to create cu intc device, ret %d\n", ret);
+	return ret;
+}
+
+void zocl_cu_intc_refresh(struct drm_zocl_dev *zdev)
+{
+	struct device_node *ert;
+	struct platform_device *pdev = to_platform_device(zdev->ddev->dev);
+
+	ert = of_find_node_by_name(NULL, "ert_hw");
+	if (ert) {
+		of_node_put(ert);
+		zert_cu_intc_refresh();
+		return;
+	}
+
+	/* In polling mode, tear down any existing INTC and don't recreate it. */
+	if (zdev->kds.force_polling) {
+		if (zdev->cu_intc) {
+			zocl_ert_destroy_intc(zdev->cu_intc);
+			zdev->cu_intc = NULL;
+		}
+		return;
+	}
+
+	if (zdev->cu_intc) {
+		zocl_ert_destroy_intc(zdev->cu_intc);
+		zdev->cu_intc = NULL;
+	}
+	zocl_cu_intc_setup(zdev, pdev);
+}
+
+static void zocl_cu_intc_fini(struct drm_zocl_dev *zdev)
+{
+	if (zdev->cu_intc) {
+		zocl_ert_destroy_intc(zdev->cu_intc);
+		zdev->cu_intc = NULL;
+	}
+	zdev->cu_subdev.cu_num = 0;
+}
+
+#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+static struct notifier_block zocl_overlay_nb;
+static bool zocl_overlay_nb_registered;
+
+static bool zocl_overlay_tree_has_fpga_accel(struct device_node *np)
+{
+	struct device_node *child;
+
+	if (!np)
+		return false;
+
+	if (of_node_cmp(np->name, "fpga_accelerator") == 0 &&
+	    of_property_present(np, "interrupts-extended"))
+		return true;
+
+	for_each_child_of_node(np, child) {
+		if (zocl_overlay_tree_has_fpga_accel(child)) {
+			of_node_put(child);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static void zocl_cu_irq_teardown(struct drm_zocl_dev *zdev);
+
+static int zocl_overlay_notify(struct notifier_block *nb, unsigned long action,
+			       void *data)
+{
+	struct of_overlay_notify_data *nd = data;
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
+
+	if (!zdev || !nd)
+		return NOTIFY_DONE;
+
+	/* Our own overlay: caller holds slot_xclbin_lock and refreshes itself. */
+	if (READ_ONCE(zdev->overlay_self_task) == current)
+		return NOTIFY_DONE;
+
+	if (!zocl_overlay_tree_has_fpga_accel(nd->overlay))
+		return NOTIFY_DONE;
+
+	switch (action) {
+	case OF_OVERLAY_POST_APPLY:
+		DRM_INFO("fpga_accelerator overlay applied, refresh CU IRQs\n");
+		zocl_cu_irq_update(zdev);
+		break;
+	case OF_OVERLAY_PRE_REMOVE:
+		/*
+		 * The overlay nodes are about to disappear. Drop CU and IRQ
+		 * state only; recreating them here walks a tree that is
+		 * going away and the next apply hangs.
+		 */
+		DRM_INFO("fpga_accelerator overlay removing, drop CU IRQs\n");
+		zocl_cu_irq_teardown(zdev);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int zocl_overlay_notifier_register(void)
+{
+	int ret;
+
+	if (zocl_overlay_nb_registered)
+		return 0;
+
+	zocl_overlay_nb.notifier_call = zocl_overlay_notify;
+	ret = of_overlay_notifier_register(&zocl_overlay_nb);
+	if (ret) {
+		DRM_WARN("Failed to register DT overlay notifier: %d\n", ret);
+		return ret;
+	}
+
+	zocl_overlay_nb_registered = true;
+	return 0;
+}
+
+static void zocl_overlay_notifier_unregister(void)
+{
+	if (!zocl_overlay_nb_registered)
+		return;
+
+	of_overlay_notifier_unregister(&zocl_overlay_nb);
+	zocl_overlay_nb_registered = false;
+}
+#else
+static int zocl_overlay_notifier_register(void)
+{
+	return 0;
+}
+
+static void zocl_overlay_notifier_unregister(void)
+{
+}
+#endif
+
+static void zocl_cu_irq_teardown(struct drm_zocl_dev *zdev)
+{
+	struct drm_zocl_slot *slot;
+	struct device_node *ert;
+
+	if (!zdev)
+		return;
+
+	ert = of_find_node_by_name(NULL, "ert_hw");
+	if (ert) {
+		of_node_put(ert);
+		zert_cu_intc_fini();
+	} else if (zdev->cu_intc) {
+		zocl_ert_destroy_intc(zdev->cu_intc);
+		zdev->cu_intc = NULL;
+		zdev->cu_subdev.cu_num = 0;
+	}
+
+	/* Only slot 0 can hold PL CUs. */
+	slot = zdev->pr_slot[0];
+	if (!slot)
+		return;
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	zocl_destroy_cu_slot(zdev, slot->slot_idx);
+	mutex_unlock(&slot->slot_xclbin_lock);
+}
+
+void zocl_cu_irq_update(struct drm_zocl_dev *zdev)
+{
+	struct drm_zocl_slot *slot;
+	int ret;
+
+	if (!zdev)
+		return;
+
+	zocl_cu_intc_refresh(zdev);
+
+	/* Only slot 0 can hold PL CUs. */
+	slot = zdev->pr_slot[0];
+	if (!slot)
+		return;
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	if (slot->slot_xclbin && slot->ip && slot->axlf &&
+	    !zocl_xclbin_is_aie_only(slot->axlf)) {
+		zocl_destroy_cu_slot(zdev, slot->slot_idx);
+		ret = zocl_create_cu(zdev, slot);
+		if (ret)
+			DRM_WARN("Failed to recreate CUs after IRQ update on slot 0\n");
+	}
+	mutex_unlock(&slot->slot_xclbin_lock);
+}
+
 /*
  *
  * Initialization of Xilinx openCL DRM platform device.
@@ -1330,8 +1702,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct resource res_mem;
 	struct resource *res;
 	struct device_node *fnode;
-	int index;
-	int irq;
 	int ret;
 	int year, mon, day;
 
@@ -1350,21 +1720,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	zdev->slot_mask = 0;
 
 	/* Record and get IRQ number */
-	for (index = 0; index < MAX_CU_NUM; index++) {
-		irq = platform_get_irq(pdev, index);
-		if (irq < 0)
-			break;
-		DRM_DEBUG("CU(%d) IRQ %d\n", index, irq);
-		zdev->cu_subdev.irq[index] = irq;
-	}
-	zdev->cu_subdev.cu_num = index;
-	if (zdev->cu_subdev.cu_num) {
-		ret = zocl_ert_create_intc(&pdev->dev, zdev->cu_subdev.irq,
-					   zdev->cu_subdev.cu_num, 0,
-					   ERT_CU_INTC_DEV_NAME, &zdev->cu_intc);
-		if (ret)
-			DRM_ERROR("Failed to create cu intc device, ret %d\n", ret);
-	}
+	ret = zocl_cu_intc_setup(zdev, pdev);
+	if (ret)
+		DRM_ERROR("Failed to create cu intc device, ret %d\n", ret);
 
 	/* set to 0xFFFFFFFF(32bit) or 0xFFFFFFFFFFFFFFFF(64bit) */
 	zdev->host_mem = (phys_addr_t) -1;
@@ -1404,11 +1762,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (res) {
+		if (res)
 			zdev->res_start = res->start;
-		}
 
-		zdev->res_start = res->start;
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 		//ert_hw is present only for PCIe + PS devices (ex: U30,VCK5000
 		//Dont enable new kds for those devices
@@ -1515,6 +1871,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_sched;
 
+	(void)zocl_overlay_notifier_register();
+
 	return 0;
 
 /* error out in exact reverse order of init */
@@ -1549,6 +1907,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
 	struct drm_device *drm = zdev->ddev;
 
+	zocl_overlay_notifier_unregister();
+
 	/* Cleanup of iommu domain, if exists */
 	if (zdev->domain) {
 		iommu_detach_device(zdev->domain, drm->dev);
@@ -1557,8 +1917,12 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	/* If dma channel has been requested, make sure it is released */
 	if (zdev->zdev_dma_chan) {
-		dma_release_channel(zdev->zdev_dma_chan);
+		struct dma_chan *chan = zdev->zdev_dma_chan;
+		/* Prevent new users from reusing the channel during teardown */
 		zdev->zdev_dma_chan = NULL;
+		/* Ensure any in-flight transactions are stopped before releasing */
+		dmaengine_terminate_sync(chan);
+		dma_release_channel(chan);
 	}
 
 	if (zdev->fpga_mgr)
@@ -1569,7 +1933,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	mutex_destroy(&zdev->mm_lock);
 	zocl_pr_slot_fini(zdev);
 	zdev->slot_mask = 0;
-	zocl_ert_destroy_intc(zdev->cu_intc);
+	zocl_cu_intc_fini(zdev);
 	zocl_fini_sysfs(drm->dev);
 	zocl_fini_error(zdev);
 
@@ -1585,9 +1949,85 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 #endif
 }
 
+/*
+ * Shutdown handler - Clean up resources to prevent errors during system shutdown
+ *
+ * This handler is called during system shutdown/reboot to cleanly release
+ * resources and prevent firmware loading errors. The key operations are:
+ * - Stop the scheduler to prevent new commands
+ * - Cleanup AIE to prevent firmware reload attempts
+ * - Release hardware resources (CUs, FPGA manager, DMA)
+ *
+ * @param        pdev: Platform Device Instance
+ */
+static void zocl_drm_platform_shutdown(struct platform_device *pdev)
+{
+	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
+	int i;
+
+	if (!zdev) {
+		DRM_WARN("No device data available during shutdown\n");
+		return;
+	}
+
+	DRM_INFO("Shutdown handler invoked for %s\n", dev_name(&pdev->dev));
+
+	/*
+	 * Stop scheduler to prevent new commands during shutdown.
+	 * This prevents AIE from attempting firmware loads during shutdown.
+	 */
+	zocl_fini_sched(zdev);
+
+	/*
+	 * Cleanup AIE and PR slots to prevent firmware loading errors.
+	 * During shutdown/reboot, the system may attempt to reload AIE firmware
+	 * which can fail with "merged_plio_gmio_rtp_lut.pdi" errors. Cleaning up
+	 * AIE resources here prevents these spurious firmware load attempts.
+	 */
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
+		struct drm_zocl_slot *zocl_slot = zdev->pr_slot[i];
+		if (zocl_slot) {
+			/* Match zocl_pr_slot_fini() order to avoid ordering dependencies */
+			zocl_free_sections(zdev, zocl_slot);
+			zocl_cleanup_aie(zocl_slot);
+		}
+	}
+
+	/* Destroy CU interrupt controller */
+	if (zdev->cu_intc)
+		zocl_ert_destroy_intc(zdev->cu_intc);
+
+	/* Destroy compute unit subdevices to stop any ongoing operations */
+	subdev_destroy_cu(zdev);
+
+	/* Release FPGA manager if acquired */
+	if (zdev->fpga_mgr) {
+		fpga_mgr_put(zdev->fpga_mgr);
+		zdev->fpga_mgr = NULL;
+	}
+
+	/* Release DMA channel if allocated */
+	mutex_lock(&zdev->mm_lock);
+	if (zdev->zdev_dma_chan) {
+		struct dma_chan *chan = zdev->zdev_dma_chan;
+		/* Prevent new users from reusing the channel during shutdown */
+		zdev->zdev_dma_chan = NULL;
+		mutex_unlock(&zdev->mm_lock);
+		/* Ensure any in-flight transactions are stopped before releasing */
+		dmaengine_terminate_sync(chan);
+		dma_release_channel(chan);
+		DRM_INFO("DMA channel terminated and released\n");
+	} else {
+		mutex_unlock(&zdev->mm_lock);
+	}
+
+	DRM_INFO("Shutdown cleanup completed\n");
+}
+
 static struct platform_driver zocl_drm_private_driver = {
 	.probe			= zocl_drm_platform_probe,
 	.remove			= zocl_drm_platform_remove,
+	.shutdown		= zocl_drm_platform_shutdown,
 	.driver			= {
 		.name	        = "zocl-drm",
 		.of_match_table	= zocl_drm_of_match,

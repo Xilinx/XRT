@@ -19,7 +19,7 @@ usage()
     echo "          -cache                          path to sstate-cache"
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
-    echo "          -full, full                     Full Petalinux build which builds images along with XRT RPMs"
+    echo "          -full, full                     Full Petalinux build (images + XRT RPMs + APU packages; source Vitis first)"
     echo "          -archiver                       Generate archiver of the project. This is needed to generate LICENSE"
     echo "          -noinit                         Do not initialize Git submodules"
     echo ""
@@ -46,7 +46,13 @@ install_recipes()
     if [ $? != 0 ]; then
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
-        echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS -DXRT_EDGE=1 -DXRT_YOCTO=1 -DCMAKE_INSTALL_PREFIX=/usr\"" >> $XRT_BB
+        # MY_VITIS is optional: used only to package PS-kernel xclbins via xclbinutil.
+        # Do not require or auto-source Vitis; a stale XILINX_VITIS breaks PetaLinux Python (CR-1279278).
+        if [[ -n "$XILINX_VITIS" && -d "$XILINX_VITIS" ]]; then
+            echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS -DXRT_EDGE=1 -DXRT_YOCTO=1 -DCMAKE_INSTALL_PREFIX=/usr\"" >> $XRT_BB
+        else
+            echo "EXTRA_OECMAKE += \"-DXRT_EDGE=1 -DXRT_YOCTO=1 -DCMAKE_INSTALL_PREFIX=/usr\"" >> $XRT_BB
+        fi
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
 	echo 'DEPENDS += " systemtap"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
@@ -294,8 +300,18 @@ fi
 
 source $PETALINUX/settings.sh
 
-VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
-source $VITIS_FILE
+if [[ $apu_package == 1 ]]; then
+    if [[ -z "$XILINX_VITIS" || ! -d "$XILINX_VITIS" ]]; then
+        error "-full requires XILINX_VITIS. Source Vitis settings64.sh and rerun."
+    fi
+    if [[ ! -x "$XILINX_VITIS/bin/bootgen" ]]; then
+        error "-full requires bootgen at \$XILINX_VITIS/bin/bootgen ($XILINX_VITIS/bin/bootgen not found)."
+    fi
+    if ! command -v xclbinutil >/dev/null 2>&1 && [[ ! -x "$XILINX_VITIS/bin/xclbinutil" ]]; then
+        error "-full requires xclbinutil (source Vitis so it is on PATH)."
+    fi
+    echo "Using Vitis for APU package: $XILINX_VITIS"
+fi
 
 if [[ $AARCH = $aarch64_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then

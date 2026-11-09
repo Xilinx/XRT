@@ -48,7 +48,9 @@ interface.
    :maxdepth: 1
 
    xclbintools.rst
-   xrt-smi.rst
+   xrt-smi-npu.rst
+   xrt-smi-npu-advanced.rst
+   xrt-smi-alveo.rst
    aiebu.rst
 
 .. toctree::

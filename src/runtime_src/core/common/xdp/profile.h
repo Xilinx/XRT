@@ -59,7 +59,7 @@ run_constructor(xrt::run_impl* run_impl);
 // run_start should be called immediately before a run is submitted to the device.
 // Extracts kernel data internally from the run_impl.
 void
-run_start(const xrt::run_impl* run_impl);
+run_start(xrt::run_impl* run_impl);
 
 // run_wait should be called when a run wait completes (after the underlying wait returns).
 // Extracts kernel data internally from the run_impl, including the ERT state.

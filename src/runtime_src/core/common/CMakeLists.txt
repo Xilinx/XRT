@@ -75,6 +75,7 @@ add_library(core_common_objects OBJECT scheduler.cpp)
 target_include_directories(core_common_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
+  ${XRT_SOURCE_DIR}/runtime_src/core/common/gsl/include
   )
 
 xrt_configure_version_file(xrt_coreutil SHARED)
@@ -119,12 +120,14 @@ endif()
 target_include_directories(xrt_coreutil
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp/include>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 
 target_include_directories(xrt_coreutil_static
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp/include>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 

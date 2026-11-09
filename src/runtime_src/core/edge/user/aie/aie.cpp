@@ -426,6 +426,11 @@ submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_
     throw xrt_core::error(-EINVAL, "Can't sync BO: unknown direction.");
   }
 
+  auto bosize = bo.size();
+
+  if (offset > bosize || size > bosize - offset)
+    throw xrt_core::error(-EINVAL, "Sync AIE BO fails: exceed BO boundary.");
+
   if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
   aie_bd bd;

@@ -64,6 +64,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <cstdarg>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -546,7 +547,7 @@ struct device_type
   explicit
   device_type(std::shared_ptr<xrt_core::device> cdev)
     : core_device(std::move(cdev))
-    , exec_buffer_cache(core_device->get_device_handle(), cache_size)
+    , exec_buffer_cache(core_device, cache_size)
     , uid(create_uid())
   {
     XRT_DEBUGF("device_type::device_type(%d)\n", uid);
@@ -635,6 +636,7 @@ private:
 // then behavior is undefined.
 class ip_context
 {
+public:
   // class connectivy - Represents argument connectiviy to memory banks
   //
   // The argument connectivity is represented using a compressed bitset
@@ -645,7 +647,6 @@ class ip_context
   // @default_connection: default connectivity for an argument
   class connectivity
   {
-    static constexpr int32_t no_memidx {-1};
     static constexpr size_t max_connections {64};
     std::vector<encoded_bitset<max_connections>> connections; // indexed by argidx
     std::vector<int32_t> default_connection;                  // indexed by argidx
@@ -662,6 +663,8 @@ class ip_context
     }
 
   public:
+    static constexpr int32_t no_memidx {-1};
+
     connectivity() = default;
 
     // @xclbin: meta data
@@ -717,8 +720,6 @@ class ip_context
     }
   };
 
-
-public:
   using access_mode = xrt::kernel::cu_access_mode;
   using slot_id = xrt_core::hwctx_handle::slot_id;
 
@@ -1461,6 +1462,12 @@ public:
   is_output() const
   { return arg.dir == direction::output; }
 
+  bool
+  is_buffer() const
+  {
+    return arg.type == xarg::argtype::global || arg.type == xarg::argtype::constant;
+  }
+
   xarg::argtype
   type() const
   { return arg.type; }
@@ -1821,25 +1828,18 @@ private:
     if (!module)
       return nullptr; // applicable only for ELF flows
 
-    // Get control packet data from ELF module configuration
-    // Control packet cache is only applicable for aie2p platform
+    // Get control packet data from ELF — only applicable for aie2p platform
     auto elf_handle = xrt_core::module_int::get_elf_handle(module);
-    auto module_config = elf_handle->get_module_config(id);
-    const auto config = std::get_if<xrt::module_config_aie_gen2>(&module_config);
-    if (!config)
-      return nullptr; // not aie2p platform, no ctrlpkt cache needed
-
-    const auto& ctrl_packet = config->ctrl_packet_data;
-
-    if (ctrl_packet.size() == 0)
+    if (elf_handle->get_platform() != xrt::elf::platform::aie2p)
       return nullptr;
 
-    // Create mutable copy for buffer cache.
-    // copy_to() handles compressed sections transparently; for uncompressed
-    // ELFs this is a plain memcpy.
-    std::vector<uint8_t> ctrlpkt_data(ctrl_packet.size());
-    ctrl_packet.copy_to({ctrlpkt_data.data(), ctrlpkt_data.size()});
-    auto ctrlpkt_buf_size = ctrlpkt_data.size();
+    auto ctrlpkt_buf_size = elf_handle->get_ctrl_packet_size(id);
+    if (ctrlpkt_buf_size == 0)
+      return nullptr;
+
+    // Create mutable copy for buffer cache
+    std::vector<uint8_t> ctrlpkt_data(ctrlpkt_buf_size);
+    elf_handle->copy_ctrl_packet(id, {reinterpret_cast<std::byte*>(ctrlpkt_data.data()), ctrlpkt_buf_size});
 
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
     static auto pool_memory_size = xrt_core::config::get_run_buffer_pool_memory_mb() * bytes_per_mb;
@@ -2149,11 +2149,20 @@ public:
     // for the xclbin slot, and 8 bits reserved for bo flags.  The latter
     // flags are populated when the xrt::bo object is constructed.
 
+    if (argno < 0 || static_cast<size_t>(argno) >= args.size())
+      throw xrt_core::error(EINVAL, "No such kernel argument at index " + std::to_string(argno)
+                            + " for kernel '" + name + "'");
+
     // Last (for group id) connection of first ip in this kernel
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
+    auto memidx = ip->arg_memidx(argno);
+    if (memidx == ip_context::connectivity::no_memidx && args[argno].is_buffer())
+      throw xrt_core::error(EINVAL, "No memory group assigned for global argument at index "
+                            + std::to_string(argno) + " of kernel '" + name + "'");
+
     xcl_bo_flags grp = {0};     // xrt_mem.h
-    grp.bank = ip->arg_memidx(argno);
+    grp.bank = memidx;
     grp.slot = ip->get_slot();
 
     // This function should return uint32_t or some same symbolic type
@@ -2429,7 +2438,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // By default first control code that is available is picked
   static xrt::module
   copy_module(const xrt::module& module, const xrt::hw_context& hwctx,
-              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
+              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo,
+              std::string kernel_name)
   {
     if (!module)
       return {};
@@ -2438,7 +2448,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     // This buffer is empty when ELF doesn't have ctrlpkt
     return xrt_core::module_int::create_module_run(
         xrt::elf(xrt_core::module_int::get_elf_handle(module)),
-        hwctx, ctrl_code_id, ctrlpkt_bo);
+        hwctx, ctrl_code_id, ctrlpkt_bo, std::move(kernel_name));
   }
 
   // payload_size() - Number of bytes in command payload that can be
@@ -2673,6 +2683,7 @@ public:
           "set_dtrace_control_file is not supported for this run, dtrace "
           "control file is only supported for runs in ELF flow");
     }
+
     // Allow when command is not in progress: either not yet started (NEW) or
     // already done (completed/error). Reject when submitted but not yet done.
     if (!cmd->is_done())
@@ -2687,6 +2698,35 @@ public:
     // Store only after module and command payload are updated
     // clone inherits this
     m_dtrace_control_file = path;
+  }
+
+  // Turns dtrace off for this run without touching the config file fallback
+  // that an empty path in set_dtrace_control_file would select.
+  void
+  clear_dtrace_control_file()
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (!m_module)
+      return;
+
+    // A reused run calls this on every inference past the profile window.
+    // Once the control buffer is gone, the column addresses and the ERT
+    // payload are already clear, so later calls have nothing to patch.
+    if (!xrt_core::module_int::is_dtrace_enabled(m_module)) {
+      m_dtrace_control_file.clear();
+      return;
+    }
+
+    if (!cmd->is_done())
+      throw xrt_core::error(
+          "Cannot clear dtrace control file: run has already been started and is "
+          "still in progress");
+
+    xrt_core::module_int::clear_dtrace(m_module);
+    if (m_dpu_payload)
+      xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
+
+    m_dtrace_control_file.clear();
   }
 
   // run_type() - constructor
@@ -2705,7 +2745,7 @@ public:
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
     , m_ctrlpkt_bo(kernel->get_ctrlpkt_buffer())
-    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo)}
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo, kernel->get_full_name())}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
@@ -2998,6 +3038,8 @@ public:
   void
   prep_start()
   {
+    xrt_core::xdp::run_start(this);
+
     if (m_module) {
       // Sync the module to device to ensure any patches are applied,
       // noop if module patching hasn't changed since last sync.
@@ -3040,9 +3082,6 @@ public:
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
 
     prep_start();
-
-    // XDP profiling hook - called immediately before run is submitted
-    xrt_core::xdp::run_start(this);
 
     // log kernel start info
     // This is in critical path, we need to reduce log overhead
@@ -3154,7 +3193,12 @@ public:
   }
 
   // abort_coredump_or_noop() - AIE coredump if enabled
-  // Dump core and abort, or do nothing.
+  // Write AIE coredump ELF to the configured file then abort.
+  // std::abort() ensures the OS reclaims driver resources (hw_context, hardware
+  // state) after a timeout. Users who set xrt.ini to capture AIE coredump
+  // would get coredump and don't see the timeout exception message.
+  // The timeout excpetion message is seen only w/o this xrt.ini setting
+  // This coredump functionality is not applicable to non-elf flow
   void
   abort_coredump_or_noop(ert_cmd_state state) const
   {
@@ -3167,12 +3211,22 @@ public:
 
     try {
       auto hwctx = kernel->get_hw_context();
-      auto core = hwctx.get_aie_coredump();  // may throw
+      // Use the ELF from this run's own module
+      // Each ELF has its own UUID; using the run's module ensures the
+      // correct UUID is embedded in the coredump metadata.
+      if (!m_module)
+        throw std::runtime_error("AIE coredump ELF not available: no ELF associated with this run");
+
+      auto elf = xrt::elf{xrt_core::module_int::get_elf_handle(m_module)};
+
+      auto core = xrt_core::hw_context_int::get_aie_coredump_elf(hwctx, elf);
 
       std::ofstream ostr{file, std::ios::binary};
       if (!ostr)
         throw std::runtime_error("Could not open '" + file + "' for writing");
+
       ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
+      ostr.flush();  // flush before abort — destructors do not run after std::abort()
       std::abort();
     }
     catch (const std::exception& ex) {
@@ -4666,6 +4720,12 @@ set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path)
   run_impl->set_dtrace_control_file(path);
 }
 
+void
+clear_dtrace_control_file(xrt::run_impl* run_impl)
+{
+  run_impl->clear_dtrace_control_file();
+}
+
 } // xrt_core::kernel_int
 
 ////////////////////////////////////////////////////////////////
@@ -5205,9 +5265,7 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
           << ctx_health->aie4.uc_info[i].uc_esr
           << "\n";
 
-      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary.
-      // AIEDebug handles SHF_COMPRESSED sections internally — only the specific
-      // .ctrltext section is decompressed on demand, not the entire ELF.
+      // Decode the opcode at (uc_idx, page_idx, offset) directly from the ELF binary
       if (elf_impl_ptr) {
         aiebu::AIEDebug dbg(elf_impl_ptr->get_elfio());
         auto info = dbg.get_opcode_information(

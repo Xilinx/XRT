@@ -25,6 +25,7 @@
 #include <linux/version.h>
 #include <linux/printk.h>
 #include <linux/vmalloc.h>
+#include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/dma-buf.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
@@ -33,6 +34,7 @@
 #include <drm/drm_gem_cma_helper.h>
 #endif
 #include <linux/poll.h>
+#include <linux/sched.h>
 #include "zocl_util.h"
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"
@@ -274,11 +276,14 @@ zocl_kds_del_scu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 }
 
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 static inline int
-zocl_kds_set_cu_read_range(struct drm_zocl_dev *zdev, u32 cu_idx, u32 start, u32 size)
+zocl_kds_set_cu_read_range(struct drm_zocl_dev *zdev, struct kds_client *client,
+			   u32 cu_idx, u32 start, u32 size)
 {
-	return kds_set_cu_read_range(&zdev->kds, cu_idx, start, size);
+	return kds_set_cu_read_range(&zdev->kds, client, cu_idx, start, size);
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
 		zocl_dma_handle_t *handle, struct drm_zocl_copy_bo *bo);
@@ -348,6 +353,11 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp);
 struct platform_device *zocl_find_pdev(char *name);
+void zocl_cu_intc_refresh(struct drm_zocl_dev *zdev);
+void zocl_cu_irq_update(struct drm_zocl_dev *zdev);
+int zert_cu_intc_refresh(void);
+void zert_cu_intc_fini(void);
+int zocl_of_parse_cu_irqs(struct device_node *np, u32 *virqs, u32 *hw_ids, int max);
 
 static inline struct drm_zocl_dev *
 zocl_get_zdev(void)
@@ -357,6 +367,7 @@ zocl_get_zdev(void)
 		return NULL;
 	return platform_get_drvdata(pdev);
 }
+bool zocl_apt_range_is_mmio(phys_addr_t addr, size_t size);
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
 int get_apt_index_by_addr_and_slot(struct drm_zocl_dev *zdev, phys_addr_t addr, int slot_idx);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);

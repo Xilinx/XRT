@@ -16,7 +16,7 @@
 #include "xrt_xclbin.h"
 
 int xrt_xclbin_parse_header(const unsigned char *data,
-	unsigned int size, struct XHwIcap_Bit_Header *header)
+	uint64_t size, struct XHwIcap_Bit_Header *header)
 {
 	unsigned int i;
 	unsigned int len;
@@ -32,10 +32,15 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 	header->HeaderLength = XHI_BIT_HEADER_FAILURE;
 
 	/* Get "Magic" length */
+	if ((uint64_t)index + 2 > size)
+		return -1;
 	header->MagicLength = data[index++];
 	header->MagicLength = (header->MagicLength << 8) | data[index++];
 
 	/* Read in "magic" */
+	if (header->MagicLength < 1 ||
+	    (uint64_t)index + header->MagicLength > size)
+		return -1;
 	for (i = 0; i < header->MagicLength - 1; i++) {
 		tmp = data[index++];
 		if (i%2 == 0 && tmp != XHI_EVEN_MAGIC_BYTE)
@@ -50,6 +55,8 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 	tmp = data[index++];
 
 	/* Read 0x01 (short) */
+	if ((uint64_t)index + 2 > size)
+		return -1;
 	tmp = data[index++];
 	tmp = (tmp << 8) | data[index++];
 
@@ -58,6 +65,8 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 		return -1;	 /* INVALID_FILE_HEADER_ERROR */
 
 	/* Read 'a' */
+	if ((uint64_t)index + 3 > size)
+		return -1;
 	tmp = data[index++];
 	if (tmp != 'a')
 		return -1;	  /* INVALID_FILE_HEADER_ERROR	*/
@@ -65,9 +74,13 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 	/* Get Design Name length */
 	len = data[index++];
 	len = (len << 8) | data[index++];
+	if (len == 0 || (uint64_t)index + len > size)
+		return -1;
 
 	/* allocate space for design name and final null character. */
 	header->DesignName = vmalloc(len);
+	if (!header->DesignName)
+		return -ENOMEM;
 
 	/* Read in Design Name */
 	for (i = 0; i < len; i++)
@@ -78,6 +91,8 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 		return -1;
 
 	/* Read 'b' */
+	if ((uint64_t)index + 3 > size)
+		return -1;
 	tmp = data[index++];
 	if (tmp != 'b')
 		return -1;	/* INVALID_FILE_HEADER_ERROR */
@@ -85,9 +100,13 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 	/* Get Part Name length */
 	len = data[index++];
 	len = (len << 8) | data[index++];
+	if (len == 0 || (uint64_t)index + len > size)
+		return -1;
 
 	/* allocate space for part name and final null character. */
 	header->PartName = vmalloc(len);
+	if (!header->PartName)
+		return -ENOMEM;
 
 	/* Read in part name */
 	for (i = 0; i < len; i++)
@@ -97,6 +116,8 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 		return -1;
 
 	/* Read 'c' */
+	if ((uint64_t)index + 3 > size)
+		return -1;
 	tmp = data[index++];
 	if (tmp != 'c')
 		return -1;	/* INVALID_FILE_HEADER_ERROR */
@@ -104,9 +125,13 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 	/* Get date length */
 	len = data[index++];
 	len = (len << 8) | data[index++];
+	if (len == 0 || (uint64_t)index + len > size)
+		return -1;
 
 	/* allocate space for date and final null character. */
 	header->Date = vmalloc(len);
+	if (!header->Date)
+		return -ENOMEM;
 
 	/* Read in date name */
 	for (i = 0; i < len; i++)
@@ -116,6 +141,8 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 		return -1;
 
 	/* Read 'd' */
+	if ((uint64_t)index + 3 > size)
+		return -1;
 	tmp = data[index++];
 	if (tmp != 'd')
 		return -1;	/* INVALID_FILE_HEADER_ERROR  */
@@ -123,9 +150,13 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 	/* Get time length */
 	len = data[index++];
 	len = (len << 8) | data[index++];
+	if (len == 0 || (uint64_t)index + len > size)
+		return -1;
 
 	/* allocate space for time and final null character. */
 	header->Time = vmalloc(len);
+	if (!header->Time)
+		return -ENOMEM;
 
 	/* Read in time name */
 	for (i = 0; i < len; i++)
@@ -135,6 +166,8 @@ int xrt_xclbin_parse_header(const unsigned char *data,
 		return -1;
 
 	/* Read 'e' */
+	if ((uint64_t)index + 5 > size)
+		return -1;
 	tmp = data[index++];
 	if (tmp != 'e')
 		return -1;	/* INVALID_FILE_HEADER_ERROR */
@@ -262,10 +295,19 @@ xrt_xclbin_get_section_hdr_next(const struct axlf *xclbin,
 	int found = -1;
 	bool match = false;
 
+	/* Sanity check. */
+	if (xclbin->m_header.m_numSections > XCLBIN_MAX_NUM_SECTION
+			|| xclbin->m_header.m_length < sizeof(struct axlf) +
+			xclbin->m_header.m_numSections * sizeof(struct axlf_section_header))
+		return NULL;
+
 	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
 		if (xclbin->m_sections[i].m_sectionKind == kind) {
-			if (match)
+			if (match) {
+				if (xrt_xclbin_check_section_hdr(&(xclbin->m_sections[i]), xclbin->m_header.m_length))
+					return NULL;
 				return (struct axlf_section_header *)&xclbin->m_sections[i];
+			}
 
 			if (&xclbin->m_sections[i] == cur) {
 				match = true;
@@ -279,6 +321,9 @@ xrt_xclbin_get_section_hdr_next(const struct axlf *xclbin,
 	if (found < 0)
 		return NULL;
 
+	if (xrt_xclbin_check_section_hdr(&(xclbin->m_sections[found]), xclbin->m_header.m_length))
+		return NULL;
+
 	return (struct axlf_section_header *)&xclbin->m_sections[found];
 }
 
@@ -286,6 +331,12 @@ int xrt_xclbin_get_section_num(const struct axlf *xclbin,
 	enum axlf_section_kind kind)
 {
 	int i, cnt = 0;
+
+	/* Sanity check. */
+	if (xclbin->m_header.m_numSections > XCLBIN_MAX_NUM_SECTION
+			|| xclbin->m_header.m_length < sizeof(struct axlf) +
+			xclbin->m_header.m_numSections * sizeof(struct axlf_section_header))
+		return 0;
 
 	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
 		if (xclbin->m_sections[i].m_sectionKind == kind)

@@ -43,8 +43,8 @@ def main():
   inputVenderMetadata2Name = "Xilinx";
   workingXCLBIN = "working.xclbin"
 
-  cmd = [xclbinutil, "--add-section", "VENDER_METADATA[" + inputVenderMetadata1Name + "]:RAW:" + inputVenderMetadata1, 
-                     "--add-section", "VENDER_METADATA[" + inputVenderMetadata2Name + "]:RAW:" + inputVenderMetadata2, 
+  cmd = [xclbinutil, "--add-section", "VENDOR_METADATA[" + inputVenderMetadata1Name + "]:RAW:" + inputVenderMetadata1,
+                     "--add-section", "VENDOR_METADATA[" + inputVenderMetadata2Name + "]:RAW:" + inputVenderMetadata2,
                      "--output", workingXCLBIN, 
                      "--force" 
                      ]
@@ -58,8 +58,8 @@ def main():
   outputVenderMetadata2 = "output_sample_data2.txt";
 
   cmd = [xclbinutil, "--input", workingXCLBIN,
-                     "--dump-section", "VENDER_METADATA[" + inputVenderMetadata1Name + "]:RAW:" + outputVenderMetadata1, 
-                     "--dump-section", "VENDER_METADATA[" + inputVenderMetadata2Name + "]:RAW:" + outputVenderMetadata2, 
+                     "--dump-section", "VENDOR_METADATA[" + inputVenderMetadata1Name + "]:RAW:" + outputVenderMetadata1,
+                     "--dump-section", "VENDOR_METADATA[" + inputVenderMetadata2Name + "]:RAW:" + outputVenderMetadata2,
                      "--force"
                      ]
   execCmd(step, cmd)

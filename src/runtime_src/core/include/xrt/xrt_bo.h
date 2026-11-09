@@ -553,6 +553,26 @@ public:
   export_buffer();
 
   /**
+   * get_allocation() - Get the underlying allocation for this buffer
+   *
+   * @return
+   *  For a regular buffer, returns this buffer itself.
+   *  For a sub-buffer, returns the backing buffer that owns the actual DRM
+   *  allocation, unwinding any chain of nested sub-buffers.
+   *
+   * Use this when you need to export a sub-buffer:
+   *  1. Call get_allocation() to obtain the backing buffer.
+   *  2. Export the backing buffer via export_buffer().
+   *  3. Transfer the export handle, sub-buffer offset and
+   *     sub-buffer size to the remote side via an IPC mechanism.
+   *  4. On the remote side, import the backing buffer and recreate the
+   *     sub-buffer using the received offset and size.
+   */
+  XCL_DRIVER_DLLESPEC
+  bo
+  get_allocation();
+
+  /**
    * async() - Start buffer content txfer with device side
    *
    * @param dir

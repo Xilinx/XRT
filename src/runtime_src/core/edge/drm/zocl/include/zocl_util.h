@@ -185,6 +185,8 @@ struct drm_zocl_dev {
 
 	int			 num_pr_slot;
 	int			 full_overlay_id;
+	/* Task applying or removing this driver's own overlay. */
+	struct task_struct	*overlay_self_task;
 	struct drm_zocl_slot	*pr_slot[MAX_PR_SLOT_NUM];
 	u32                     slot_mask;
 	int			num_regions;

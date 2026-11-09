@@ -6,6 +6,23 @@
 XRT ChangeLog
 -------------
 
+2.26.0 (202620.2.26.x)
+~~~~~~~~~~~~~~~~~~~~~~
+
+Added
+.....
+* ELF execution is a first-class path next to xclbin, and it is the interface used for NPU and full-ELF flows.  ``xrt::elf`` describes the binary, ``xrt::hw_context`` can be created directly from that ELF (and extended with ``add_config()``), and ``xrt::module`` together with ``xrt::ext::kernel`` and ``xrt::ext::bo`` runs the control code in that context.
+* Non-blocking graph runtime-parameter APIs ``xrt::graph::update_nb()`` and ``xrt::graph::read_nb()``.  The calls return immediately and report ``EAGAIN`` when the RTP lock is unavailable, so Hardware-in-the-Loop (HIL) workflows are not stalled on a locked parameter.
+
+Changed
+.......
+* DFX decoupler management is delegated to the Linux ``fpga_manager`` and ``libdfx`` framework.  XRT applies the reconfigurable-module device tree overlay (``rm.dtbo``) from the xclbin instead of programming decoupler IPs with hard-coded register accesses.  No host code or XRT API changes are required.  If ``fpga_manager`` does not manage the decoupler, XRT falls back to direct register control.
+* ``xrt::hw_context`` is the single interface for image loading on flat, segmented, and Dynamic Function eXchange (DFX) configurations.  ``xrt::device::load_xclbin()`` is deprecated and is planned for removal in a future release.  Applications that load a bitstream or PDI through the legacy device-level APIs should move to ``xrt::hw_context``.
+* On Versal edge, an xclbin that carries a bitstream or PDI together with a device-tree overlay is programmed through ``libdfx``.  zocl does not program that image a second time in the kernel.
+* Reloading a PL+AIE overlay removes the previous ``libdfx`` configfs overlay before the next image is applied.  A failed removal is reported instead of stacking a second overlay.
+* Hardware emulation waits for the zocl render-node symlink before opening the device.
+* The XRT driver builds on Alma, RHEL, and Rocky 9.8, and on RHEL 10.2.
+
 2.17.0 (2024.2.17.x)
 ~~~~~~~~~~~~~~~~~~~~
 

@@ -28,7 +28,8 @@ namespace xrt_core::module_int {
 XRT_CORE_COMMON_EXPORT
 xrt::module
 create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
-                  uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo);
+                  uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo,
+                  std::string kernel_name = {});
 
 // Get the underlying elf handle from module object
 XRT_CORE_COMMON_EXPORT
@@ -100,6 +101,12 @@ dump_dtrace_buffer(const xrt::module& module, const std::string& postfix);
 XRT_CORE_COMMON_EXPORT
 void
 set_dtrace_control_file(const xrt::module& module, const std::string& path);
+
+// Turn dtrace off for this run's module. Distinct from passing an empty path
+// to set_dtrace_control_file, which falls back to the config file path.
+XRT_CORE_COMMON_EXPORT
+void
+clear_dtrace(const xrt::module& module);
 
 // Returns buffer object associated with control scratchpad memory.
 // This memory is created using ELF associated with run object.

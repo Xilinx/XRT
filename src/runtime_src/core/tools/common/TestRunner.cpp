@@ -26,6 +26,8 @@ namespace xq = xrt_core::query;
 #include <thread>
 #include <csignal>
 #include <atomic>
+#include <exception>
+#include <memory>
 
 static constexpr std::chrono::seconds max_test_duration = std::chrono::seconds(60 * 5); //5 minutes
 std::atomic<bool> force_exit(false);
@@ -42,15 +44,32 @@ signal_handler(int signal) {
   }
 }
 
-static void
-runTestInternal(const std::shared_ptr<xrt_core::device>& dev,
-                boost::property_tree::ptree& ptree,
-                TestRunner* test,
-                bool& is_thread_running,
-                const xrt_core::archive* archive = nullptr)
+// Everything the worker thread touches lives here. The worker is detached when
+// the watchdog fires or the user interrupts, so it must not reference the
+// startTest() stack frame or anything owned by the caller; holding the context
+// by shared_ptr keeps all of it alive for as long as the worker runs.
+struct test_context
 {
-  ptree = test->run(dev, archive);
-  is_thread_running = false;
+  std::shared_ptr<xrt_core::device> dev;
+  std::shared_ptr<TestRunner> test;
+  std::shared_ptr<const xrt_core::archive> archive;
+  boost::property_tree::ptree result;
+  std::exception_ptr error;
+  std::atomic<bool> running{true};
+};
+
+static void
+runTestInternal(const std::shared_ptr<test_context>& ctx)
+{
+  // An exception escaping a thread function terminates the process, so hand it
+  // back through the context and let the joining side rethrow it.
+  try {
+    ctx->result = ctx->test->run(ctx->dev, ctx->archive.get());
+  }
+  catch (...) {
+    ctx->error = std::current_exception();
+  }
+  ctx->running = false;
 }
 
 } //end anonymous namespace
@@ -78,39 +97,41 @@ TestRunner::run(const std::shared_ptr<xrt_core::device>& dev)
 
 boost::property_tree::ptree
 TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev, 
-                      const xrt_core::archive* archive, 
-                      unsigned int iter)
+                      std::shared_ptr<const xrt_core::archive> archive)
 {
-  boost::property_tree::ptree result;
+  XBUtilities::BusyBar busy_bar("Running Test", std::cout);
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
-  for (unsigned int i = 0; i < iter; ++i) {
-    XBUtilities::BusyBar busy_bar("Running Test", std::cout);
-    busy_bar.start(XBUtilities::is_escape_codes_disabled());
-    bool is_thread_running = true;
+  auto ctx = std::make_shared<test_context>();
+  ctx->dev = dev;
+  ctx->test = shared_from_this();
+  ctx->archive = archive;
 
-    // Start the test process
-    std::thread test_thread([&] { runTestInternal(dev, result, this, is_thread_running, archive); });
-    // Wait for the test process to finish or for the signal to be caught
-    while (is_thread_running && !force_exit) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-      try {
-        busy_bar.check_timeout(max_test_duration);
-      } catch (const std::exception&) {
-        test_thread.detach();
-        throw;
-      }
-    }
-    if (force_exit) {
+  // Start the test process
+  std::thread test_thread([ctx] { runTestInternal(ctx); });
+  // Wait for the test process to finish or for the signal to be caught
+  while (ctx->running && !force_exit) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    try {
+      busy_bar.check_timeout(max_test_duration);
+    } catch (const std::exception&) {
       test_thread.detach();
-      busy_bar.finish();
-      throw std::runtime_error("Test interrupted by user (Ctrl+C).");
+      throw;
     }
-
-    test_thread.join();
+  }
+  if (force_exit) {
+    test_thread.detach();
     busy_bar.finish();
+    throw std::runtime_error("Test interrupted by user (Ctrl+C).");
   }
 
-  return result;
+  test_thread.join();
+  busy_bar.finish();
+
+  if (ctx->error)
+    std::rethrow_exception(ctx->error);
+
+  return ctx->result;
 }
 
 

@@ -692,12 +692,23 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	struct kds_cu_mgmt *cu_mgmt = NULL;
 	u32 cu_idx = cu_ctx->cu_idx;
 	int domain = cu_ctx->cu_domain;
-	uint32_t hw_ctx = cu_ctx->hw_ctx->hw_ctx_idx;
 	unsigned long submitted;
 	unsigned long completed;
 	bool bad_state = false;
+	uint32_t hw_ctx;
 	int wait_ms;
 	int cu_set;
+
+	/* kds_initialize_cu_ctx() does not set this; each shim assigns it
+	 * after kds_alloc_cu_ctx() returns, so NULL is reachable.
+	 */
+	if (!cu_ctx->hw_ctx) {
+		kds_err(client, "Client pid(%d) Domain(%d) CU(%d) has no hw context",
+			pid_nr(client->pid), domain, cu_idx);
+		return -EINVAL;
+	}
+
+	hw_ctx = cu_ctx->hw_ctx->hw_ctx_idx;
 
 	cu_mgmt = (domain == DOMAIN_PL) ? &kds->cu_mgmt : &kds->scu_mgmt;
 	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx])) {
@@ -1133,6 +1144,10 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	if (!cctx)
 		return;
 
+	/* Nothing to drain. Keeps this safe to call more than once */
+	if (list_empty(&cctx->cu_ctx_list))
+		return;
+
 	kds_info(client, "Client pid(%d) has open context for %d slot",
 			pid_nr(client->pid), cctx->slot_idx);
 
@@ -1154,31 +1169,64 @@ out:
 	mutex_unlock(&client->lock);
 }
 
-void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
+/*
+ * kds_fini_client_ctxs() - Drain and release every CU context of a client
+ *
+ * Covers both the legacy contexts hanging off client->ctx_list and the
+ * hw_context ones hanging off hw_ctx->cu_ctx_list.
+ *
+ * The hardware contexts must still be alive when this runs.
+ * kds_del_cu_context() dereferences cu_ctx->hw_ctx and resolves the per hw
+ * context percpu counters through client_stat_read() to decide whether
+ * outstanding commands must be aborted. Releasing a hardware context before
+ * this point both dangles cu_ctx->hw_ctx and makes those counters read back
+ * zero, which silently skips the abort and leaves commands referencing a
+ * client that is about to be freed.
+ *
+ * Safe to call twice; the second call finds every list empty and does
+ * nothing.
+ */
+void kds_fini_client_ctxs(struct kds_sched *kds, struct kds_client *client)
 {
 	struct kds_client_hw_ctx *curr = NULL;
 	struct kds_client_ctx *c_curr = NULL;
 
 	/* Release legacy client's resources */
+	_kds_fini_client(kds, client, client->ctx);
+
+	list_for_each_entry(c_curr, &client->ctx_list, link)
+		_kds_fini_client(kds, client, c_curr);
+
+	/* release new hw client's resources */
+	list_for_each_entry(curr, &client->hw_ctx_list, link)
+		kds_fini_hw_ctx_client(kds, client, curr);
+}
+
+/*
+ * kds_fini_client() - Release client level state
+ *
+ * Destroys client->lock, so the caller must already have released its
+ * hardware contexts. Callers that manage hardware contexts themselves run
+ * kds_fini_client_ctxs() first, release those contexts, then call this.
+ */
+void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
+{
+	struct kds_client_hw_ctx *curr = NULL;
+
+	kds_fini_client_ctxs(kds, client);
+
+	/* Release the legacy client's default hw context. This must stay
+	 * here rather than move into the shims: a shim's own hw_ctx_list walk
+	 * may share xclbin_id with client->ctx, and a pure hw_context
+	 * client's first context is also index 0 and must not be freed by
+	 * this path.
+	 */
 	if ((client->ctx) || !list_empty(&client->ctx_list)) {
-		_kds_fini_client(kds, client, client->ctx);
-
-		if(!list_empty(&client->ctx_list))
-			list_for_each_entry(c_curr, &client->ctx_list, link)
-				_kds_fini_client(kds, client, c_curr);
-
 		mutex_lock(&client->lock);
 		curr = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
 		if (curr)
 			kds_free_hw_ctx(client, curr);
 		mutex_unlock(&client->lock);
-	}
-
-	if(!list_empty(&client->hw_ctx_list)) {
-		list_for_each_entry(curr, &client->hw_ctx_list, link) {
-			/* release new hw client's resources */
-			kds_fini_hw_ctx_client(kds, client, curr);
-		}
 	}
 
 	mutex_lock(&client->lock);
@@ -1296,7 +1344,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 }
 
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
-		    int idx, unsigned long size, u32 *addrp)
+		    int idx, unsigned long size, u32 *addrp, bool *read_only)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 
@@ -1311,8 +1359,11 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
+	*read_only = false;
 	mutex_lock(&cu_mgmt->lock);
+	/* Published read range: shared CU may be mapped, but only read-only. */
 	if (cu_mgmt->xcus[idx]->read_regs.xcr_start) {
+		*read_only = true;
 		goto get_cu_addr;
 	}
 
@@ -1447,34 +1498,51 @@ u32 kds_get_cu_proto(struct kds_sched *kds, int idx)
 	return cu_mgmt->xcus[idx]->info.protocol;
 }
 
-int kds_set_cu_read_range(struct kds_sched *kds, u32 cu_idx, u32 start, u32 size)
+int kds_set_cu_read_range(struct kds_sched *kds, struct kds_client *client,
+			  u32 cu_idx, u32 start, u32 size)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	struct xrt_cu *xcu;
 
-	if (cu_idx >= MAX_CUS)
+	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx]))
 		return -EINVAL;
 
-	if (size % sizeof(u32))
+	if (!size || (size % sizeof(u32)))
 		return -EINVAL;
 
 	/* Registers at offset 0x0, 0x4, 0x8 and 0xc is for control. Not allow to read. */
-	if ((start < 0x10) || (start + size > cu_mgmt->xcus[cu_idx]->info.size))
+	if (start < 0x10)
 		return -EINVAL;
+
+	if (kds_test_refcnt(client, DOMAIN_PL, cu_idx) < 0)
+		return -EINVAL;
+
+	if (!kds_test_refcnt(client, DOMAIN_PL, cu_idx)) {
+		kds_err(client, "cu(%d) isn't reserved\n", cu_idx);
+		return -EINVAL;
+	}
 
 	/* To simplify the use case, only allow shared CU context to set read
 	 * only range. The exclusive CU context will keep old behavior.
 	 */
 	mutex_lock(&cu_mgmt->lock);
+	xcu = cu_mgmt->xcus[cu_idx];
+	if (!xcu || ((u64)start + size > xcu->info.size) ||
+	    ((u64)start + size - 1 > (u64)~0U)) {
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+
 	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK) {
 		mutex_unlock(&cu_mgmt->lock);
 		return -EINVAL;
 	}
-	mutex_unlock(&cu_mgmt->lock);
 
-	mutex_lock(&cu_mgmt->xcus[cu_idx]->read_regs.xcr_lock);
-	cu_mgmt->xcus[cu_idx]->read_regs.xcr_start = start;
-	cu_mgmt->xcus[cu_idx]->read_regs.xcr_end = start + size - 1;
-	mutex_unlock(&cu_mgmt->xcus[cu_idx]->read_regs.xcr_lock);
+	mutex_lock(&xcu->read_regs.xcr_lock);
+	xcu->read_regs.xcr_start = start;
+	xcu->read_regs.xcr_end = (u32)((u64)start + size - 1);
+	mutex_unlock(&xcu->read_regs.xcr_lock);
+	mutex_unlock(&cu_mgmt->lock);
 	return 0;
 }
 
@@ -1964,6 +2032,10 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
 		info.intr_id = (ip->properties & IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
 
+		/* Reject before sort writes cu_info[num_cus] */
+		if (num_cus >= num_info)
+			return -EINVAL;
+
 		/* Rules to determine CUs ordering:
 		 * Sort CU in interrupt ID increase order.
 		 * If interrupt ID is the same, sort CU in address increase order.
@@ -2063,6 +2135,10 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 		info.protocol = CTRL_HS;
 		info.intr_id = 0;
 
+		/* Reject before write to cu_info[num_cus] */
+		if (num_cus >= num_info)
+			return -EINVAL;
+
 		memcpy(&cu_info[num_cus], &info, sizeof(info));
 		cu_info[num_cus].cu_idx = num_cus;
 		num_cus++;
@@ -2097,9 +2173,18 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 	memcpy(xcmd->info, ecmd->data, xcmd->isize);
 }
 
-void start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* ecmd->count must cover the mandatory + extra CU masks before any
+	 * payload word; otherwise (count - num_mask) underflows below and
+	 * turns into a multi-GB memcpy().
+	 */
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START_SK;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2110,16 +2195,25 @@ void start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	ecmd->type = ERT_SCU;
+	return 0;
 }
 
-void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* Same underflow guard as above, plus the 4 control registers this
+	 * variant additionally skips over.
+	 */
+	if (ecmd->count < num_mask + 4)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2130,7 +2224,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	/* Copy resigter map into info and isize is the size of info in bytes.
 	 *
@@ -2143,11 +2237,17 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
 	xcmd->payload_type = REGMAP;
 	ecmd->type = ERT_CU;
+	return 0;
 }
 
-void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			     struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2158,7 +2258,7 @@ void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	/* Copy resigter map into info and isize is the size of info in bytes.
 	 *
@@ -2170,11 +2270,17 @@ void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	xcmd->payload_type = KEY_VAL;
 	ecmd->type = ERT_CU;
+	return 0;
 }
 
-void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+int start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
+	u32 num_mask = 1 + ecmd->extra_cu_masks;
+
+	if (ecmd->count < num_mask)
+		return -EINVAL;
+
 	xcmd->opcode = OP_START;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -2185,7 +2291,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+	xcmd->num_mask = num_mask;
 
 	/* Copy descriptor into info and isize is the size of info in bytes.
 	 *
@@ -2195,6 +2301,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	ecmd->type = ERT_CTRL;
+	return 0;
 }
 
 void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd, struct kds_command *xcmd)
@@ -2208,6 +2315,9 @@ void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd, struct kds_command *xcmd)
 void set_xcmd_timestamp(struct kds_command *xcmd, enum kds_status s)
 {
 	if (!xcmd->timestamp_enabled)
+		return;
+
+	if ((unsigned int)s >= KDS_STAT_MAX)
 		return;
 
 	xcmd->timestamp[s] = ktime_to_ns(ktime_get());

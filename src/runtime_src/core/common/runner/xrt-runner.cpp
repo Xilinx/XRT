@@ -38,6 +38,7 @@
 #include "xrt/experimental/xrt_message.h"
 
 #include "core/common/config_reader.h"
+#include "core/common/query_requests.h"
 #include "core/common/debug.h"
 #include "core/common/error.h"
 #include "core/common/time.h"
@@ -95,6 +96,18 @@ constexpr double
 to_mb(size_t bytes)
 {
   return bytes / (1024.0 * 1024.0); // NOLINT
+}
+
+static uint64_t
+get_npu_memory_bytes(const xrt::device& device)
+{
+  try {
+    return xrt_core::device_query_default<xrt_core::query::total_mem_usage>(
+      device.get_handle().get(), uint64_t{0});
+  }
+  catch (...) {
+    return 0;
+  }
 }
 
 size_t
@@ -619,6 +632,7 @@ run_script(const std::string& file, const std::string& dir,
     auto jrpt = runner.get_report();
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
     jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
+    jrpt["system"]["npu_memory_mb"]  = to_mb(get_npu_memory_bytes(device));
 
     if (report == "-")
       std::cout << jrpt.dump(2) << '\n';
@@ -646,6 +660,7 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
     auto jrpt = json::parse(runner.get_report());
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
     jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
+    jrpt["system"]["npu_memory_mb"]  = to_mb(get_npu_memory_bytes(device));
 
     if (report == "-")
       std::cout << jrpt.dump(2) << '\n';
@@ -671,6 +686,7 @@ run_replay(const std::string& replay, const std::string& dir,
     auto jrpt = json::parse(rply.get_report());
     jrpt["system"] = { {"real", real.to_sec()}, {"user", user.to_sec()}, {"kernel", system.to_sec()} };
     jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
+    jrpt["system"]["npu_memory_mb"]  = to_mb(get_npu_memory_bytes(device));
 
     if (report == "-")
       std::cout << jrpt.dump(2) << '\n';

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2026, Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,7 +37,8 @@ enum class reset_key {
   ecc = 4,
   soft_kernel = 5,
   aie = 6,
-  user = 7
+  user = 7,
+  flr = 8
 };
 
 class reset_type {

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2026 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Simple command line utility to interact with PCIe devices
  *
@@ -148,7 +148,7 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
     validated_size = available_size;
 
   uint64_t current_addr = validated_start_addr;
-  size_t remaining_bytes_to_see = size;
+  size_t remaining_bytes_to_see = validated_size;
   size_t bytes_seen = 0;
 
   // continue to operate as long as there are bytes left to see or we run out of banks
@@ -163,7 +163,7 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
       available_bank_size = it->m_size - (current_addr - it->m_base_address);
 
     // If the available bank size is less than the source buffer see what bytes we are able to and move to the next bank
-    uint64_t bytes_to_edit = std::min(available_bank_size, validated_size);
+    uint64_t bytes_to_edit = std::min(available_bank_size, remaining_bytes_to_see);
 
     // Update the buffer index based on how far we have read
     void* current_buffer_location = static_cast<char *>(buf.get()) + bytes_seen;
@@ -172,7 +172,7 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
     switch (action) {
       case operation_type::read:
         try {
-          device->unmgd_pread(current_buffer_location, bytes_to_edit, validated_start_addr);
+          device->unmgd_pread(current_buffer_location, bytes_to_edit, current_addr);
         } catch (const std::exception&) {
           const auto err_msg = err_fmt % errno % "reading" % bytes_to_edit % it->m_tag % current_addr;
           throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
@@ -180,7 +180,7 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
         break;
       case operation_type::write:
         try {
-          device->unmgd_pwrite(current_buffer_location, bytes_to_edit, validated_start_addr);
+          device->unmgd_pwrite(current_buffer_location, bytes_to_edit, current_addr);
         } catch (const std::exception&) {
           const auto err_msg = err_fmt % errno % "writing" % bytes_to_edit % it->m_tag % current_addr;
           throw xrt_core::error(std::errc::operation_canceled, err_msg.str());

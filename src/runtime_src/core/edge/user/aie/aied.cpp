@@ -45,7 +45,7 @@ aied::~aied()
 {
   if(!m_is_enable)
     return;
-  done = true;
+  done.store(true);
   pthread_kill(ptid, SIGUSR1);
   pthread_join(ptid, NULL);
 }
@@ -68,9 +68,14 @@ aied::poll_aie(void* arg)
      * infinite for loop */
     sleep(1);
     /* Calling XRT interface to wait for commands */
-    if (ai->m_graphs.empty() || drv->xclAIEGetCmd(&cmd) != 0) {
+    bool graphs_empty = false;
+    {
+      std::lock_guard<std::mutex> lock(ai->m_graphs_lock);
+      graphs_empty = ai->m_graphs.empty();
+    }
+    if (graphs_empty || drv->xclAIEGetCmd(&cmd) != 0) {
       /* break if destructor called */
-      if (ai->done)
+      if (ai->done.load())
         return NULL;
       continue;
     }
@@ -80,8 +85,11 @@ aied::poll_aie(void* arg)
       boost::property_tree::ptree pt;
       boost::property_tree::ptree pt_status;
 
-      for (auto graph : ai->m_graphs) {
-        pt.put(graph->getname(), graph->getstatus());
+      {
+        std::lock_guard<std::mutex> lock(ai->m_graphs_lock);
+        for (auto graph : ai->m_graphs) {
+          pt.put(graph->getname(), graph->getstatus());
+        }
       }
 
       pt_status.add_child("graphs", pt);
@@ -103,12 +111,14 @@ aied::poll_aie(void* arg)
 void
 aied::register_graph(const graph_object *graph)
 {
+  std::lock_guard<std::mutex> lock(m_graphs_lock);
   m_graphs.push_back(graph);
 }
 
 void
 aied::deregister_graph(const graph_object *graph)
 {
+  std::lock_guard<std::mutex> lock(m_graphs_lock);
   m_graphs.erase(std::remove(m_graphs.begin(), m_graphs.end(), graph), m_graphs.end());
 }
 }

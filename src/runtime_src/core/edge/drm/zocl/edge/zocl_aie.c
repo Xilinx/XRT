@@ -15,10 +15,11 @@
 
 #include "zocl_drv.h"
 #include "zocl_aie.h"
+#include "zocl_xclbin.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-#ifndef __NONE_PETALINUX__
+#ifndef ZOCL_AIE_STUBS
 #include <linux/xlnx-ai-engine.h>
 #endif
 
@@ -382,21 +383,33 @@ zocl_aie_slot_reset(struct drm_zocl_slot* slot)
 }
 
 void
-zocl_destroy_aie(struct drm_zocl_slot* slot)
+zocl_destroy_aie(struct drm_zocl_slot *slot)
 {
-	if (!slot->aie_information)
-		return;
+	/* Non-empty dtbo path means libdfx applied this slot's overlay. */
+	bool libdfx;
 
 	mutex_lock(&slot->aie_lock);
-	vfree(slot->aie_information);
-	slot->aie_information = NULL;
+
+	if (slot->aie_information) {
+		vfree(slot->aie_information);
+		slot->aie_information = NULL;
+	}
 
 	if (!slot->aie) {
 		mutex_unlock(&slot->aie_lock);
 		return;
 	}
 
-	if (slot->aie->aie_dev)
+	/*
+	 * libdfx removes the configfs overlay after this ioctl returns, and
+	 * that rmdir runs aie_part_remove(). Skip the release in that case.
+	 * An empty path is not libdfx: the load ioctl passes a pointer even
+	 * when userspace did not apply an overlay, and zocl must release the
+	 * partition it requested.
+	 */
+	libdfx = slot->slot_xclbin && slot->slot_xclbin->zx_dtbo_path &&
+		 slot->slot_xclbin->zx_dtbo_path[0];
+	if (slot->aie->aie_dev && !libdfx)
 		aie_partition_release(slot->aie->aie_dev);
 
 	if (slot->aie->wq)
@@ -425,7 +438,7 @@ zocl_cleanup_aie(struct drm_zocl_slot *slot)
 		 */
 		if( !slot->aie->aie_reset) {
 			ret = zocl_aie_slot_reset(slot);
-			if (ret)
+			if (ret && ret != -ENODEV)
 				return ret;
 		}
 
@@ -504,11 +517,23 @@ zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclb
 	uint64_t offset;
 	uint64_t size;
 	struct aie_partition_req req;
+	struct device *aie_dev;
 	int rval = 0;
+
+#ifdef ZOCL_DISABLE_AIE
+	/*
+	 * The AIE array is owned by firmware on this platform. Do not request
+	 * an AIE partition: slot->aie stays NULL, the AIE ioctls return
+	 * -ENODEV, and PL-only xclbins still load.
+	 */
+	DRM_INFO("AIE support disabled in zocl, skip AIE partition request.\n");
+	return 0;
+#endif
 
 	rval = xrt_xclbin_section_info(axlf, AIE_METADATA, &offset, &size);
 	if (rval)
 		return rval;
+
 	mutex_lock(&slot->aie_lock);
 
 	/* AIE is reset and no PDI is loaded after reset */
@@ -563,16 +588,16 @@ zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclb
 		goto done;
 	}
 
-	slot->aie->aie_dev = aie_partition_request(&req);
-
-
-	if (IS_ERR(slot->aie->aie_dev)) {
-		rval = PTR_ERR(slot->aie->aie_dev);
+	aie_dev = aie_partition_request(&req);
+	if (IS_ERR(aie_dev)) {
+		rval = PTR_ERR(aie_dev);
+		slot->aie->aie_dev = NULL;
 		DRM_ERROR("Request AIE partition %d, %d\n",
 		    req.partition_id, rval);
 		goto done;
 	}
 
+	slot->aie->aie_dev = aie_dev;
 	slot->aie->partition_id = req.partition_id;
 	slot->aie->uid = req.uid;
 

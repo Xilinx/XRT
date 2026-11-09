@@ -166,13 +166,28 @@ platform_repo_paths()
   return paths;
 }
 
+// Normalize a relative path and throw if any component is exactly ".."
+// (CVE-2026-28238 / SWSPLAT-9629). Checks components rather than substrings
+// so that valid names like "shell..xsabin" are not incorrectly rejected.
+static sfs::path
+normalize_and_reject_traversal(const std::string& file)
+{
+  auto path = sfs::path(file).lexically_normal();
+  for (const auto& component : path)
+    if (component == "..")
+      throw std::runtime_error("Invalid path '" + file + "': path traversal not allowed");
+
+  return path;
+}
+
 // Return the full path to the file if it exists in a platform
 // repository, else throw.
 static sfs::path
 platform_repo_path(const std::string& file)
 {
+  auto xfile = normalize_and_reject_traversal(file);
   for (const auto& path : platform_repo_paths()) {
-    auto xpath = path / file;
+    auto xpath = path / xfile;
     if (sfs::exists(xpath))
       return xpath;
   }
@@ -186,12 +201,18 @@ platform_repo_path(const std::string& file)
 static sfs::path
 platform_path(const std::string& file_name)
 {
-  sfs::path xpath{file_name};
+  sfs::path xpath{normalize_and_reject_traversal(file_name)};
+
+  if (!xpath.is_absolute()) {
+    // Check in CWD first; if not present, fall through to platform repo lookup
+    if (sfs::exists(xpath))
+      return xpath;
+
+    return platform_repo_path(xpath.string());
+  }
+
   if (sfs::exists(xpath))
     return xpath;
-
-  if (!xpath.is_absolute())
-    return platform_repo_path(file_name);
 
   throw std::runtime_error("No such file '" + xpath.string() + "'");
 }
@@ -369,12 +390,7 @@ xrt_path_or_error(const std::string& file)
   if (path.is_absolute())
     throw std::runtime_error("Invalid path '" + path.string() + "' cannot be absolute");
 
-  // May not contain any ".." to escape xilinx_xrt
-  auto normalize = path.lexically_normal();
-  if (normalize.string().find("..") != std::string::npos)
-    throw std::runtime_error("Invalid path '" + normalize.string() + "' escapes xrt");
-
-  return xilinx_xrt() / normalize;
+  return xilinx_xrt() / normalize_and_reject_traversal(file);
 }
 
 sfs::path

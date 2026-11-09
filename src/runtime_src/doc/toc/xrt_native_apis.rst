@@ -44,6 +44,10 @@ The C++ Class objects used for the APIs are the following:
 +----------------------+---------------------+------------------------------------------------+
 |   Control code (ELF) | ``xrt::elf``        |  ``#include <xrt/experimental/xrt_elf.h>``     |
 +----------------------+---------------------+------------------------------------------------+
+|   Extension Buffer   | ``xrt::ext::bo``    |  ``#include <xrt/experimental/xrt_ext.h>``     |
++----------------------+---------------------+------------------------------------------------+
+|   Extension Kernel   | ``xrt::ext::kernel``|  ``#include <xrt/experimental/xrt_ext.h>``     |
++----------------------+---------------------+------------------------------------------------+
 | User-managed Kernel  | ``xrt::ip``         |  ``#include <xrt/experimental/xrt_ip.h>``      |
 +----------------------+---------------------+------------------------------------------------+
 |   AIE Graph          | ``xrt::graph``      |  ``#include <xrt/xrt_aie.h>``                  |
@@ -51,7 +55,7 @@ The C++ Class objects used for the APIs are the following:
 |                      |                     |  ``#include <xrt/xrt_graph.h>``                |
 +----------------------+---------------------+------------------------------------------------+
 
-The majority of core data structures are defined in the header files under ``$XILINX_XRT/include/xrt/``. Newer features such as ``xrt::ip``, ``xrt::runlist``, ``xrt::elf``, and related types live under ``$XILINX_XRT/include/xrt/experimental/``. APIs in that experimental area are subject to breaking changes.
+The majority of core data structures are defined in the header files under ``$XILINX_XRT/include/xrt/``. Newer features such as ``xrt::ip``, ``xrt::runlist``, ``xrt::elf``, ``xrt::ext``, and related types live under ``$XILINX_XRT/include/xrt/experimental/``. APIs in that experimental area are subject to breaking changes.
 
 The common host code flow using the above data structures is as follows:
 

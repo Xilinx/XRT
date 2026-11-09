@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
@@ -2225,7 +2225,7 @@ int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint3
   uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
   traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
-  traceSamples = nSamples;
+  traceSamples = std::min(nSamples, static_cast<uint32_t>(xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO));
 
   return 0;
 }
@@ -2239,6 +2239,8 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
     wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
+    if (numWords > static_cast<uint32_t>(traceBufWordSz))
+      numWords = traceBufWordSz;
 
 //    alignas is defined in c++11
 #if GCC_VERSION >= 40800

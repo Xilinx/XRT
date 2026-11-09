@@ -51,5 +51,5 @@ ReportClocks::writeReport(const xrt_core::device* /*_pDevice*/,
     ss << boost::format("  %-23s: %3s MHz\n") % pt_clock.get<std::string>("id") 
                                               % pt_clock.get<std::string>("freq_mhz");
   }
-  std::cout << ss.str();
+  _output << ss.str();
 }

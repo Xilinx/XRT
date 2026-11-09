@@ -121,6 +121,7 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 	int ret;
 	unsigned long vsize;
 	phys_addr_t res_start;
+	bool read_only = false;
 
 	/*
 	 * HACK -- We assume filp->private_data is pointing to
@@ -150,10 +151,21 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 		u32 cu_addr;
 		u32 cu_idx = vma->vm_pgoff - 1;
 
-		ret = xocl_cu_map_addr(xdev, cu_idx, priv, vsize, &cu_addr);
+		ret = xocl_cu_map_addr(xdev, cu_idx, priv, vsize, &cu_addr,
+				       &read_only);
 		if (ret != 0)
 			return ret;
 		res_start += cu_addr;
+	}
+
+	/* Read range does not grant a writable CU register mapping. */
+	if (read_only) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
+		vma->vm_flags &= ~(VM_WRITE | VM_MAYWRITE);
+#else
+		vm_flags_clear(vma, VM_WRITE | VM_MAYWRITE);
+#endif
+		vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);

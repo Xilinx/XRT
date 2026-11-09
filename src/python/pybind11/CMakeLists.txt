@@ -1,8 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 #
 
-if( NOT WIN32)
+# Edge / Yocto: host python does not match target headers in the sysroot
+if (XRT_EDGE)
+  include (${XRT_SOURCE_DIR}/CMake/pyxrtCross.cmake)
+elseif( NOT WIN32)
 
 # find_package(PythonLibs is depracted as of cmake 3.12.
 if (CMAKE_VERSION VERSION_LESS "3.12")

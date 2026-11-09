@@ -38,28 +38,33 @@ endif (OPENCL_FOUND)
 # --- LSB Release ---
 find_program(UNAME uname)
 
-execute_process(
-  COMMAND awk -F= "$1==\"ID\" {print $2}" /etc/os-release
-  COMMAND tr -d "\""
-  COMMAND awk "{print tolower($1)}"
-  OUTPUT_VARIABLE LINUX_FLAVOR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-if (${LINUX_FLAVOR} MATCHES "^centos")
+# Read /etc/os-release only if LINUX_FLAVOR and LINUX_VERSION aren't already supplied.
+if (NOT LINUX_FLAVOR)
   execute_process(
-    COMMAND awk "{print $4}" /etc/redhat-release
+    COMMAND awk -F= "$1==\"ID\" {print $2}" /etc/os-release
     COMMAND tr -d "\""
-    OUTPUT_VARIABLE LINUX_VERSION
+    COMMAND awk "{print tolower($1)}"
+    OUTPUT_VARIABLE LINUX_FLAVOR
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-else()
-  execute_process(
-    COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release
-    COMMAND tr -d "\""
-    OUTPUT_VARIABLE LINUX_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+endif()
+
+if (NOT LINUX_VERSION)
+  if (${LINUX_FLAVOR} MATCHES "^centos")
+    execute_process(
+      COMMAND awk "{print $4}" /etc/redhat-release
+      COMMAND tr -d "\""
+      OUTPUT_VARIABLE LINUX_VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  else()
+    execute_process(
+      COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release
+      COMMAND tr -d "\""
+      OUTPUT_VARIABLE LINUX_VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
 endif()
 
 execute_process(COMMAND ${UNAME} -r

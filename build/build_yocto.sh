@@ -157,9 +157,9 @@ elif [[ $(repo --version 2>&1 | grep -oP 'repo launcher version \K[0-9.]+') < 2.
     install_repo
 fi
 
-if [ -f "$yocto_path/internal-edf-init-build-env" ]; then
+if [ -f "$yocto_path/edf-init-build-env" ]; then
     cd $yocto_path
-    source internal-edf-init-build-env
+    source edf-init-build-env
 else
     git submodule update --init --recursive --force
     mkdir -p $yocto_path
@@ -169,7 +169,7 @@ else
     yes ""| repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
 
     repo sync
-    source internal-edf-init-build-env
+    source edf-init-build-env
     install_recipes
 fi
 
@@ -179,7 +179,7 @@ if MACHINE=$MACHINE bitbake xrt; then
     rm -rf "$yocto_path/rpms"
     mkdir -p "$yocto_path/rpms"
 
-    cp -rf "$yocto_path/build/tmp/deploy/rpm/cortexa72_cortexa53/xrt-"* "$yocto_path/rpms/"
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/$RPM_ARCH_DIR/xrt-"* "$yocto_path/rpms/"
     cp -rf "$yocto_path/build/tmp/deploy/rpm/$RPM_ARCH_DIR/zocl-"* "$yocto_path/rpms/"
     cp -rf "$yocto_path/build/tmp/deploy/rpm/$RPM_ARCH_DIR/kernel-"* "$yocto_path/rpms/"
 

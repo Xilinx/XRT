@@ -9,6 +9,7 @@
 
 // Utilities
 #include "tools/common/XBUtilitiesCore.h"
+#include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -147,7 +148,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    XBU::print_exception(e);
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }

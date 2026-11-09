@@ -58,7 +58,18 @@ struct zocl_hw_graph_ctx {
 	u32			hw_context;
 };
 
-#ifdef __NONE_PETALINUX__
+/*
+ * ZOCL_DISABLE_AIE: build zocl without any dependency on the xilinx_aie
+ * kernel module (e.g. when the AIE array is owned by firmware). AIE
+ * partition APIs are replaced by local stubs below.
+ */
+#if defined(__NONE_PETALINUX__) || defined(ZOCL_DISABLE_AIE)
+#define ZOCL_AIE_STUBS
+#endif
+
+#ifdef ZOCL_AIE_STUBS
+
+#include <linux/err.h>
 
 #define AIE_ERROR_CATEGORY_SATURATION		0U
 #define AIE_ERROR_CATEGORY_FP			1U
@@ -106,7 +117,7 @@ struct aie_errors {
 static inline struct device *
 aie_partition_request(struct aie_partition_req *req)
 {
-	return NULL;
+	return ERR_PTR(-EOPNOTSUPP);
 }
 
 static inline int
@@ -147,7 +158,19 @@ static inline void
 aie_free_errors(struct aie_errors *aie_errs)
 {
 }
-#endif
+
+static inline int
+aie_partition_get_freq(struct device *dev, u64 *freq)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int
+aie_partition_set_freq_req(struct device *dev, u64 freq)
+{
+	return -EOPNOTSUPP;
+}
+#endif /* ZOCL_AIE_STUBS */
 int zocl_read_aieresbin(struct drm_zocl_slot *slot, struct axlf* axlf, char __user *xclbin);
 struct aie_info {
 	struct list_head	aie_cmd_list;

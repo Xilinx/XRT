@@ -94,6 +94,8 @@ void  main_(int argc, char** argv,
   SubCmd::SubCmdOptions subcmd_options;
   try {
     subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+    XBU::setTrace(bTrace);
+    XBU::setAdvance(bAdvance);
     XBU::resolve_device(isUserDomain, vm, sDevice);
     const auto filtered = XBU::filter_subcmds(isUserDomain, sDevice, _subCmds);
     if (!filtered.empty())
@@ -123,9 +125,7 @@ void  main_(int argc, char** argv,
   // -- Enable/Disable helper "global" options
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
-  XBU::setTrace( bTrace );
   XBU::setShowHidden( bShowHidden );
-  XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 
   // Search for the subcommand (case sensitive)

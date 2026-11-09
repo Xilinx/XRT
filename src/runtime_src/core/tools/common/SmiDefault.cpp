@@ -60,6 +60,18 @@ create_configure_subcommand()
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
 }
 
+xrt_core::smi::subcommand
+create_reset_subcommand()
+{
+  std::map<std::string, std::shared_ptr<xrt_core::smi::option>> reset_suboptions;
+  reset_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  reset_suboptions.emplace("type", std::make_shared<xrt_core::smi::option>("type", "t", "The type of reset to perform. Types resets available:\n"
+                            "  user         - Hot reset (default)\n", "common", "user", "string"));
+  reset_suboptions.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
+
+  return {"reset", "Resets the given device", "common", std::move(reset_suboptions)};
+}
+
 std::string 
 get_default_smi_config() 
 {
@@ -67,6 +79,7 @@ get_default_smi_config()
   smi_instance->add_subcommand("validate", create_validate_subcommand());
   smi_instance->add_subcommand("examine", create_examine_subcommand());
   smi_instance->add_subcommand("configure", create_configure_subcommand());
+  smi_instance->add_subcommand("reset", create_reset_subcommand());
 
   return smi_instance->build_json();
 }

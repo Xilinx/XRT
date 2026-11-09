@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,6 +25,7 @@
 #include "core/common/info_vmr.h"
 
 // 3rd Party Library - Include Files
+#include <algorithm>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -237,7 +239,8 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
 
     boost::property_tree::ptree pt_plps;
-    for (unsigned int i = 1; i < logic_uuids.size(); i++) {
+    const std::size_t num_partitions = std::min(logic_uuids.size(), interface_uuids.size());
+    for (std::size_t i = 1; i < num_partitions; ++i) {
       boost::property_tree::ptree pt_plp;
       DSAInfo partition("", NULL_TIMESTAMP, logic_uuids[i], "");
       pt_plp.put("vbnv", partition.name);

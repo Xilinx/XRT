@@ -196,7 +196,7 @@ public:
 
       auto bosize = bo.size();
 
-      if (offset + size > bosize)
+      if (offset > bosize || size > bosize - offset)
         throw xrt_core::error(-EINVAL, "Sync AIE BO fails: exceed BO boundary.");
 
       std::vector<xrt::bo> bos {bo};
@@ -215,7 +215,7 @@ public:
 
       auto bosize = bo.size();
 
-      if (offset + size > bosize)
+      if (offset > bosize || size > bosize - offset)
         throw xrt_core::error(-EINVAL, "Sync AIE NBO fails: exceed BO boundary.");
 
       std::vector<xrt::bo> bos {bo};
@@ -384,6 +384,15 @@ private:
   std::shared_ptr<xrt_core::edge::dev_zocl> mDev = nullptr;
   size_t mKernelClockFreq;
   bool hw_context_enable = false;
+
+  /*
+   * DT overlay applied by libdfx for the xclbin of the open hw_contexts. It
+   * is removed from the live device tree once the last context is destroyed,
+   * several contexts can share one overlay.
+   */
+  std::string m_libdfx_dtbo_path;
+  xrt::uuid m_libdfx_uuid;
+  unsigned int m_libdfx_hwctx_cnt = 0;
 
   /*
    * Mapped CU register space for xclRegRead/Write(). We support at most

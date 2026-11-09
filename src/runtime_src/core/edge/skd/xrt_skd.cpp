@@ -24,6 +24,20 @@ using clockc = std::chrono::high_resolution_clock;
 // uncomment below line to enable mapping entire DDR reserved space for faster buffer access
 // #define SKD_MAP_BIG_BO
 
+namespace {
+
+// Reject names that would let the resolved soft-kernel path escape
+// SOFT_KERNEL_FILE_PATH.
+bool
+sk_name_is_safe(const std::string& kname)
+{
+  return !kname.empty() &&
+         kname.find('/') == std::string::npos &&
+         kname.find("..") == std::string::npos;
+}
+
+}
+
 namespace xrt {
 
   using severity_level = xrt_core::message::severity_level;
@@ -58,6 +72,12 @@ namespace xrt {
   XCL_DRIVER_DLLESPEC
   int
   skd::init() {
+    if (!sk_name_is_safe(m_sk_name)) {
+      const auto errMsg = boost::format("Illegal soft kernel name: %s") % m_sk_name;
+      xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+      return -EINVAL;
+    }
+
     // Create soft kernel file from sk_bo
     int ret = 0;
     if ((ret = create_softkernelfile(m_parent_devhdl, m_sk_bo)))

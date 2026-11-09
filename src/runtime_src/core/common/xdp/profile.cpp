@@ -237,7 +237,7 @@ run_constructor(xrt::run_impl* run_impl)
 }
 
 void
-run_start(const xrt::run_impl* run_impl)
+run_start(xrt::run_impl* run_impl)
 {
   if (!run_start_cb)
     return;
@@ -245,7 +245,8 @@ run_start(const xrt::run_impl* run_impl)
   try {
     xrt_kernel_data data{};
     xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
-    run_start_cb(nullptr, data.hwctx.get_handle().get(),
+    run_start_cb(run_impl,
+                 data.hwctx.get_handle().get(),
                  data.uid,
                  data.name.c_str());
   }
@@ -526,15 +527,18 @@ namespace xrt_core::xdp::aie::halt {
 
 std::function<void (void*)> update_device_cb;
 std::function<void (void*)> finish_flush_device_cb;
+std::function<void(void*, const char*)> run_start_cb;
 
 void
 register_callbacks(void* handle)
 {
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
+    using rsctype = void (*)(void*, const char*);
     
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
-    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushDeviceAIEHalt"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceAIEHalt"));
+    run_start_cb = reinterpret_cast<rsctype>(xrt_core::dlsym(handle, "aieHaltRunStart"));
   #else
     (void)handle;
   #endif
@@ -568,6 +572,29 @@ finish_flush_device(void* handle)
 {
   if (finish_flush_device_cb)
     finish_flush_device_cb(handle);
+}
+
+void
+run_start(const xrt::run_impl* run_impl)
+{
+  if (!run_start_cb)
+    return;
+
+  // Backstop for run_constructor: this fires immediately before the command is
+  // submitted, so halt is still configured before any user code executes.
+  try {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    run_start_cb(data.hwctx.get_handle().get(), data.name.c_str());
+  }
+  catch (const std::exception& e) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      std::string{"AIE Halt run_start hook failed (ignored): "} + e.what());
+  }
+  catch (...) {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "AIE Halt run_start hook failed (ignored): unknown exception");
+  }
 }
 
 } // end namespace xrt_core::xdp::aie::halt
@@ -956,12 +983,13 @@ run_constructor(xrt::run_impl* run_impl)
 }
 
 void
-run_start(const xrt::run_impl* run_impl)
+run_start(xrt::run_impl* run_impl)
 {
-  if (!xrt_core::config::get_aie_dtrace())
-    return;
+  if (xrt_core::config::get_aie_halt())
+    xrt_core::xdp::aie::halt::run_start(run_impl);
 
-  xrt_core::xdp::aie::dtrace::run_start(run_impl);
+  if (xrt_core::config::get_aie_dtrace())
+    xrt_core::xdp::aie::dtrace::run_start(run_impl);
 }
 
 void

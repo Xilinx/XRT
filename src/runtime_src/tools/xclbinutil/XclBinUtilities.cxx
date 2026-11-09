@@ -477,7 +477,7 @@ XclBinUtilities::reportSignature(const std::string& _sInputFile)
   std::string sSignedBy;
   unsigned int totalSize;
   if (!XUtil::getSignature(inputStream, sSignature, sSignedBy, totalSize)) {
-    std::string errMsg = "ERROR: No signature found in file: " + _sInputFile;
+    std::string errMsg = "ERROR: No user defined signature added by --add-signature found in file: " + _sInputFile;
     throw std::runtime_error(errMsg);
   }
 
@@ -499,7 +499,7 @@ XclBinUtilities::removeSignature(const std::string& _sInputFile, const std::stri
   // Find the signature
   unsigned int signatureOffset;
   if (!XclBinUtilities::findBytesInStream(inputStream, getSignatureMagicValue(), signatureOffset)) {
-    std::string errMsg = "ERROR: No signature found in file: " + _sInputFile;
+    std::string errMsg = "ERROR: No user defined signature added by --add-signature found in file: " + _sInputFile;
     throw std::runtime_error(errMsg);
   }
 

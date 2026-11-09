@@ -17,6 +17,10 @@
 #ifndef XCDO_IO_DEBUG_H
 #define XCDO_IO_DEBUG_H
 
+#include <limits.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,7 +29,8 @@ typedef uint32_t TaskHandle_t;
 /***************************** Include Files *********************************/
 
 /************************** Constant Definitions *****************************/
-#include <stdint.h>
+#define XCDO_UINT32_WIDTH 32U
+
 #include "cdo_common.h"
 #include "cdo_cmd.h"  // XCDO_CMD_WRITE for clang-tidy check
 
@@ -78,7 +83,7 @@ static inline void XCdo_IoWrite32(uintptr_t Addr, uint32_t Val)
 {
 	XCdo_Print("WR32: Addr: 0x%lx, Val: 0x%x. PdiOffset =%d\n", (unsigned long)Addr, Val, PdiOffset);
 	IoAssignVar(XCDO_CMD_WRITE);
-	IoAssignVar(Addr);
+	IoAssignVar((uint32_t)Addr);
 	IoAssignVar(Val);
 }
 
@@ -88,7 +93,7 @@ static inline void XCdo_IoMaskWrite32(uintptr_t Addr, uint32_t Mask,
 	XCdo_Print("MW32: Addr: 0x%lx, Mask: 0x%x,  Val: 0x%x. PdiOffset = %d\n",
 		(unsigned long)Addr, Mask, Val, PdiOffset);
 	IoAssignVar(XCDO_CMD_MASK_WRITE);
-	IoAssignVar(Addr);
+	IoAssignVar((uint32_t)Addr);
 	IoAssignVar(Mask);
 	IoAssignVar(Val);
 }
@@ -102,23 +107,32 @@ static inline uint32_t XCdo_IoRead32(uintptr_t Addr)
 static inline int XCdo_IoMemcpy(void * dest, const void * src,
 		size_t n)
 {
+    if (n > (size_t)INT_MAX) {
+        XCdo_PError("COPY size exceeds the supported range\n");
+        return -1;
+    }
+
+    const uint32_t length = (uint32_t)n;
+    const uintptr_t destination = (uintptr_t)dest;
+    const uintptr_t source = (uintptr_t)src;
+
 	XCdo_Print("COPY: Dest: %p, Src: %p, Size: %zu(Bytes) PdiOffset =%d\n",
 		dest, src, n, PdiOffset);
 	IoAssignVar(XCDO_CMD_DMAWRITE);
-	IoAssignVar((uint64_t)dest);
-	IoAssignVar(((uint64_t)dest)>>32);
+    IoAssignVar((uint32_t)destination);
+    IoAssignVar((uint32_t)((uint64_t)destination >> XCDO_UINT32_WIDTH));
 	//in some test case src is different but data is same, then we only need to
 	//veify the address when not check the data.
 	if (!gcheckDmaData) {
-		IoAssignVar((uint64_t)src);
+		IoAssignVar((uint32_t)source);
 	}
-	IoAssignVar(n);
+	IoAssignVar(length);
 	// only copy data when asked.
 	
 	if (gcheckDmaData) {
-		IoCopyMem((void *)src, n);
+		IoCopyMem((void *)src, length);
 	}
-	return n;
+	return (int)length;
 }
 #ifdef __cplusplus
 }

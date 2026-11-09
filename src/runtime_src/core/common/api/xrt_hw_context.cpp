@@ -273,6 +273,10 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // init_from_elf() - Initialize this hwctx from an ELF
   // This function is called if and only if the hwctx has no
   // underlying representation (no m_hdl).
+  //
+  // The caller (add_config()) is responsible for calling
+  // xdp::update_device() once this function has returned and the
+  // hwctx lock has been released.
   void
   init_from_elf(const xrt::elf& elf, uint32_t partition_size)
   {
@@ -281,10 +285,6 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     update_from_elf(elf);
     m_elf_flow = true; // ELF flow
     m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
-  
-    // XDP configuration is required only once,
-    // as all the elfs in one HWCtx will have the same partition size
-    xrt_core::xdp::update_device(this, true);
   }
 
   // Amend configuration parameters 
@@ -308,7 +308,18 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     return cfg;
   }
 
-  // Skip UC logs for unsupported devices (Phoenix, Strix)
+  // The aie2ps parts whose shim already attaches a uC log buffer: T50, T20, T10.
+  static bool
+  platform_part_supports_uc_log(const std::string& part)
+  {
+    return part == "xc2ve3858"
+        || part == "xc2ve3558"
+        || part == "xc2ve3358";
+  }
+
+  // Skip UC logs for Phoenix and Strix. Every other PCI id keeps logging.
+  // A missing PCI sysfs node is the platform/VE2 case; enable logging only for
+  // the known aie2ps parts. Any other query failure still skips.
   static bool
   skip_uc_log(const std::shared_ptr<xrt_core::device>& device)
   {
@@ -319,8 +330,18 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       const auto pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device.get());
       return pcie_id.device_id == phoenix_device_id || pcie_id.device_id == strix_device_id;
     }
+    catch (const xrt_core::query::sysfs_error&) {
+      try {
+        const auto part = xrt_core::device_query_default<xrt_core::query::device_id_str>(
+            device, std::string{});
+        return !platform_part_supports_uc_log(part);
+      }
+      catch (const std::exception&) {
+        return true;
+      }
+    }
     catch (const std::exception&) {
-      return false;
+      return true;
     }
   }
 
@@ -487,20 +508,37 @@ public:
   add_config(const xrt::elf& elf)
   {
     auto part_size = elf.get_partition_size();
+    bool initialized = false;
 
-    // The lock must be held here to prevent race on m_hdl
-    // in case it is created in init_from_elf(). The lock
-    // also protects updated data structures.
-    std::lock_guard lk(m_mutex);
-    if (m_hdl && m_partition_size != part_size)
-      throw std::runtime_error("can not add config to ctx with different configuration\n");
+    {
+      // The lock must be held here to prevent race on m_hdl
+      // in case it is created in init_from_elf(). The lock
+      // also protects updated data structures.
+      std::lock_guard lk(m_mutex);
+      if (m_hdl && m_partition_size != part_size)
+        throw std::runtime_error("can not add config to ctx with different configuration\n");
 
-    if (m_hdl)
-      // Add  ELF kernels to elf map. Throws if kernel already in map
-      update_from_elf(elf);
-    else
-      // Initiize this hwctx, and add kernels
-      init_from_elf(elf, part_size);
+      if (m_hdl) {
+        // Add ELF kernels to elf map. Throws if kernel already in map
+        update_from_elf(elf);
+      }
+      else {
+        // Intialize this hwctx, and add kernels
+        init_from_elf(elf, part_size);
+        initialized = true;
+      }
+    }
+
+    // XDP configuration is required only once, as all the elfs in one
+    // HWCtx will have the same partition size.
+    //
+    // This must run with m_mutex released. The profiling plugins call
+    // back into this hwctx from their hooks, both to read the
+    // configuration elfs and to register their own control code elf via
+    // add_config(). m_mutex is not recursive, so invoking the hooks with
+    // it held self deadlocks the calling thread.
+    if (initialized)
+      xrt_core::xdp::update_device(this, true);
   }
 
   void
@@ -718,6 +756,20 @@ public:
     }
   }
 
+  std::vector<char>
+  get_aie_coredump_elf() const
+  {
+    xrt::elf elf = [this] {
+      std::lock_guard lk(m_mutex);
+      if (m_elf_map.empty())
+        throw std::runtime_error("AIE coredump ELF not available: no ELF loaded in this context");
+      return m_elf_map.begin()->second;
+    }();
+
+    return xrt_core::elf_int::make_aie_coredump_elf(
+        elf, get_aie_coredump(), m_core_device.get(), m_hdl->get_slotidx());
+  }
+
   // Returns map of kernel names to their corresponding elf files
   // registered with this hardware context
   std::map<std::string, xrt::elf>
@@ -856,6 +908,17 @@ append_dtrace_result(const xrt::hw_context& hwctx,
 {
   // Append a per-run dtrace JSON result to the hw context coalesce buffer
   hwctx.get_handle()->append_dtrace_result(key, result_json);
+}
+
+std::vector<char>
+get_aie_coredump_elf(const xrt::hw_context& hwctx, const xrt::elf& elf)
+{
+  auto* impl = hwctx.get_handle().get();
+  auto cfg_uuid = elf.get_cfg_uuid();
+  return xrt_core::elf_int::make_aie_coredump_elf(
+      elf, impl->get_aie_coredump(), impl->get_core_device().get(),
+      static_cast<uint32_t>(static_cast<xrt_core::hwctx_handle*>(hwctx)->get_slotidx()),
+      cfg_uuid ? cfg_uuid.to_string() : std::string{});
 }
 
 } // xrt_core::hw_context_int
@@ -1013,6 +1076,13 @@ hw_context::
 get_aie_coredump() const
 {
   return get_handle()->get_aie_coredump();
+}
+
+std::vector<char>
+hw_context::
+get_aie_coredump_elf() const
+{
+  return get_handle()->get_aie_coredump_elf();
 }
 
 } // xrt

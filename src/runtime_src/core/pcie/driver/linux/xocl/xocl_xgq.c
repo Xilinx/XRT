@@ -128,6 +128,7 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int client_id, u64 resp_ad
 	struct xocl_xgq_client *client = &xgq->xx_clients[client_id];
 	struct kds_command *xcmd = NULL;
 	unsigned long flags = 0;
+	u32 result = 0;
 
 	spin_lock_irqsave(&client->xxc_lock, flags);
 	if (unlikely(list_empty(&client->xxc_submitted))) {
@@ -139,7 +140,11 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int client_id, u64 resp_ad
 
 	if (client->xxc_prot & XGQ_PROT_NEED_RESP) {
 		xocl_xgq_read_queue((u32 *)&xcmd->rcode, (u32 __iomem *)&resp->rcode, sizeof(xcmd->rcode)/4);
-		xocl_xgq_read_queue((u32 *)&xcmd->status, (u32 __iomem *)&resp->result, sizeof(xcmd->status)/4);
+		xocl_xgq_read_queue(&result, (u32 __iomem *)&resp->result, sizeof(result)/4);
+		if (result >= KDS_STAT_MAX)
+			xcmd->status = KDS_ERROR;
+		else
+			xcmd->status = (enum kds_status)result;
 	} else
 		xcmd->status = KDS_COMPLETED;
 	*status = xcmd->status;

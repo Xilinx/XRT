@@ -65,13 +65,16 @@ public:
   get_total_devices(bool is_user = true) const = 0;
 
   /**
-   * get_userpf_device() - Open a new device specified by index
+   * get_userpf_device() - Create an core device for adapter
    *
-   * This function calls xclOpen to create a new shim handle from
-   * which a core device is constructed.
+   * This function create a shim device handle for specified
+   * adapter (id) if and only if one hasn't already been created.
    *
-   * The returned device is managed, such that xclClose is called
-   * when device is no longer referenced.
+   * The returned device is managed, such that shim close_device
+   * is called when device is no longer referenced.
+   *
+   * Repeated calls this function for same adapter returns
+   * same core device with reference count incremented.
    */
   virtual std::shared_ptr<device>
   get_userpf_device(device::id_type id) const = 0;

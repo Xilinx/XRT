@@ -126,6 +126,8 @@ create_reset_subcommand()
 {
   std::map<std::string, std::shared_ptr<xrt_core::smi::option>> o;
   o.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  o.emplace("type", std::make_shared<xrt_core::smi::option>("type", "t", "The type of reset to perform. Types resets available:\n"
+                            "  user         - Hot reset (default)\n", "common", "user", "string"));
   o.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   return {"reset", "Resets the given device", "common", std::move(o)};
 }
