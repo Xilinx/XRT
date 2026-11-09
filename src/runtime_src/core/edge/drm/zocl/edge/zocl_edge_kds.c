@@ -502,6 +502,25 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	ecmd = (struct ert_packet *)zocl_bo->cma_base.vaddr;
 
 	ecmd->state = ERT_CMD_STATE_NEW;
+
+	/* Reject if the GEM BO is too small to hold all words claimed by
+	 * ecmd->count, or if the opcode/count fails structural validation.
+	 * Without this, the *_ecmd2xcmd helpers read beyond the BO's
+	 * physical allocation (CWE-125 / heap-buffer-overflow).
+	 */
+	if (gem_obj->size < get_ert_packet_size_bytes(ecmd)) {
+		DRM_ERROR("Exec buffer too small for claimed payload (count=%u)\n",
+			  ecmd->count);
+		ret = -EINVAL;
+		goto out;
+	}
+	if (!ert_valid_opcode(ecmd)) {
+		DRM_ERROR("Invalid opcode or count in exec buffer (opcode=%u, count=%u)\n",
+			  ecmd->opcode, ecmd->count);
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* only the user command knows the real size of the payload.
 	 * count is more than enough!
 	 */
