@@ -454,36 +454,71 @@ zocl_read_aieresbin(struct drm_zocl_slot *slot, struct axlf* axlf, char __user *
 	struct axlf_section_header *header = NULL;
 	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
 	int ret = 0;
+	u64 xclbin_size = axlf->m_header.m_length;
         #define num_bytes_to_copy 4
 	while (header) {
 		int err = 0;
 		long start_col = 0, num_col = 0;
                 char scol[num_bytes_to_copy], ncol[num_bytes_to_copy];
                 struct aie_resources_bin aie_p;
+		u64 sec_off = header->m_sectionOffset;
+		u64 remaining;
 
-                err = copy_from_user(&aie_p, xclbin + header->m_sectionOffset, sizeof(struct aie_resources_bin));
+		/* Validate section header offset before first copy_from_user */
+		if (sec_off > xclbin_size ||
+		    xclbin_size - sec_off < sizeof(struct aie_resources_bin)) {
+			DRM_ERROR("zocl: aieresbin section offset out of xclbin bounds\n");
+			return -EINVAL;
+		}
+
+                err = copy_from_user(&aie_p, xclbin + sec_off, sizeof(struct aie_resources_bin));
                 if (err)
                         return -EFAULT;
+
+		remaining = xclbin_size - sec_off;
+
+		/* Validate image offset + size stay within xclbin (uint32 sum fits in u64) */
+		if ((u64)aie_p.m_image_offset + aie_p.m_image_size > remaining) {
+			DRM_ERROR("zocl: aieresbin image offset/size out of xclbin bounds\n");
+			return -EINVAL;
+		}
+
+		/* Validate start_column string offset */
+		if ((u64)aie_p.m_start_column + num_bytes_to_copy > remaining) {
+			DRM_ERROR("zocl: aieresbin start_column offset out of xclbin bounds\n");
+			return -EINVAL;
+		}
+
+		/* Validate num_columns string offset */
+		if ((u64)aie_p.m_num_columns + num_bytes_to_copy > remaining) {
+			DRM_ERROR("zocl: aieresbin num_columns offset out of xclbin bounds\n");
+			return -EINVAL;
+		}
+
+		if (aie_p.m_image_size == 0) {
+			DRM_ERROR("zocl: aieresbin image size is zero\n");
+			return -EINVAL;
+		}
 
 		void *data_portion = vmalloc(aie_p.m_image_size);
 		if (!data_portion)
 			return -ENOMEM;
 
-		err = copy_from_user(data_portion, (char *)xclbin + header->m_sectionOffset + aie_p.m_image_offset, aie_p.m_image_size);
+		err = copy_from_user(data_portion, (char *)xclbin + sec_off + aie_p.m_image_offset, aie_p.m_image_size);
 		if (err) {
 			vfree(data_portion);
 			return err;
 		}
-		
+
                 //copy one byte which represents start_column
-                err = copy_from_user(scol, (char *)xclbin + header->m_sectionOffset + aie_p.m_start_column, num_bytes_to_copy);
+                err = copy_from_user(scol, (char *)xclbin + sec_off + aie_p.m_start_column, num_bytes_to_copy);
 		if (err) {
 			vfree(data_portion);
 			return err;
 		}
 
                 //copy one byte which represents num_columns
-                err = copy_from_user(ncol, (char *)xclbin + header->m_sectionOffset + aie_p.m_num_columns, num_bytes_to_copy);
+                err = copy_from_user(ncol, (char *)xclbin + sec_off + aie_p.m_num_columns, num_bytes_to_copy);
 		if (err) {
 			vfree(data_portion);
 			return err;
@@ -492,9 +527,9 @@ zocl_read_aieresbin(struct drm_zocl_slot *slot, struct axlf* axlf, char __user *
 		if (kstrtol(scol, 10, &start_col) || kstrtol(ncol, 10, &num_col))
                 {
 			vfree(data_portion);
-			return -EINVAL; 
+			return -EINVAL;
                 }
-		//Call the AIE Driver API 
+		//Call the AIE Driver API
 	        if (slot->aie->partition_id == FULL_ARRAY_PARTITION_ID)
 		    ret = aie_part_rscmgr_set_static_range(slot->aie->aie_dev, start_col, num_col, data_portion);
 		else
