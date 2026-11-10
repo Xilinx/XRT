@@ -613,16 +613,26 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
  * ERT_START_KEY_VAL.
  * The only difference is that ERT_EXEC_WRITE skip 6 words in the payload.
  */
-static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
+static int convert_exec_write2key_val(struct ert_start_kernel_cmd *ecmd)
 {
-	/* end index of payload = count - (1 + 6) */
-	int end = ecmd->count - 7;
+	/* Minimum count: 1 (cu_mask) + extra_cu_masks + 6 (skipped words).
+	 * Without this check, count - 6 underflows the 11-bit bitfield and
+	 * causes a heap buffer overflow in the downstream memcpy.
+	 */
+	int end;
 	int i;
+
+	if (ecmd->count < 7 + ecmd->extra_cu_masks)
+		return -EINVAL;
+
+	/* end index of payload = count - (1 + 6) */
+	end = ecmd->count - 7;
 
 	/* Shift payload 6 words up */
 	for (i = ecmd->extra_cu_masks; i < end; i++)
 		ecmd->data[i] = ecmd->data[i + 6];
 	ecmd->count -= 6;
+	return 0;
 }
 
 static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd,
@@ -700,7 +710,9 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		if (!xocl_ps_sched_on(xdev) && ecmd->opcode == ERT_EXEC_WRITE) {
 			/* PS ERT is not sync with host. Have to skip 6 data */
 			userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
-			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+			ret = convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+			if (ret)
+				break;
 		}
 		print_ecmd_info(ecmd);
 		kecmd = (struct ert_start_kernel_cmd *)xcmd->execbuf;
@@ -849,8 +861,11 @@ int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_EXEC_WRITE:
 		userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
 		/* PS ERT is not sync with host. Have to skip 6 data */
-		if (!xocl_ps_sched_on(xdev))
-			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+		if (!xocl_ps_sched_on(xdev)) {
+			ret = convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+			if (ret)
+				goto out1;
+		}
 		ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		if (ret)
 			goto out1;
