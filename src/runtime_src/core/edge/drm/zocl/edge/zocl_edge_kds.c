@@ -521,6 +521,12 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 
 	//print_ecmd_info(ecmd);
 
+	if (!ert_valid_opcode(ecmd)) {
+		DRM_ERROR("opcode(%d) is invalid\n", ecmd->opcode);
+		ret = -EINVAL;
+		goto out1;
+	}
+
 	switch(ecmd->opcode) {
 	case ERT_CONFIGURE:
 		xcmd->status = KDS_COMPLETED;
