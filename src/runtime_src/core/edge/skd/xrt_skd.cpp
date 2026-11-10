@@ -17,6 +17,9 @@
 
 #include "xrt_skd.h"
 
+#include <algorithm>
+#include <fcntl.h>
+
 using ms_t = std::chrono::microseconds;
 using clockc = std::chrono::high_resolution_clock;
 
@@ -363,16 +366,26 @@ namespace xrt {
       }
 
       const std::filesystem::path path(SOFT_KERNEL_FILE_PATH);
+      std::error_code ec;
       xrt_core::message::send(severity_level::debug, "SKD", path.string());
 
-      std::filesystem::create_directories(path);
-
-      // Check if file already exists and is the same size
-      if (std::filesystem::exists(m_sk_path) && (std::filesystem::file_size(m_sk_path) == size)) {
-        return 0;
+      std::filesystem::create_directories(path, ec);
+      if (ec) {
+        const auto errMsg = boost::format("Cannot create soft kernel directory: %s") % path.string();
+        xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+        return -EPERM;
+      }
+      std::filesystem::permissions(path, std::filesystem::perms::owner_all,
+                                   std::filesystem::perm_options::replace, ec);
+      if (ec) {
+        const auto errMsg = boost::format("Cannot restrict permissions on %s") % path.string();
+        xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+        return -EPERM;
       }
 
-      // Create / overwrite file if either file do not exist or is not the same size
+      // Always write a new inode. A same-size file left by an older daemon may
+      // already contain injected bytes, and chmod does not revoke a descriptor
+      // opened while the file was writable.
       auto buf = reinterpret_cast<char *>(bohdl->map(xrt_core::buffer_handle::map_type::read));
       if (!buf) {
         const auto errMsg = "Cannot map soft kernel BO!";
@@ -380,29 +393,54 @@ namespace xrt {
         return -errno;
       }
 
-      std::ofstream fptr(m_sk_path.string(), std::ios::out | std::ios::binary);
-      if (!fptr.is_open()) {
-        const auto errMsg = boost::format("Cannot create file: %s") % m_sk_path.string();
+      const auto tmp = m_sk_path.string() + ".tmp." + std::to_string(::getpid()) + "." +
+          std::to_string(clockc::now().time_since_epoch().count());
+      const int fd = ::open(tmp.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
+                             S_IRUSR | S_IWUSR);
+      if (fd < 0) {
+        const int err = errno;
+        const auto errMsg = boost::format("Cannot create file: %s") % tmp;
         xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
         bohdl->unmap(buf);
-        return -EPERM;
+        return -err;
       }
-	  
-      // copy the soft kernel to file
-      fptr.write(buf, size);
-      if (fptr.fail()) {
-        const auto errMsg = boost::format("Fail to write to file ") % m_sk_path.string();
-        xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-        fptr.close();
+
+      char* src = buf;
+      uint64_t left = size;
+      while (left) {
+        const size_t chunk = static_cast<size_t>(std::min<uint64_t>(left, 1u << 20));
+        const ssize_t n = ::write(fd, src, chunk);
+        if (n <= 0) {
+          if (n < 0 && errno == EINTR)
+            continue;
+          const int err = n < 0 ? errno : EIO;
+          ::close(fd);
+          ::unlink(tmp.c_str());
+          bohdl->unmap(buf);
+          return -err;
+        }
+        src += n;
+        left -= static_cast<uint64_t>(n);
+      }
+      const int sync_err = ::fsync(fd) == 0 ? 0 : errno;
+      const int close_err = ::close(fd) == 0 ? 0 : errno;
+      if (sync_err || close_err) {
+        ::unlink(tmp.c_str());
         bohdl->unmap(buf);
-        return -EIO;
+        return sync_err ? -sync_err : -close_err;
       }
+      if (::rename(tmp.c_str(), m_sk_path.c_str()) != 0) {
+        const int err = errno;
+        ::unlink(tmp.c_str());
+        bohdl->unmap(buf);
+        const auto errMsg = boost::format("Cannot replace file: %s") % m_sk_path.string();
+        xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+        return -err;
+      }
+
       const auto msg = boost::format("File created at %s") % m_sk_path.string();
       xrt_core::message::send(severity_level::info, "SKD", msg.str());
-      
-      fptr.close();
       bohdl->unmap(buf);
-
       return 0;
   }
 

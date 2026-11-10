@@ -305,6 +305,49 @@ void XPdi_Export(const XPdiLoad* PdiLoad, const char* pdi_file_out)
   XCdo_Print("the new transform file %s created!\n ", pdi_file);
 }
 
+/*
+ * Validate the PDI and first CDO partition lengths against the bytes
+ * actually present. This must run before XPdi_Load() or any other
+ * header read: the loader only verifies the headers when
+ * _ENABLE_FW_PDI_HEADER_CHECK_ is defined (DEBUG builds).
+ *
+ * Returns 0 if the input is safe to load, -1 otherwise.
+ */
+int XPdi_Validate_Input(const XPdiLoad* PdiLoad)
+{
+  const uint32_t hdr_len = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
+        sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
+  const uint32_t cdo_hdr_bytes = XCDO_CDO_HDR_LEN * sizeof(uint32_t);
+
+  if (!PdiLoad || !PdiLoad->PdiPtr ||
+      PdiLoad->PdiLen < hdr_len + cdo_hdr_bytes) {
+    XCdo_PError("Invalid PDI, input is shorter than the CDO header.\n\r");
+    return -1;
+  }
+
+  /* At least the CDO header is present, so cdo_len >= cdo_hdr_bytes. */
+  const uint32_t cdo_len = PdiLoad->PdiLen - hdr_len;
+  uint32_t cmd_len = 0;
+
+  if (XPdi_Header_Transform_Type(PdiLoad, &cmd_len) == NOTRANFORM) {
+    /* Raw PDI: the CDO header word count must fit in the CDO bytes. */
+    const uint32_t *cdo = (const uint32_t *)((const char *)PdiLoad->PdiPtr + hdr_len);
+    const uint32_t buf_len = cdo[3];
+    if (buf_len > cdo_len / sizeof(*cdo) - XCDO_CDO_HDR_LEN) {
+      XCdo_PError("Invalid PDI, invalid cdo length %u, Buflen %u.\n\r",
+                  cdo_len, buf_len);
+      return -1;
+    }
+  } else if (cmd_len > cdo_len - cdo_hdr_bytes) {
+    /* Already transformed: the command zone must fit in the CDO bytes. */
+    XCdo_PError("Invalid PDI, command zone length %u exceeds cdo length %u.\n\r",
+                cmd_len, cdo_len);
+    return -1;
+  }
+
+  return 0;
+}
+
 enum cdoFormat {
   NUMOFWORDS,
   IDWRD,
@@ -359,26 +402,55 @@ void XPdi_CdoHeader_String(uint32_t* header) {
  *   CDO header structure can be seen in cdoHeader[]
  *
 ********************************************************************************/
-void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
+int XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 {
   uint32_t BufLen = 0/*, Ret*/;
   /*const*/ uint32_t *Buf = NULL;
+  uint32_t HdrLen = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
+        sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
+  const uint32_t cdo_hdr_bytes = XCDO_CDO_HDR_LEN * sizeof(uint32_t);
+  /* Each input word can expand to two output words. */
+  const size_t out_bytes_per_word = 2u * sizeof(uint32_t);
+
+  /* Validate before any header read. XPdi_Header_Transform_Type()
+   * dereferences PdiLoad->PdiPtr at the partition-header offset. */
+  if (XPdi_Validate_Input(PdiLoad) != 0) {
+    XCdo_PError("Failed to transform PDI, invalid input.\n\r");
+    return -1;
+  }
+
   //Check whether the PDI already get transformed or not.
   if (XPdi_Header_Transform_Type(PdiLoad, NULL) != NOTRANFORM) {
     printf("PDI is in tranform format can not compress again, do normal pdi load.");
     XPdi_Load(PdiLoad);
-    return;
+    return 0;
   }
 
   XCdo_Print("\n\nStart to transform the pdi !\n");
+
   XCdoLoad CdoLoad;
   XPdi_GetFirstPrtn(PdiLoad, &CdoLoad);
   ParseBufFromCDO(&Buf, &BufLen, &CdoLoad);
 
+  /* XPdi_Validate_Input() already checked BufLen against the bytes present.
+   * Reject a value whose output (headers plus the expanded payload) would
+   * wrap size_t. The cast keeps the compare from being tautological on
+   * 64-bit, where uint32_t cannot exceed SIZE_MAX. */
+  const size_t header_bytes = (size_t)HdrLen + cdo_hdr_bytes;
+  if ((size_t)BufLen > (SIZE_MAX - header_bytes) / out_bytes_per_word) {
+    XCdo_PError("Failed to transform PDI, invalid cdo length %u, Buflen %u.\n\r",
+                CdoLoad.CdoLen, BufLen);
+    return -1;
+  }
+
+  const size_t alloc_len = header_bytes + (size_t)BufLen * out_bytes_per_word;
+
   //Prepare the new PDI memory
-  char* pdi_buf = (char *)malloc((size_t)BufLen * 2 * 4);
-  uint32_t HdrLen = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
-        sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
+  char* pdi_buf = (char *)malloc(alloc_len);
+  if (!pdi_buf) {
+    XCdo_PError("Failed to allocate transformed PDI buffer.\n\r");
+    return -1;
+  }
 
   //Copy the PDI header
   XPdiLoad newPdiLoad;
@@ -402,7 +474,7 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
   if (Cmd_len == 0) {
     XCdo_PError("Failed to parse PDI command zone - buffer overflow or empty PDI\n");
     free(pdi_buf);
-    return;
+    return -1;
   }
 
   //Change the pdi header to mark that this is a tranform/compress pdi
@@ -415,7 +487,7 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
   if (TotalCdoLen == 0) {
     XCdo_PError("Failed to parse PDI data zone - buffer overflow or malformed PDI\n");
     free(pdi_buf);
-    return;
+    return -1;
   }
 
   //Update the pdi length.
@@ -435,6 +507,6 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 
   //Release the PDI memory
   free(pdi_buf);
-  return;
+  return 0;
 }
 #endif

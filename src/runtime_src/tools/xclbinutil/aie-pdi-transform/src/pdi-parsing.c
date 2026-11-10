@@ -162,6 +162,14 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
   }
   PdiLoad.BasePtr = 0;
 
+  // XPdi_Load() trusts the CDO length fields unless DEBUG header checks are
+  // enabled, so validate them against the bytes read before the first load.
+  if (XPdi_Validate_Input(&PdiLoad) != 0) {
+    printf("Invalid PDI file\n");
+    free(data);
+    return -1;
+  }
+
   XCdo_Print("\n--------------------------------------------------\n");
   XCdo_Print("Pdi parsing... file = %s; len = %u\n", pdi_file, PdiLoad.PdiLen);
   #define MAX_DEBUG_PDI_LEN (1024*500)
@@ -177,6 +185,13 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
   */
   char *DebugPdi = (char*)malloc((size_t)MAX_DEBUG_PDI_LEN);
   char *DebugTransformPdi = (char*)malloc((size_t)MAX_DEBUG_PDI_LEN);
+  if (!DebugPdi || !DebugTransformPdi) {
+    printf("Failed to allocate PDI debug buffers\n");
+    free(DebugPdi);
+    free(DebugTransformPdi);
+    free(data);
+    return -1;
+  }
   memset(DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   memset(DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   
@@ -186,7 +201,14 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
   XCdo_Print("Load original pdi done\n");
   
   SetDebugPdi((uint32_t *)DebugTransformPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
-  XPdi_Compress_Transform(&PdiLoad, pdi_file_out);
+  if (XPdi_Compress_Transform(&PdiLoad, pdi_file_out) != 0) {
+    // Nothing was transformed; do not report success or compare the buffers.
+    printf("PDI transformation failed\n");
+    free(DebugPdi);
+    free(DebugTransformPdi);
+    free(data);
+    return -1;
+  }
 
   //Verify the data
   for (int i = 0; i < MAX_DEBUG_PDI_LEN; i++) {

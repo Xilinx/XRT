@@ -104,14 +104,28 @@ static int zocl_cu_ctx_to_info(struct drm_zocl_dev *zdev, struct drm_zocl_open_c
 {
     uint32_t slot_hndl = kds_hw_ctx->slot_idx;
     struct kds_sched *kds = &zdev->kds;
-    char *kname_p = drm_cu_ctx->cu_name;
     struct xrt_cu *xcu = NULL;
+    char name[CU_NAME_MAX_LEN + 1];
+    char *kname_p = name;
+    char *tok;
     char iname[CU_NAME_MAX_LEN];
     char kname[CU_NAME_MAX_LEN];
     int i = 0;
 
-    strcpy(kname, strsep(&kname_p, ":"));
-    strcpy(iname, strsep(&kname_p, ":"));
+    /*
+     * cu_name comes from the ioctl and is not guaranteed to contain a NUL
+     * or a ':'. Copy it into a terminated buffer and reject a missing or
+     * oversized kernel/instance token instead of copying it unbounded.
+     */
+    memcpy(name, drm_cu_ctx->cu_name, CU_NAME_MAX_LEN);
+    name[CU_NAME_MAX_LEN] = '\0';
+
+    tok = strsep(&kname_p, ":");
+    if (!tok || strscpy(kname, tok, sizeof(kname)) < 0)
+        return -EINVAL;
+    tok = strsep(&kname_p, ":");
+    if (!tok || strscpy(iname, tok, sizeof(iname)) < 0)
+        return -EINVAL;
 
     /* Retrive the CU index from the given slot */
     for (i = 0; i < MAX_CUS; i++) {
