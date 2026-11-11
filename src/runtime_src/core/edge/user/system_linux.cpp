@@ -27,7 +27,7 @@
 #include <iostream>
 #include <mutex>
 
-#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
+#if defined(__aarch64__) || defined(__arm__) || defined(__mips__) || defined(__riscv)
   #define MACHINE_NODE_PATH "/proc/device-tree/model"
 #elif defined(__PPC64__)
   #define MACHINE_NODE_PATH "/proc/device-tree/model-name"
