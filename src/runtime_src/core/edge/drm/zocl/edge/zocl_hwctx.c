@@ -451,6 +451,24 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
     ecmd = (struct ert_packet *)zocl_bo->cma_base.vaddr;
     ecmd->state = ERT_CMD_STATE_NEW;
 
+    /* Reject if the GEM BO is too small to hold all words claimed by
+     * ecmd->count, or if the opcode/count fails structural validation.
+     * Without this, the *_ecmd2xcmd helpers read beyond the BO's
+     * physical allocation (CWE-125 / heap-buffer-overflow).
+     */
+    if (gem_obj->size < get_ert_packet_size_bytes(ecmd)) {
+        DRM_ERROR("%s: Exec buffer too small for claimed payload (count=%u)\n",
+                  __func__, ecmd->count);
+        ret = -EINVAL;
+        goto out;
+    }
+    if (!ert_valid_opcode(ecmd)) {
+        DRM_ERROR("%s: Invalid opcode or count in exec buffer (opcode=%u, count=%u)\n",
+                  __func__, ecmd->opcode, ecmd->count);
+        ret = -EINVAL;
+        goto out;
+    }
+
     xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
     if (!xcmd) {
         DRM_ERROR("%s: Failed to alloc xcmd", __func__);
