@@ -84,6 +84,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	void *kernels = NULL;
 	void *aie_res = 0;
 	int ret = 0;
+	int err = 0;
 	struct drm_zocl_slot *slot = NULL;
 	uint32_t flags = 0;
 	bool dt_overlay = false;
@@ -188,7 +189,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * such a section.
 	 */
 
-	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	err = zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	if (err < 0) {
+		ret = err;
+		goto done;
+	}
 
 	/* 1. We locked slot->slot_xclbin_lock so that no new contexts
 	 * can be opened and/or closed

@@ -191,7 +191,13 @@ zocl_offsetof_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
-/* zocl_read_sect will alloc memory for sect, callers will call vfree */
+/*
+ * zocl_read_sect will alloc memory for sect, callers will call vfree.
+ *
+ * @return	section size on success, 0 if the section is absent, empty,
+ *		or could not be copied (*sect is NULL), or a negative errno
+ *		if the size is too large or the allocation failed (*sect is NULL)
+ */
 int
 zocl_read_sect(enum axlf_section_kind kind, void *sect,
 		struct axlf *axlf_full, char __user *xclbin_ptr)
@@ -211,17 +217,32 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 		    xrt_xclbin_kind_to_string(kind));
 	}
 
+	if (size == 0)
+		return 0;
+
+	if (size > INT_MAX) {
+		DRM_WARN("section %s size %llu is too large",
+		    xrt_xclbin_kind_to_string(kind), size);
+		return -EINVAL;
+	}
+
 	*sect_tmp = vmalloc(size);
+	if (!*sect_tmp) {
+		DRM_WARN("vmalloc for section %s size %llu failed",
+		    xrt_xclbin_kind_to_string(kind), size);
+		return -ENOMEM;
+	}
+
 	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
 	if (err) {
 		DRM_WARN("copy_from_user for section %s err: %d ",
 		    xrt_xclbin_kind_to_string(kind), err);
 		vfree(*sect_tmp);
-		sect = NULL;
+		*sect_tmp = NULL;
 		return 0;
 	}
 
-	return size;
+	return (int)size;
 }
 
 /*
@@ -710,13 +731,13 @@ int
 zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin,
 	      enum axlf_section_kind kind, struct drm_zocl_slot *slot)
 {
-	uint64_t size = 0;
+	int size = 0;
 	char *section_buffer = NULL;
 	int ret = 0;
 
 	size = zocl_read_sect(kind, &section_buffer, axlf, xclbin);
-	if (size == 0)
-		return 0;
+	if (size <= 0)
+		return size;
 
 	switch (kind) {
 	case BITSTREAM:
@@ -732,7 +753,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin
 		char *bsection_buffer = NULL;
 		char *vaddr = NULL;
 		struct drm_zocl_bo *bo;
-		uint64_t bsize = 0;
+		int bsize = 0;
 		uint64_t flags = 0;
 		if (slot->partial_overlay_id != -1 &&
 			axlf->m_header.m_mode == XCLBIN_PR) {
@@ -757,8 +778,8 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin
 
 		bsize = zocl_read_sect(BITSTREAM, &bsection_buffer, axlf,
 				       xclbin);
-		if (bsize == 0) {
-			ret = 0;
+		if (bsize <= 0) {
+			ret = bsize;
 			break;
 		}
 
@@ -828,7 +849,7 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	struct debug_ip_layout  *debug_ip = NULL;
 	struct connectivity     *connectivity = NULL;
 	struct aie_metadata      aie_data = { 0 };
-	uint64_t		 size = 0;
+	int			 size = 0;
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
@@ -837,7 +858,7 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		if (size != 0)
 			return size;
 
-	} else if (sizeof_section(ip, m_ip_data) != size)
+	} else if (sizeof_section(ip, m_ip_data) != (size_t)size)
 		return -EINVAL;
 
 	/* Populating DEBUG_IP_LAYOUT sections */
@@ -846,7 +867,7 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		if (size != 0)
 			return size;
 
-	} else if (sizeof_section(debug_ip, m_debug_ip_data) != size)
+	} else if (sizeof_section(debug_ip, m_debug_ip_data) != (size_t)size)
 		return -EINVAL;
 
 	/* Populating AIE_METADATA sections */
@@ -863,7 +884,7 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		if (size != 0)
 			return size;
 
-	} else if (sizeof_section(connectivity, m_connection) != size)
+	} else if (sizeof_section(connectivity, m_connection) != (size_t)size)
 		return -EINVAL;
 
 	/* Populating MEM_TOPOLOGY sections */
@@ -872,7 +893,7 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		if (size != 0)
 			return size;
 
-	} else if (sizeof_section(topology, m_mem_data) != size)
+	} else if (sizeof_section(topology, m_mem_data) != (size_t)size)
 		return -EINVAL;
 
 	write_lock(&zdev->attr_rwlock);
