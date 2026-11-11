@@ -497,9 +497,6 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 	kfree(xcmd->execbuf);
 
-	if (xcmd->cu_idx >= 0)
-		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
-
 	if (xcmd->inkern_cb) {
 		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
 		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
@@ -508,6 +505,13 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 		atomic_inc(&client->event);
 		wake_up_interruptible(&client->waitq);
 	}
+
+	/* Increment c_cnt last: the teardown thread polls this counter as its
+	 * "all done" signal and may free client once it matches s_cnt.
+	 * All client dereferences above must complete before that can happen.
+	 */
+	if (xcmd->cu_idx >= 0)
+		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
 }
 
 static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
@@ -524,8 +528,6 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
 		ert_write_return_code(scmd, xcmd->rcode);
-
-		client_stat_inc(client, hw_ctx, scu_c_cnt[xcmd->cu_idx]);
 	}
 
 	ecmd->state = kds_to_ert(status);
@@ -547,9 +549,6 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 	kfree(xcmd->execbuf);
 
-	if (xcmd->opcode == OP_START)
-		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
-
 	if (xcmd->inkern_cb) {
 		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
 		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
@@ -558,6 +557,15 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 		atomic_inc(&client->event);
 		wake_up_interruptible(&client->waitq);
 	}
+
+	/* Increment completion counters last: the teardown thread polls these
+	 * as its "all done" signal and may free client once they match s_cnt.
+	 * All client dereferences above must complete before that can happen.
+	 */
+	if (xcmd->opcode == OP_START)
+		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
+	else if (xcmd->opcode == OP_START_SK)
+		client_stat_inc(client, hw_ctx, scu_c_cnt[xcmd->cu_idx]);
 }
 
 static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
