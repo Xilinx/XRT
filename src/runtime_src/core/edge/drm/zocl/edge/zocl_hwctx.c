@@ -427,6 +427,7 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
     struct kds_client *client = filp->driver_priv;
     struct drm_zocl_bo *zocl_bo = NULL;
     struct ert_packet *ecmd = NULL;
+    struct ert_packet *kecmd = NULL;
     struct kds_command *xcmd = NULL;
     int ret = 0;
 
@@ -450,26 +451,20 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
 
     ecmd = (struct ert_packet *)zocl_bo->cma_base.vaddr;
     ecmd->state = ERT_CMD_STATE_NEW;
-
-    /* Reject if the GEM BO is too small to hold all words claimed by
-     * ecmd->count, or if the opcode/count fails structural validation.
-     * Without this, the *_ecmd2xcmd helpers read beyond the BO's
-     * physical allocation (CWE-125 / heap-buffer-overflow).
-     */
-    if (gem_obj->size < get_ert_packet_size_bytes(ecmd)) {
-        DRM_ERROR("%s: Exec buffer too small for claimed payload (count=%u)\n",
-                  __func__, ecmd->count);
-        ret = -EINVAL;
+    kecmd = zocl_execbuf_copy(gem_obj, ecmd);
+    if (IS_ERR(kecmd)) {
+        ret = PTR_ERR(kecmd);
+        kecmd = NULL;
         goto out;
     }
-    if (!ert_valid_opcode(ecmd)) {
-        DRM_ERROR("%s: Invalid opcode or count in exec buffer (opcode=%u, count=%u)\n",
-                  __func__, ecmd->opcode, ecmd->count);
+
+    if (!ert_valid_opcode(kecmd)) {
+        DRM_ERROR("%s: opcode(%d) is invalid", __func__, kecmd->opcode);
         ret = -EINVAL;
         goto out;
     }
 
-    xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
+    xcmd = kds_alloc_command(client, kecmd->count * sizeof(u32));
     if (!xcmd) {
         DRM_ERROR("%s: Failed to alloc xcmd", __func__);
         ret = -ENOMEM;
@@ -483,19 +478,13 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
     xcmd->exec_bo_handle = drm_hw_ctx_execbuf->exec_bo_handle;
     xcmd->hw_ctx_id = drm_hw_ctx_execbuf->hw_ctx_id;
 
-    if (!ert_valid_opcode(ecmd)) {
-        DRM_ERROR("%s: opcode(%d) is invalid", __func__, ecmd->opcode);
-        ret = -EINVAL;
-        goto out1;
-    }
-
-    switch (ecmd->opcode) {
+    switch (kecmd->opcode) {
         case ERT_CONFIGURE:
             xcmd->status = KDS_COMPLETED;
             xcmd->cb.notify_host(xcmd, xcmd->status);
             goto out1;
         case ERT_START_CU:
-            ret = start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_krnl_ecmd2xcmd(to_start_krnl_pkg(kecmd), xcmd);
             if (ret)
                 goto out1;
             break;
@@ -507,28 +496,38 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
 		    __attribute__ ((__fallthrough__));
 #endif
         case ERT_START_KEY_VAL:
-            ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(kecmd), xcmd);
             if (ret)
                 goto out1;
             break;
         case ERT_START_FA:
-            ret = start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            ret = start_fa_ecmd2xcmd(to_start_krnl_pkg(kecmd), xcmd);
             if (ret)
                 goto out1;
             break;
         case ERT_START_COPYBO:
-            ret = copybo_hwctx_ecmd2xcmd(zdev, filp, to_copybo_pkg(ecmd), xcmd);
+            ret = copybo_hwctx_ecmd2xcmd(zdev, filp, to_copybo_pkg(kecmd), xcmd);
             if (ret)
                 goto out1;
             goto out;
         case ERT_ABORT:
-            abort_ecmd2xcmd(to_abort_pkg(ecmd), xcmd);
+            /* abort_ecmd2xcmd() stores the target handle in xcmd->info */
+            if (kecmd->count < 1) {
+                DRM_ERROR("%s: Abort command has no payload", __func__);
+                ret = -EINVAL;
+                goto out1;
+            }
+            abort_ecmd2xcmd(to_abort_pkg(kecmd), xcmd);
             break;
         default:
             DRM_ERROR("%s: Unsupport command", __func__);
             ret = -EINVAL;
             goto out1;
     }
+
+    /* The translators set type and execbuf on the copy */
+    ecmd->type = kecmd->type;
+    xcmd->execbuf = (u32 *)ecmd;
 
     if (check_for_open_hw_cu_ctx(zdev, client, xcmd) < 0) {
         DRM_ERROR("The client has no opening context\n");
@@ -542,6 +541,7 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
 out1:
     xcmd->cb.free(xcmd);
 out:
+    kfree(kecmd);
     if (ret < 0)
         ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
     return ret;
