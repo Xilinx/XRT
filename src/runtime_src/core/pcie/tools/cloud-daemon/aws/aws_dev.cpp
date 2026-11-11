@@ -562,8 +562,8 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
 	uint32_t clock_mains[4] = {};
 
         if(clockSection) {
-		constexpr int32_t MAX_CLOCKS = static_cast<int32_t>(sizeof(clock_mains) / sizeof(clock_mains[0]));
-		int32_t n = std::min(static_cast<int32_t>(clockSection->m_count), MAX_CLOCKS);
+		constexpr int32_t max_clocks = static_cast<int32_t>(sizeof(clock_mains) / sizeof(clock_mains[0]));
+		int32_t n = std::min(static_cast<int32_t>(clockSection->m_count), max_clocks);
 		for(int32_t i = 0; i < n; i++) {
                         const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
                         clock_mains[i] = clk->m_freq_Mhz;
