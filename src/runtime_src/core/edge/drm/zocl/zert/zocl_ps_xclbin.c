@@ -22,8 +22,14 @@
 #include "xclbin.h"
 
 
-/* Read XCLBIN sections in kernel space */
-/* zocl_read_sect will alloc memory for sect, callers will call vfree */
+/*
+ * Read XCLBIN sections in kernel space
+ * zocl_read_sect_kernel will alloc memory for sect, callers will call vfree
+ *
+ * @return	section size on success, 0 if the section is absent or empty,
+ *		or a negative errno if the size is too large or the allocation
+ *		failed (*sect is NULL)
+ */
 static int
 zocl_read_sect_kernel(enum axlf_section_kind kind, void *sect,
                       struct axlf *axlf_full, char *xclbin_ptr)
@@ -43,10 +49,25 @@ zocl_read_sect_kernel(enum axlf_section_kind kind, void *sect,
                     xrt_xclbin_kind_to_string(kind));
         }
 
+        if (size == 0)
+                return 0;
+
+        if (size > INT_MAX) {
+                DRM_WARN("section %s size %llu is too large",
+                    xrt_xclbin_kind_to_string(kind), size);
+                return -EINVAL;
+        }
+
         *sect_tmp = vmalloc(size);
+        if (!*sect_tmp) {
+                DRM_WARN("vmalloc for section %s size %llu failed",
+                    xrt_xclbin_kind_to_string(kind), size);
+                return -ENOMEM;
+        }
+
         memcpy(*sect_tmp, &xclbin_ptr[offset], size);
 
-        return size;
+        return (int)size;
 }
 
 static int
@@ -305,7 +326,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	struct device_node *aienode = NULL;
 	uint8_t hw_gen = 1;
 	struct aie_metadata      aie_data = { 0 };
-	uint64_t size = 0;
+	int err = 0;
 
         if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
                 DRM_INFO("Invalid xclbin magic string");
@@ -334,7 +355,11 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
 	 * such a section.
 	 */
-	zocl_read_sect_kernel(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	err = zocl_read_sect_kernel(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	if (err < 0) {
+		ret = err;
+		goto out;
+	}
 
 	aienode = of_find_node_by_name(NULL, "ai_engine");
 	if (aienode == NULL)
@@ -353,8 +378,12 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	 */
 	count = xrt_xclbin_get_section_num(axlf, AIE_METADATA);
 	if(count > 0) {
-		size = zocl_read_sect_kernel(AIE_METADATA, &aie_data.data, axlf, xclbin);
-		aie_data.size = size;
+		err = zocl_read_sect_kernel(AIE_METADATA, &aie_data.data, axlf, xclbin);
+		if (err < 0) {
+			ret = err;
+			goto out;
+		}
+		aie_data.size = err;
 	}
 	slot->aie_data = aie_data;
 
