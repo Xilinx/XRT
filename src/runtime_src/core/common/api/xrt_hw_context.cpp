@@ -866,15 +866,6 @@ get_elf_flow(const xrt::hw_context& ctx)
   return ctx.get_handle()->get_elf_flow();
 }
 
-uint32_t
-get_slotidx(const xrt::hw_context& ctx)
-{
-  auto* hdl = ctx.get_handle()->get_hwctx_handle();
-  if (!hdl)
-    throw std::runtime_error("Hardware context handle is not created");
-  return hdl->get_slotidx();
-}
-
 const xrt::bo&
 get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col)
 {
