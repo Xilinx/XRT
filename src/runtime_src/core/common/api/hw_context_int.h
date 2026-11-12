@@ -74,6 +74,12 @@ XRT_CORE_COMMON_EXPORT
 bool
 get_elf_flow(const xrt::hw_context& ctx);
 
+// Slot index of this context. xrt-smi reports the same value as context_id.
+// Throws if the underlying hardware context has not been created.
+XRT_CORE_COMMON_EXPORT
+uint32_t
+get_slotidx(const xrt::hw_context& ctx);
+
 // Get the scratchpad memory buffer for a given hardware context
 const xrt::bo&
 get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col);
