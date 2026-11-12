@@ -471,18 +471,12 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
 
     xcmd->cb.free = kds_free_command;
     xcmd->cb.notify_host = notify_hwctx_execbuf;
-    xcmd->execbuf = (u32 *)ecmd;
+    xcmd->execbuf = (u32 *)kecmd;
     xcmd->gem_obj = gem_obj;
     xcmd->exec_bo_handle = drm_hw_ctx_execbuf->exec_bo_handle;
     xcmd->hw_ctx_id = drm_hw_ctx_execbuf->hw_ctx_id;
 
-    if (!ert_valid_opcode(ecmd)) {
-        DRM_ERROR("%s: Invalid ERT opcode(%d) or malformed count field", __func__, ecmd->opcode);
-        ret = -EINVAL;
-        goto out1;
-    }
-
-    switch (ecmd->opcode) {
+    switch (kecmd->opcode) {
         case ERT_CONFIGURE:
             xcmd->status = KDS_COMPLETED;
             xcmd->cb.notify_host(xcmd, xcmd->status);
@@ -530,8 +524,7 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
     }
 
     /* The translators set type and execbuf on the copy */
-    ecmd->type = kecmd->type;
-    xcmd->execbuf = (u32 *)ecmd;
+    xcmd->execbuf = (u32 *)kecmd;
 
     if (check_for_open_hw_cu_ctx(zdev, client, xcmd) < 0) {
         DRM_ERROR("The client has no opening context\n");
