@@ -1638,7 +1638,7 @@ static inline int xocl_get_pl_slot(xdev_handle_t xdev_hdl, uint32_t *slot_id)
 	 * every call, eventually blocking write-lock acquisition (xbutil
 	 * program) in wait_event_interruptible. (SWSPLAT-11920)
 	 */
-	XOCL_PUT_XCLBIN_ID(xdev_hdl, DEFAULT_PL_PS_SLOT);
+	XOCL_PUT_XCLBIN_ID(xdev_hdl, DEFAULT_PL_PS_SLOT); // NOLINT(cppcoreguidelines-pro-type-cstyle-cast)
 
 	/* As of now we have single PL/PS slot and hard coded to slot 0 */
 	*slot_id = DEFAULT_PL_PS_SLOT;
