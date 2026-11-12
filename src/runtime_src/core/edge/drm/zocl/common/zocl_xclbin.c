@@ -858,23 +858,27 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		if (size != 0)
 			return size;
 
-	} else if (sizeof_section(ip, m_ip_data) != (size_t)size)
-		return -EINVAL;
+	} else if (sizeof_section(ip, m_ip_data) != (size_t)size) {
+		size = -EINVAL;
+		goto err_ip;
+	}
 
 	/* Populating DEBUG_IP_LAYOUT sections */
 	size = zocl_read_sect(DEBUG_IP_LAYOUT, &debug_ip, axlf, xclbin);
 	if (size <= 0) {
 		if (size != 0)
-			return size;
+			goto err_ip;
 
-	} else if (sizeof_section(debug_ip, m_debug_ip_data) != (size_t)size)
-		return -EINVAL;
+	} else if (sizeof_section(debug_ip, m_debug_ip_data) != (size_t)size) {
+		size = -EINVAL;
+		goto err_debug_ip;
+	}
 
 	/* Populating AIE_METADATA sections */
 	size = zocl_read_sect(AIE_METADATA, &aie_data.data, axlf,
 			     xclbin);
 	if (size < 0)
-		return size;
+		goto err_debug_ip;
 
 	aie_data.size = size;
 
@@ -882,19 +886,23 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	size = zocl_read_sect(CONNECTIVITY, &connectivity, axlf, xclbin);
 	if (size <= 0) {
 		if (size != 0)
-			return size;
+			goto err_aie;
 
-	} else if (sizeof_section(connectivity, m_connection) != (size_t)size)
-		return -EINVAL;
+	} else if (sizeof_section(connectivity, m_connection) != (size_t)size) {
+		size = -EINVAL;
+		goto err_conn;
+	}
 
 	/* Populating MEM_TOPOLOGY sections */
 	size = zocl_read_sect(MEM_TOPOLOGY, &topology, axlf, xclbin);
 	if (size <= 0) {
 		if (size != 0)
-			return size;
+			goto err_conn;
 
-	} else if (sizeof_section(topology, m_mem_data) != (size_t)size)
-		return -EINVAL;
+	} else if (sizeof_section(topology, m_mem_data) != (size_t)size) {
+		size = -EINVAL;
+		goto err_topo;
+	}
 
 	write_lock(&zdev->attr_rwlock);
 	slot->ip = ip;
@@ -904,6 +912,18 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	slot->topology = topology;
 	write_unlock(&zdev->attr_rwlock);
 	return 0;
+
+err_topo:
+	vfree(topology);
+err_conn:
+	vfree(connectivity);
+err_aie:
+	vfree(aie_data.data);
+err_debug_ip:
+	vfree(debug_ip);
+err_ip:
+	vfree(ip);
+	return size;
 }
 
 bool
