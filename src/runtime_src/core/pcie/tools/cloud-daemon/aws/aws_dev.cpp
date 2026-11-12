@@ -559,10 +559,12 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     if(imageInfoOld.spec.map[FPGA_APP_PF].device_id == 0xf010)
     {
 	const clock_freq_topology* clockSection = get_clock_freq_from_axlf(axlfbuffer);
-	uint32_t clock_mains[4];
+	uint32_t clock_mains[4] = {};
 
         if(clockSection) {
-		for(int32_t i = 0; i < clockSection->m_count; i++) {
+		constexpr int32_t max_clocks = static_cast<int32_t>(sizeof(clock_mains) / sizeof(clock_mains[0]));
+		int32_t n = std::min(static_cast<int32_t>(clockSection->m_count), max_clocks);
+		for(int32_t i = 0; i < n; i++) {
                         const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
                         clock_mains[i] = clk->m_freq_Mhz;
                 }
@@ -824,6 +826,8 @@ char *AwsDev::get_afi_from_axlf(const axlf *buffer)
 const clock_freq_topology* AwsDev::get_clock_freq_from_axlf(const axlf *buffer)
 {
     const axlf_section_header *clk_header = xclbin::get_axlf_section(buffer, CLOCK_FREQ_TOPOLOGY);
+    if (!clk_header)
+        return nullptr;
     char *clk_topo = const_cast<char *>(reinterpret_cast<const char *>(buffer));
     clk_topo += clk_header->m_sectionOffset;
 
