@@ -113,8 +113,8 @@ struct kds_client {
 	struct kds_client_hw_ctx *curr_ctx;				\
 	u64 res = 0;							\
 	rcu_read_lock();						\
-	list_for_each_entry_rcu(curr_ctx, &client->hw_ctx_list, link)	\
-		if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+	list_for_each_entry_rcu(curr_ctx, &(client)->hw_ctx_list, link)	\
+		if (curr_ctx->hw_ctx_idx == (hw_ctx))			\
 			res = stat_read((curr_ctx)->stats, field);	\
 	rcu_read_unlock();						\
 	res;								\
@@ -124,8 +124,8 @@ struct kds_client {
 ({									\
 	struct kds_client_hw_ctx *curr_ctx;				\
 	rcu_read_lock();						\
-	list_for_each_entry_rcu(curr_ctx, &client->hw_ctx_list, link)	\
-		if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+	list_for_each_entry_rcu(curr_ctx, &(client)->hw_ctx_list, link)	\
+		if (curr_ctx->hw_ctx_idx == (hw_ctx))			\
 			this_stat_inc((curr_ctx)->stats, field);	\
 	rcu_read_unlock();						\
 })
@@ -134,8 +134,8 @@ struct kds_client {
 ({									\
 	struct kds_client_hw_ctx *curr_ctx;				\
 	rcu_read_lock();						\
-	list_for_each_entry_rcu(curr_ctx, &client->hw_ctx_list, link)	\
-		if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+	list_for_each_entry_rcu(curr_ctx, &(client)->hw_ctx_list, link)	\
+		if (curr_ctx->hw_ctx_idx == (hw_ctx))			\
 			this_stat_dec((curr_ctx)->stats, field);	\
 	rcu_read_unlock();						\
 })
