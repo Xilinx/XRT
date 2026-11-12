@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022-2026 Advanced Micro Devices, Inc.
  *
  * Authors:
  *
@@ -623,7 +623,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 				strscpy(subdev->res_name +
 					i * XOCL_SUBDEV_RES_NAME_LEN,
 					sdev_info->res[i].name,
-					XOCL_SUBDEV_RES_NAME_LEN - 1);
+					XOCL_SUBDEV_RES_NAME_LEN);
 			} else
 				res[i].name = NULL;
 		}
@@ -1436,7 +1436,7 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 			*in = dsa_map[i].priv_data;
 			core->priv.vbnv = core->vbnv_cache;
 			strscpy(core->vbnv_cache, dsa_map[i].vbnv,
-				sizeof(core->vbnv_cache) - 1);
+				sizeof(core->vbnv_cache));
 			break;
 		}
 	}

@@ -3,7 +3,7 @@
  * Xilinx Alveo User Function Driver
  *
  * Copyright (C) 2020-2022 Xilinx, Inc.
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022-2026 Advanced Micro Devices, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -1415,8 +1415,7 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		image->start_cuidx = start_cuidx;
 		image->num_cus = scu_data->pkd_num_instances;
 		strscpy((char *)image->sk_name, scu_data->pkd_sym_name,
-			PS_KERNEL_NAME_LENGTH - 1);
-		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
+			PS_KERNEL_NAME_LENGTH);
 
 		start_cuidx += image->num_cus;
 	}

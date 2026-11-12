@@ -3,7 +3,7 @@
  * Xilinx Kernel Driver Scheduler
  *
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -2020,12 +2020,9 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		 * where instance name is so called CU name.
 		 */
 		strscpy(kname, ip->m_name, sizeof(kname));
-		kname[sizeof(kname)-1] = '\0';
 		kname_p = &kname[0];
 		strscpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
-		info.kname[sizeof(info.kname)-1] = '\0';
 		strscpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
-		info.iname[sizeof(info.kname)-1] = '\0';
 
 		info.addr = ip->m_base_address;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
@@ -2123,12 +2120,9 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 		 * where instance name is so called CU name.
 		 */
 		strscpy(kname, ip->m_name, sizeof(kname));
-		kname[sizeof(kname)-1] = '\0';
 		kname_p = &kname[0];
 		strscpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
-		info.kname[sizeof(info.kname)-1] = '\0';
 		strscpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
-		info.iname[sizeof(info.kname)-1] = '\0';
 
 		info.addr = 0;
 		info.intr_enable = 0;

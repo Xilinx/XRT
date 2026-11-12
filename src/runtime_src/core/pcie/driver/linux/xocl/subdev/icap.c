@@ -3036,7 +3036,7 @@ static int icap_cache_ps_kernel_axlf_section(const struct axlf *xclbin,
 
 		strscpy(pnode->pkn_data[idx].pkd_sym_name,
 		    begin + sp->mpo_symbol_name,
-		    PS_KERNEL_NAME_LENGTH - 1);
+		    PS_KERNEL_NAME_LENGTH);
 		pnode->pkn_data[idx].pkd_num_instances =
 		    sp->m_num_instances;
 
@@ -4579,7 +4579,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	icap->rp_bit_len = 0;
 
 	strscpy(icap->rp_vbnv, axlf->m_header.m_platformVBNV,
-			sizeof(icap->rp_vbnv) - 1);
+			sizeof(icap->rp_vbnv));
 	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
 	if (!section) {
 		ICAP_ERR(icap, "did not find PARTITION_METADATA section");
