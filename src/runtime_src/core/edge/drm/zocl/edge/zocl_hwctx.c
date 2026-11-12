@@ -476,7 +476,13 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
     xcmd->exec_bo_handle = drm_hw_ctx_execbuf->exec_bo_handle;
     xcmd->hw_ctx_id = drm_hw_ctx_execbuf->hw_ctx_id;
 
-    switch (kecmd->opcode) {
+    if (!ert_valid_opcode(ecmd)) {
+        DRM_ERROR("%s: Invalid ERT opcode(%d) or malformed count field", __func__, ecmd->opcode);
+        ret = -EINVAL;
+        goto out1;
+    }
+
+    switch (ecmd->opcode) {
         case ERT_CONFIGURE:
             xcmd->status = KDS_COMPLETED;
             xcmd->cb.notify_host(xcmd, xcmd->status);
