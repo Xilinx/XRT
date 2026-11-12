@@ -100,6 +100,13 @@ static int cu_fa_configure(void *core, u32 *data, size_t sz, int type)
 	if (kds_echo || !cu_fa->cmdmem)
 		return 0;
 
+	/* sz must cover at least the header word and must not exceed the
+	 * allocated slot size; otherwise the memcpy below would write past
+	 * the end of this command slot (CVE-2026-43536).
+	 */
+	if (sz < sizeof(u32) || sz > cu_fa->slot_sz)
+		return -EINVAL;
+
 	/* move commands to device quickly is the key of performance */
 	memcpy(&slot[1], &data[1], sz - 4);
 
