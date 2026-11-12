@@ -43,6 +43,7 @@ extern int kds_echo;
 
 struct xrt_cu_hls {
 	void __iomem		*vaddr;
+	size_t			 map_size;
 	int			 max_credits;
 	int			 credits;
 	int			 run_cnts;
@@ -103,6 +104,28 @@ static int cu_hls_peek_credit(void *core)
 	return cu_hls->credits;
 }
 
+static int cu_offset_in_map(struct xrt_cu_hls *cu, u32 offset)
+{
+	if (cu->map_size < sizeof(u32))
+		return -EINVAL;
+	if ((size_t)offset > cu->map_size - sizeof(u32))
+		return -EINVAL;
+	return 0;
+}
+
+static int cu_write_kv(struct xrt_cu_hls *cu, u32 *data, size_t num_reg)
+{
+	size_t i;
+
+	for (i = 0; i < num_reg; i += 2) {
+		if (cu_offset_in_map(cu, data[i]))
+			return -EINVAL;
+	}
+	for (i = 0; i < num_reg; i += 2)
+		cu_write32(cu, data[i], data[i + 1]);
+	return 0;
+}
+
 static void cu_hls_xgq_start(struct xrt_cu_hls *cu_hls, u32 *data)
 {
 	struct xgq_cmd_start_cuidx *cmd = (struct xgq_cmd_start_cuidx *)data;
@@ -116,11 +139,10 @@ static void cu_hls_xgq_start(struct xrt_cu_hls *cu_hls, u32 *data)
 	}
 }
 
-static void cu_hls_xgq_start_kv(struct xrt_cu_hls *cu_hls, u32 *data)
+static int cu_hls_xgq_start_kv(struct xrt_cu_hls *cu_hls, u32 *data)
 {
 	struct xgq_cmd_start_cuidx_kv *cmd = (struct xgq_cmd_start_cuidx_kv *)data;
 	u32 num_reg = 0;
-	u32 i = 0;
 
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx_kv)
 				     - sizeof(cmd->hdr)))/sizeof(u32);
@@ -128,8 +150,7 @@ static void cu_hls_xgq_start_kv(struct xrt_cu_hls *cu_hls, u32 *data)
 	 * cmd->data[i] -> offset
 	 * cmd->data[i+1] -> value
 	 */
-	for (i = 0; i < num_reg; i += 2)
-		cu_write32(cu_hls, cmd->data[i], cmd->data[i + 1]);
+	return cu_write_kv(cu_hls, cmd->data, num_reg);
 }
 
 static int cu_hls_configure(void *core, u32 *data, size_t sz, int type)
@@ -154,15 +175,13 @@ static int cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 		 * data[i]: register offset
 		 * data[i + 1]: value
 		 */
-		for (i = 0; i < num_reg; i += 2)
-			cu_write32(cu_hls, data[i], data[i + 1]);
-		break;
+		return cu_write_kv(cu_hls, data, num_reg);
 	case XGQ_CMD:
 		hdr = (struct xgq_cmd_sq_hdr *)data;
 		if (hdr->opcode == XGQ_CMD_OP_START_CUIDX)
 			cu_hls_xgq_start(cu_hls, data);
 		else if (hdr->opcode == XGQ_CMD_OP_START_CUIDX_KV)
-			cu_hls_xgq_start_kv(cu_hls, data);
+			return cu_hls_xgq_start_kv(cu_hls, data);
 		else
 			return -EINVAL;
 		break;
@@ -393,8 +412,10 @@ static int cu_hls_submit_config(void *core, struct kds_command *xcmd)
 	int ret = 0;
 
 	ret = cu_hls_configure(core, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
-	if (ret)
+	if (ret) {
+		xcmd->rcode = ret;
 		return ret;
+	}
 
 	list_move_tail(&xcmd->list, &cu_hls->submitted);
 	return ret;
@@ -491,6 +512,7 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 		xcu_err(xcu, "Map CU register failed");
 		goto err;
 	}
+	core->map_size = size;
 
 	core->max_credits = 1;
 	core->credits = core->max_credits;
