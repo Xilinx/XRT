@@ -105,26 +105,24 @@ static int zocl_cu_ctx_to_info(struct drm_zocl_dev *zdev, struct drm_zocl_open_c
     uint32_t slot_hndl = kds_hw_ctx->slot_idx;
     struct kds_sched *kds = &zdev->kds;
     struct xrt_cu *xcu = NULL;
+    char name[CU_NAME_MAX_LEN + 1];
+    char *kname_p = name;
+    char *tok;
     char iname[CU_NAME_MAX_LEN];
     char kname[CU_NAME_MAX_LEN];
-    char cu_name[CU_NAME_MAX_LEN];
-    char *kname_p = cu_name;
-    char *token;
     int i = 0;
 
-    /* Ensure NUL-termination before strsep to prevent out-of-bounds reads */
-    strscpy(cu_name, drm_cu_ctx->cu_name, CU_NAME_MAX_LEN);
-
-    token = strsep(&kname_p, ":");
-    if (!token)
+    /*
+     * cu_name is a fixed buffer and is not guaranteed to contain a NUL
+     * or a ':'. Copy it, then reject a missing or oversized token.
+     */
+    memcpy(name, drm_cu_ctx->cu_name, CU_NAME_MAX_LEN);
+    name[CU_NAME_MAX_LEN] = '\0';
+    tok = strsep(&kname_p, ":");
+    if (!tok || strscpy(kname, tok, sizeof(kname)) < 0)
         return -EINVAL;
-    if (strscpy(kname, token, CU_NAME_MAX_LEN) < 0)
-        return -EINVAL;
-
-    token = strsep(&kname_p, ":");
-    if (!token)
-        return -EINVAL;
-    if (strscpy(iname, token, CU_NAME_MAX_LEN) < 0)
+    tok = strsep(&kname_p, ":");
+    if (!tok || strscpy(iname, tok, sizeof(iname)) < 0)
         return -EINVAL;
 
     /* Retrive the CU index from the given slot */
