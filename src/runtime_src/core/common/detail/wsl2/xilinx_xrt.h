@@ -251,11 +251,11 @@ platform_repo_path()
   else
     paths.push_back(xrt / "share/xrt");
 
-  if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg && *xdg) {
+  if (auto xdg = xrt_core::utils::getenv("XDG_DATA_HOME"); !xdg.empty()) {
     paths.push_back(sfs::path(xdg) / "xrt" / XRT_VERSION_STRING);
     paths.push_back(sfs::path(xdg) / "xrt");
   }
-  else if (const char* home = std::getenv("HOME"); home && *home) {
+  else if (auto home = xrt_core::utils::getenv("HOME"); !home.empty()) {
     paths.push_back(sfs::path(home) / ".local/share/xrt" / XRT_VERSION_STRING);
     paths.push_back(sfs::path(home) / ".local/share/xrt");
   }
