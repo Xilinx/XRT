@@ -575,7 +575,11 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	/* Default hw context. For backward compatibility */
 	xcmd->hw_ctx_id = 0;
 
-	//print_ecmd_info(ecmd);
+	if (!ert_valid_opcode(ecmd)) {
+		DRM_ERROR("Invalid ERT opcode or malformed count field\n");
+		ret = -EINVAL;
+		goto out1;
+	}
 
 	switch(kecmd->opcode) {
 	case ERT_CONFIGURE:
