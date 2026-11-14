@@ -27,10 +27,10 @@ namespace XBU = XBUtilities;
 static constexpr uint32_t num_of_cores_strix = 32;
 constexpr size_t num_of_cores_npu3 = 12;
 static constexpr uint32_t total_ops_strix = 196608; //192K OPs
-constexpr uint64_t total_ops_npu3 = 2097152; // 2,097,152 OPs
+constexpr uint64_t total_ops_npu3 = 6291456000; // 6,291,456,000 OPs
 
-constexpr size_t npu3_runlist_depth = 8;
-constexpr int npu3_iterations = 100;
+constexpr size_t npu3_runlist_depth = 1;
+constexpr int npu3_iterations = 1;
 constexpr auto npu3_clock_sample_delay = std::chrono::milliseconds(100);
 
 /**
@@ -174,13 +174,12 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
       total_cycle_count += cycle_count;
     }
 
-    double cycle_count_per_core = total_cycle_count / num_of_cores_npu3;
-    double gops_per_core = (static_cast<double>(total_ops_npu3) * 1e9) / (cycle_count_per_core * period_ns); // NOLINT
-    double tops_per_core = gops_per_core / 1e12; // NOLINT
-    double aie4_tops_all_cores = tops_per_core * num_of_cores_npu3;
+    // total_ops_npu3 is ops across all cores; use avg cycle count as the parallel runtime.
     double avg_cycle_count = total_cycle_count / num_of_cores_npu3;
+    double gops = (static_cast<double>(total_ops_npu3) * 1e9) / (avg_cycle_count * period_ns); // NOLINT
+    double aie4_tops = gops / 1e12; // NOLINT
 
-    log_gemm_results(ptree, aie4_tops_all_cores, avg_cycle_count, clock_mhz, period_ns);
+    log_gemm_results(ptree, aie4_tops, avg_cycle_count, clock_mhz, period_ns);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
