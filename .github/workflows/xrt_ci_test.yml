@@ -149,8 +149,8 @@ jobs:
           pipeline: ${{ env.PIPELINE }}
           boardType: 'pcie'
           boardMode: 'hw'
-          testsPath: '/proj/sdxbf/xrt-test/2026.2'
-          boardFilter: '^xilinx_u50'
+          testsPath: '/proj/xbb/xrt/prod_pipeline/tests/2027.1/feeder_latest/pcie/hw'
+          boardFilter: '^xilinx_u50_gen3x16_xdma_5_202210_1$'
 
   pcie-hw-tests:
     needs: extract-platforms
