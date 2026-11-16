@@ -166,18 +166,24 @@ platform_repo_paths()
   return paths;
 }
 
-// Normalize a relative path and throw if any component is exactly ".."
-// (CVE-2026-28238 / SWSPLAT-9629). Checks components rather than substrings
-// so that valid names like "shell..xsabin" are not incorrectly rejected.
+// Resolve base/file to its canonical real path and verify the result remains
+// under base (CVE-2026-28238 / SWSPLAT-9629). Using canonical() defeats both
+// lexical traversal ("../") and symlink attacks that lexically_normal() misses.
+// Returns an empty path when base/file does not exist; throws on sandbox escape.
 static sfs::path
-normalize_and_reject_traversal(const std::string& file)
+canonical_under(const sfs::path& base, const std::string& file)
 {
-  auto path = sfs::path(file).lexically_normal();
-  for (const auto& component : path)
-    if (component == "..")
-      throw std::runtime_error("Invalid path '" + file + "': path traversal not allowed");
+  auto candidate = base / file;
+  if (!sfs::exists(candidate))
+    return {};
 
-  return path;
+  auto real      = sfs::canonical(candidate);
+  auto real_base = sfs::canonical(base);
+  auto mm = std::mismatch(real_base.begin(), real_base.end(), real.begin(), real.end());
+  if (mm.first != real_base.end())
+    throw std::runtime_error("Path '" + file + "' escapes allowed directory");
+
+  return real;
 }
 
 // Return the full path to the file if it exists in a platform
@@ -185,11 +191,10 @@ normalize_and_reject_traversal(const std::string& file)
 static sfs::path
 platform_repo_path(const std::string& file)
 {
-  auto xfile = normalize_and_reject_traversal(file);
-  for (const auto& path : platform_repo_paths()) {
-    auto xpath = path / xfile;
-    if (sfs::exists(xpath))
-      return xpath;
+  for (const auto& base : platform_repo_paths()) {
+    auto path = canonical_under(base, file);
+    if (!path.empty())
+      return path;
   }
 
   throw std::runtime_error("No such file or directory '" + file + "'");
@@ -201,14 +206,17 @@ platform_repo_path(const std::string& file)
 static sfs::path
 platform_path(const std::string& file_name)
 {
-  sfs::path xpath{normalize_and_reject_traversal(file_name)};
+  sfs::path xpath{file_name};
 
   if (!xpath.is_absolute()) {
-    // Check in CWD first; if not present, fall through to platform repo lookup
+    // Check in CWD first; if not present, fall through to platform repo lookup.
+    // ".." is intentionally allowed here: it names a CWD-relative location, no
+    // more permissive than passing the equivalent absolute path. The sandbox
+    // check is enforced inside platform_repo_path for the repo-join case.
     if (sfs::exists(xpath))
       return xpath;
 
-    return platform_repo_path(xpath.string());
+    return platform_repo_path(file_name);
   }
 
   if (sfs::exists(xpath))
@@ -384,13 +392,14 @@ xrt_path_or_error(const std::string& file)
   if (file.empty())
     throw std::runtime_error("Invalid empty file name");
 
-  std::filesystem::path path {file};
+  if (sfs::path{file}.is_absolute())
+    throw std::runtime_error("Invalid path '" + file + "' cannot be absolute");
 
-  // No absolute path
-  if (path.is_absolute())
-    throw std::runtime_error("Invalid path '" + path.string() + "' cannot be absolute");
+  auto path = canonical_under(xilinx_xrt(), file);
+  if (path.empty())
+    throw std::runtime_error("No such file '" + file + "' in xrt directory");
 
-  return xilinx_xrt() / normalize_and_reject_traversal(file);
+  return path;
 }
 
 sfs::path
