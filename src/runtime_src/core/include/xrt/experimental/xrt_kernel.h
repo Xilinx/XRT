@@ -122,10 +122,14 @@ public:
    * runlist - Destructor
    *
    * The destructor of the runlist clears the association with the run
-   * objects, but does not check for runlist state or wait for run
-   * object completion.  It is the caller's responsibility to ensure
-   * that the runlist is not executing when the destructor is called
-   * or beware that there may be run objects still executing.
+   * objects and releases the resources held by the runlist.
+   *
+   * It is the caller's responsibility to ensure that the runlist is
+   * not executing when the destructor is called.  This can be done by
+   * calling the wait() method on the runlist object.
+   *
+   * Destructing a runlist that is still executing is an error.  The
+   * error is reported, but the behavior is undefined.
    */
   XRT_API_EXPORT
   ~runlist();
@@ -261,7 +265,8 @@ public:
    * reset() - Reset the runlist
    *
    * The runlist is reset to its initial state. All run objects are
-   * removed from the list.
+   * removed from the list, and the resources held by the runlist for
+   * its commands are released.
    *
    * It is the caller's responsibility to ensure that the runlist is
    * not executing when this method is called.  This can be done by

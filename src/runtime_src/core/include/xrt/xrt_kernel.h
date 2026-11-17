@@ -186,6 +186,13 @@ public:
 
   /**
    * ~run() - Destruct run object
+   *
+   * It is the caller's responsibility to ensure that the run is not
+   * executing when the last handle to it is destructed.  This can be
+   * done by calling wait() on the run object.
+   *
+   * Destructing a run that is still executing is an error.  The error
+   * is reported, but the behavior is undefined.
    */
   XRT_API_EXPORT
   ~run();
