@@ -200,7 +200,7 @@ jobs:
           apiKey: ${{ secrets.apiKey }}
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}
-          testsPath: '/proj/xbb/xrt/prod_pipeline/tests/2027.1/feeder_latest/pcie/hw'
+          testsPath: '/proj/xbb/xrt/prod_pipeline/tests/2027.1/feeder_latest'
 
   test-summary:
     runs-on: [self-hosted, Ubuntu-22.04]
