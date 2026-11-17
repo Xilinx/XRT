@@ -31,7 +31,7 @@ static constexpr uint32_t total_ops_strix = 196608; //192K OPs
 constexpr uint64_t total_ops_npu3 = 6291456000; // 6,291,456,000 OPs
 
 constexpr size_t npu3_runlist_size = 800; // number of runs queued in the runlist
-constexpr auto npu3_clock_sample_delay = std::chrono::milliseconds(100);
+constexpr auto npu3_clock_sample_delay = std::chrono::milliseconds(10);
 
 /**
  * Get GEMM clock frequency in MHz for TOPS calculation from clock topology.
