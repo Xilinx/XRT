@@ -177,7 +177,7 @@ jobs:
           token: ${{ steps.ghe-token.outputs.token }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: composite-workflows
-          ref: main
+          ref: gevadlam/add-testsPath-override
 
       - name: Run pcie-hw tests for ${{ matrix.board_list }}
         uses: ./composite-workflows/pcie-hw
@@ -200,6 +200,7 @@ jobs:
           apiKey: ${{ secrets.apiKey }}
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}
+          testsPath: '/proj/xbb/xrt/prod_pipeline/tests/2027.1/feeder_latest/pcie/hw'
 
   test-summary:
     runs-on: [self-hosted, Ubuntu-22.04]
