@@ -21,7 +21,6 @@
 #include <cstring>
 #include <stdexcept>
 #include <thread>
-#include <vector>
 
 namespace XBU = XBUtilities;
 
