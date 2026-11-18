@@ -24,7 +24,7 @@ usage()
     echo "          -aarch [gen1|gen2]                    Platform class (required)"
     echo ""
     echo "gen1: vck190, vek280, vrk160 (amd-cortexa72-common)"
-    echo "gen2: vek385 (amd-cortexa78-mali-common)"
+    echo "gen2: vek385 DSP (amd-cortexa78-common)"
     echo ""
 }
 
@@ -44,11 +44,11 @@ set_architecture_params()
             ;;
         gen2)
             yocto_path="$ABS_PATH/yocto/edf/gen2"
-            MACHINE="amd-cortexa78-mali-common"
-            RPM_ARCH_DIR="amd_cortexa78_mali_common"
+            MACHINE="amd-cortexa78-common"
+            RPM_ARCH_DIR="amd_cortexa78_common"
             ;;
         *)
-            error "Invalid architecture: $ARCH. Use gen1 (vck190, vek280, vrk160) or gen2 (vek385)"
+            error "Invalid architecture: $ARCH. Use gen1 (vck190, vek280, vrk160) or gen2 (vek385 DSP)"
             ;;
     esac
 }
