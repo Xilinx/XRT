@@ -360,7 +360,7 @@ enum class key_type
 struct pcie_vendor : request
 {
   using result_type = uint16_t;
-  static const key_type key = key_type::pcie_vendor;
+  static constexpr key_type key = key_type::pcie_vendor;
   static const char* name() { return "vendor"; }
 
   virtual std::any
@@ -376,7 +376,7 @@ struct pcie_vendor : request
 struct pcie_device : request
 {
   using result_type = uint16_t;
-  static const key_type key = key_type::pcie_device;
+  static constexpr key_type key = key_type::pcie_device;
   static const char* name() { return "device"; }
 
   virtual std::any
@@ -397,7 +397,7 @@ struct pcie_device : request
 struct device_id_str : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::device_id_str;
+  static constexpr key_type key = key_type::device_id_str;
   static const char* name() { return "devid_str"; }
 
   std::any
@@ -413,7 +413,7 @@ struct device_id_str : request
 struct pcie_subsystem_vendor : request
 {
   using result_type = uint16_t;
-  static const key_type key = key_type::pcie_subsystem_vendor;
+  static constexpr key_type key = key_type::pcie_subsystem_vendor;
   static const char* name() { return "subsystem_vendor"; }
 
   virtual std::any
@@ -429,7 +429,7 @@ struct pcie_subsystem_vendor : request
 struct pcie_subsystem_id : request
 {
   using result_type = uint16_t;
-  static const key_type key = key_type::pcie_subsystem_id;
+  static constexpr key_type key = key_type::pcie_subsystem_id;
   static const char* name() { return "subsystem_id"; }
 
   virtual std::any
@@ -445,7 +445,7 @@ struct pcie_subsystem_id : request
 struct pcie_link_speed : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::pcie_link_speed;
+  static constexpr key_type key = key_type::pcie_link_speed;
   static const char* name() { return "link_speed"; }
 
   virtual std::any
@@ -461,7 +461,7 @@ struct pcie_link_speed : request
 struct pcie_link_speed_max : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::pcie_link_speed_max;
+  static constexpr key_type key = key_type::pcie_link_speed_max;
   static const char* name() { return "link_speed_max"; }
 
   virtual std::any
@@ -477,7 +477,7 @@ struct pcie_link_speed_max : request
 struct pcie_express_lane_width : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::pcie_express_lane_width;
+  static constexpr key_type key = key_type::pcie_express_lane_width;
   static const char* name() { return "width"; }
 
   virtual std::any
@@ -493,7 +493,7 @@ struct pcie_express_lane_width : request
 struct pcie_express_lane_width_max : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::pcie_express_lane_width_max;
+  static constexpr key_type key = key_type::pcie_express_lane_width_max;
   static const char* name() { return "width_max"; }
 
   virtual std::any
@@ -509,7 +509,7 @@ struct pcie_express_lane_width_max : request
 struct pcie_bdf : request
 {
   using result_type = std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>;
-  static const key_type key = key_type::pcie_bdf;
+  static constexpr key_type key = key_type::pcie_bdf;
   static const char* name() { return "bdf"; }
 
   virtual std::any
@@ -551,7 +551,7 @@ struct pcie_id : request
   };
 
   using result_type = data;
-  static const key_type key = key_type::pcie_id;
+  static constexpr key_type key = key_type::pcie_id;
   static const char* name() { return "pcie_id"; }
 
   virtual std::any
@@ -574,7 +574,7 @@ struct pcie_id : request
 struct edge_vendor : request
 {
   using result_type = uint16_t;
-  static const key_type key = key_type::edge_vendor;
+  static constexpr key_type key = key_type::edge_vendor;
   static const char* name() { return "vendor"; }
 
   virtual std::any
@@ -610,7 +610,7 @@ struct xrt_smi_config : request
     return "unknown";
   }
   using result_type = std::string;
-  static const key_type key = key_type::xrt_smi_config;
+  static constexpr key_type key = key_type::xrt_smi_config;
   static const char* name() { return "xrt_smi_config"; }
 
   virtual std::any
@@ -632,7 +632,7 @@ struct xrt_smi_lists : request
     subcommands,
   };
   using result_type = std::vector<std::tuple<std::string, std::string, std::string>>;
-  static const key_type key = key_type::xrt_smi_lists;
+  static constexpr key_type key = key_type::xrt_smi_lists;
   static const char* name() { return "xrt_smi_lists"; }
 
   virtual std::any
@@ -666,7 +666,7 @@ struct device_class : request
   }
 
   using result_type = type;
-  static const key_type key = key_type::device_class;
+  static constexpr key_type key = key_type::device_class;
   static const char* name() { return "device_class"; }
 
   virtual std::any
@@ -676,7 +676,7 @@ struct device_class : request
 struct dma_threads_raw : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::dma_threads_raw;
+  static constexpr key_type key = key_type::dma_threads_raw;
   static const char* name() { return "dma_threads_raw"; }
 
   virtual std::any
@@ -693,7 +693,7 @@ struct dma_threads_raw : request
 struct rom_vbnv : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::rom_vbnv;
+  static constexpr key_type key = key_type::rom_vbnv;
   static const char* name() { return "vbnv"; }
 
   virtual std::any
@@ -709,7 +709,7 @@ struct rom_vbnv : request
 struct rom_ddr_bank_size_gb : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::rom_ddr_bank_size_gb;
+  static constexpr key_type key = key_type::rom_ddr_bank_size_gb;
   static const char* name() { return "ddr_size_bytes"; }
 
   virtual std::any
@@ -725,7 +725,7 @@ struct rom_ddr_bank_size_gb : request
 struct rom_ddr_bank_count_max : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::rom_ddr_bank_count_max;
+  static constexpr key_type key = key_type::rom_ddr_bank_count_max;
   static const char* name() { return "widdr_countdth"; }
 
   virtual std::any
@@ -741,7 +741,7 @@ struct rom_ddr_bank_count_max : request
 struct rom_fpga_name : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::rom_fpga_name;
+  static constexpr key_type key = key_type::rom_fpga_name;
   static const char* name() { return "fpga_name"; }
 
   virtual std::any
@@ -757,7 +757,7 @@ struct rom_fpga_name : request
 struct rom_raw : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::rom_raw;
+  static constexpr key_type key = key_type::rom_raw;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -766,7 +766,7 @@ struct rom_raw : request
 struct rom_uuid : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::rom_uuid;
+  static constexpr key_type key = key_type::rom_uuid;
   static const char* name() { return "uuid"; }
 
   virtual std::any
@@ -782,7 +782,7 @@ struct rom_uuid : request
 struct rom_time_since_epoch : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::rom_time_since_epoch;
+  static constexpr key_type key = key_type::rom_time_since_epoch;
   static const char* name() { return "id"; }
 
   virtual std::any
@@ -798,7 +798,7 @@ struct rom_time_since_epoch : request
 struct interface_uuids : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::interface_uuids;
+  static constexpr key_type key = key_type::interface_uuids;
   static const char* name() { return "interface_uuids"; }
 
   virtual std::any
@@ -844,7 +844,7 @@ struct interface_uuids : request
 struct logic_uuids : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::logic_uuids;
+  static constexpr key_type key = key_type::logic_uuids;
   static const char* name() { return "logic_uuids"; }
 
   virtual std::any
@@ -861,7 +861,7 @@ struct logic_uuids : request
 struct xclbin_uuid : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::xclbin_uuid;
+  static constexpr key_type key = key_type::xclbin_uuid;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -875,7 +875,7 @@ struct dtbo_path : request
   using result_type = std::string;
   using slot_id_type = uint32_t;
 
-  static const key_type key = key_type::dtbo_path;
+  static constexpr key_type key = key_type::dtbo_path;
 
   virtual std::any
   get(const device*, const std::any& slot_id) const override = 0;
@@ -884,7 +884,7 @@ struct dtbo_path : request
 struct group_topology : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::group_topology;
+  static constexpr key_type key = key_type::group_topology;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -893,7 +893,7 @@ struct group_topology : request
 struct temp_by_mem_topology : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::temp_by_mem_topology;
+  static constexpr key_type key = key_type::temp_by_mem_topology;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -902,7 +902,7 @@ struct temp_by_mem_topology : request
 struct memstat : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::memstat;
+  static constexpr key_type key = key_type::memstat;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -911,7 +911,7 @@ struct memstat : request
 struct memstat_raw : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::memstat_raw;
+  static constexpr key_type key = key_type::memstat_raw;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -920,7 +920,7 @@ struct memstat_raw : request
 struct dma_stream : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::dma_stream;
+  static constexpr key_type key = key_type::dma_stream;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -932,7 +932,7 @@ struct dma_stream : request
 struct mem_topology_raw : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::mem_topology_raw;
+  static constexpr key_type key = key_type::mem_topology_raw;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -941,7 +941,7 @@ struct mem_topology_raw : request
 struct xclbin_full : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::xclbin_full;
+  static constexpr key_type key = key_type::xclbin_full;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -951,7 +951,7 @@ struct ic_enable : request
 {
   using result_type = uint32_t;
   using value_type = uint32_t;
-  static const key_type key = key_type::ic_enable;
+  static constexpr key_type key = key_type::ic_enable;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -964,7 +964,7 @@ struct ic_load_flash_address : request
 {
   using result_type = uint32_t;
   using value_type = uint32_t;
-  static const key_type key = key_type::ic_load_flash_address;
+  static constexpr key_type key = key_type::ic_load_flash_address;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -976,7 +976,7 @@ struct ic_load_flash_address : request
 struct aie_metadata : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_metadata;
+  static constexpr key_type key = key_type::aie_metadata;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -988,7 +988,7 @@ struct aie_reg_read : request
   using row_type = uint32_t;
   using col_type = uint32_t;
   using reg_type = std::string;
-  static const key_type key = key_type::aie_reg_read;
+  static constexpr key_type key = key_type::aie_reg_read;
 
   virtual std::any
   get(const device*, const std::any& row, const std::any& col, const std::any& reg) const override = 0;
@@ -998,7 +998,7 @@ struct aie_get_freq : request
 {
   using result_type = uint64_t;
   using partition_id_type = uint32_t;
-  static const key_type key = key_type::aie_get_freq;
+  static constexpr key_type key = key_type::aie_get_freq;
 
   virtual std::any
   get(const device*, const std::any& partition_id) const override = 0;
@@ -1009,7 +1009,7 @@ struct aie_set_freq : request
   using result_type = bool;
   using partition_id_type = uint32_t;
   using freq_type = uint64_t;
-  static const key_type key = key_type::aie_set_freq;
+  static constexpr key_type key = key_type::aie_set_freq;
 
   virtual std::any
   get(const device*, const std::any& partition_id, const std::any& freq) const override = 0;
@@ -1018,7 +1018,7 @@ struct aie_set_freq : request
 struct aie_thermal : request
 {
   using result_type = float;
-  static const key_type key = key_type::aie_thermal;
+  static constexpr key_type key = key_type::aie_thermal;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
@@ -1030,7 +1030,7 @@ struct aie_thermal : request
 struct graph_status : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::graph_status;
+  static constexpr key_type key = key_type::graph_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1039,7 +1039,7 @@ struct graph_status : request
 struct ip_layout_raw : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::ip_layout_raw;
+  static constexpr key_type key = key_type::ip_layout_raw;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1048,7 +1048,7 @@ struct ip_layout_raw : request
 struct debug_ip_layout_raw : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::debug_ip_layout_raw;
+  static constexpr key_type key = key_type::debug_ip_layout_raw;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1095,7 +1095,7 @@ struct sdm_sensor_info : request
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
   using data_type = sensor_data;
-  static const key_type key = key_type::sdm_sensor_info;
+  static constexpr key_type key = key_type::sdm_sensor_info;
 
   virtual std::any
   get(const device*, const std::any& req_type) const override = 0;
@@ -1108,7 +1108,7 @@ struct sdm_sensor_info : request
 struct device_status : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::device_status;
+  static constexpr key_type key = key_type::device_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1141,7 +1141,7 @@ struct kds_cu_info : request
   };
   using result_type = std::vector<data>;
   using data_type = struct data;
-  static const key_type key = key_type::kds_cu_info;
+  static constexpr key_type key = key_type::kds_cu_info;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1150,7 +1150,7 @@ struct kds_cu_info : request
 struct ps_kernel : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::ps_kernel;
+  static constexpr key_type key = key_type::ps_kernel;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1167,7 +1167,7 @@ struct kds_scu_info : request
   };
   using result_type = std::vector<struct data>;
   using data_type = struct data;
-  static const key_type key = key_type::kds_scu_info;
+  static constexpr key_type key = key_type::kds_scu_info;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1204,7 +1204,7 @@ struct hw_context_info : request
 
   using result_type = std::vector<struct data>;
   using data_type = struct data;
-  static const key_type key = key_type::hw_context_info;
+  static constexpr key_type key = key_type::hw_context_info;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1230,7 +1230,7 @@ struct hw_context_memory_info : request
 
   using result_type = std::vector<struct data>;
   using data_type = struct data;
-  static const key_type key = key_type::hw_context_memory_info;
+  static constexpr key_type key = key_type::hw_context_memory_info;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1239,7 +1239,7 @@ struct hw_context_memory_info : request
 struct clock_freq_topology_raw : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::clock_freq_topology_raw;
+  static constexpr key_type key = key_type::clock_freq_topology_raw;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1277,7 +1277,7 @@ struct xrt_resource_raw : request
   };
 
   using result_type = std::vector<xrt_resource_query>; // get value type
-  static const key_type key = key_type::xrt_resource_raw;
+  static constexpr key_type key = key_type::xrt_resource_raw;
 
   static std::string
   get_name(xrt_core::query::xrt_resource_raw::resource_type type)
@@ -1308,7 +1308,7 @@ struct xrt_resource_raw : request
 struct xmc_version : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::xmc_version;
+  static constexpr key_type key = key_type::xmc_version;
   static const char* name() { return "xmc_version"; }
 
   virtual std::any
@@ -1325,7 +1325,7 @@ struct xmc_version : request
 struct instance : request
 {
   using result_type = int64_t;
-  static const key_type key = key_type::instance;
+  static constexpr key_type key = key_type::instance;
   static const char* name() { return "instance"; }
 
   virtual std::any
@@ -1342,7 +1342,7 @@ struct instance : request
 struct xmc_board_name : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::xmc_board_name;
+  static constexpr key_type key = key_type::xmc_board_name;
   static const char* name() { return "xmc_board_name"; }
 
   virtual std::any
@@ -1358,7 +1358,7 @@ struct xmc_board_name : request
 struct xmc_serial_num : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::xmc_serial_num;
+  static constexpr key_type key = key_type::xmc_serial_num;
   static const char* name() { return "serial_number"; }
 
   virtual std::any
@@ -1374,7 +1374,7 @@ struct xmc_serial_num : request
 struct max_power_level : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::max_power_level;
+  static constexpr key_type key = key_type::max_power_level;
   static const char* name() { return "max_power_level"; }
 
   virtual std::any
@@ -1390,7 +1390,7 @@ struct max_power_level : request
 struct xmc_sc_presence : request
 {
   using result_type = bool;
-  static const key_type key = key_type::xmc_sc_presence;
+  static constexpr key_type key = key_type::xmc_sc_presence;
   static const char* name() { return "sc_presence"; }
 
   virtual std::any
@@ -1406,7 +1406,7 @@ struct xmc_sc_presence : request
 struct is_sc_fixed : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_sc_fixed;
+  static constexpr key_type key = key_type::is_sc_fixed;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1422,7 +1422,7 @@ struct xmc_sc_version : request
 
 {
   using result_type = std::string;
-  static const key_type key = key_type::xmc_sc_version;
+  static constexpr key_type key = key_type::xmc_sc_version;
   static const char* name() { return "sc_version"; }
 
   virtual std::any
@@ -1438,7 +1438,7 @@ struct xmc_sc_version : request
 struct expected_sc_version : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::expected_sc_version;
+  static constexpr key_type key = key_type::expected_sc_version;
   static const char* name() { return "expected_sc_version"; }
 
   virtual std::any
@@ -1454,7 +1454,7 @@ struct expected_sc_version : request
 struct xmc_status : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::xmc_status;
+  static constexpr key_type key = key_type::xmc_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1463,7 +1463,7 @@ struct xmc_status : request
 struct xmc_reg_base : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::xmc_reg_base;
+  static constexpr key_type key = key_type::xmc_reg_base;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1472,7 +1472,7 @@ struct xmc_reg_base : request
 struct xmc_scaling_support : request
 {
   using result_type = bool;       // get value type
-  static const key_type key = key_type::xmc_scaling_support;
+  static constexpr key_type key = key_type::xmc_scaling_support;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1481,7 +1481,7 @@ struct xmc_scaling_support : request
 struct xmc_scaling_critical_temp_threshold : request
 {
   using result_type = std::string;       // get value type
-  static const key_type key = key_type::xmc_scaling_critical_temp_threshold;
+  static constexpr key_type key = key_type::xmc_scaling_critical_temp_threshold;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1490,7 +1490,7 @@ struct xmc_scaling_critical_temp_threshold : request
 struct xmc_scaling_critical_pow_threshold : request
 {
   using result_type = std::string;       // get value type
-  static const key_type key = key_type::xmc_scaling_critical_pow_threshold;
+  static constexpr key_type key = key_type::xmc_scaling_critical_pow_threshold;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1499,7 +1499,7 @@ struct xmc_scaling_critical_pow_threshold : request
 struct xmc_scaling_threshold_power_limit : request
 {
   using result_type = std::string;       // get value type
-  static const key_type key = key_type::xmc_scaling_threshold_power_limit;
+  static constexpr key_type key = key_type::xmc_scaling_threshold_power_limit;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1508,7 +1508,7 @@ struct xmc_scaling_threshold_power_limit : request
 struct xmc_scaling_threshold_temp_limit : request
 {
   using result_type = std::string;       // get value type
-  static const key_type key = key_type::xmc_scaling_threshold_temp_limit;
+  static constexpr key_type key = key_type::xmc_scaling_threshold_temp_limit;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1517,7 +1517,7 @@ struct xmc_scaling_threshold_temp_limit : request
 struct xmc_scaling_power_override_enable : request
 {
   using result_type = bool;       // get value type
-  static const key_type key = key_type::xmc_scaling_power_override_enable;
+  static constexpr key_type key = key_type::xmc_scaling_power_override_enable;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1526,7 +1526,7 @@ struct xmc_scaling_power_override_enable : request
 struct xmc_scaling_temp_override_enable : request
 {
   using result_type = bool;       // get value type
-  static const key_type key = key_type::xmc_scaling_temp_override_enable;
+  static constexpr key_type key = key_type::xmc_scaling_temp_override_enable;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1536,7 +1536,7 @@ struct xmc_scaling_enabled : request
 {
   using result_type = bool;       // get value type
   using value_type = std::string; // put value type
-  static const key_type key = key_type::xmc_scaling_enabled;
+  static constexpr key_type key = key_type::xmc_scaling_enabled;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1549,7 +1549,7 @@ struct xmc_scaling_power_override: request
 {
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
-  static const key_type key = key_type::xmc_scaling_power_override;
+  static constexpr key_type key = key_type::xmc_scaling_power_override;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1563,7 +1563,7 @@ struct xmc_scaling_temp_override: request
 {
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
-  static const key_type key = key_type::xmc_scaling_temp_override;
+  static constexpr key_type key = key_type::xmc_scaling_temp_override;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1576,7 +1576,7 @@ struct xmc_scaling_temp_override: request
 struct xmc_scaling_reset : request
 {
   using value_type = std::string;   // put value type
-  static const key_type key = key_type::xmc_scaling_reset;
+  static constexpr key_type key = key_type::xmc_scaling_reset;
 
   virtual void
   put(const device*, const std::any&) const override = 0;
@@ -1586,7 +1586,7 @@ struct xmc_qspi_status : request
 {
   // Returning qspi write protection status as <primary qspi, recovery qspi>
   using result_type = std::pair<std::string, std::string>;
-  static const key_type key = key_type::xmc_qspi_status;
+  static constexpr key_type key = key_type::xmc_qspi_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1595,7 +1595,7 @@ struct xmc_qspi_status : request
 struct m2m : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::m2m;
+  static constexpr key_type key = key_type::m2m;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1611,7 +1611,7 @@ struct m2m : request
 struct nodma : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::nodma;
+  static constexpr key_type key = key_type::nodma;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1628,7 +1628,7 @@ struct nodma : request
 struct error : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::error;
+  static constexpr key_type key = key_type::error;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1648,7 +1648,7 @@ struct error : request
 struct xocl_errors_ex : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::xocl_errors_ex;
+  static constexpr key_type key = key_type::xocl_errors_ex;
 
   virtual std::any
     get(const device*) const override = 0;
@@ -1665,7 +1665,7 @@ struct xocl_errors_ex : request
 struct xocl_ex_error_code2string : request
 {
   using result_type = std::string;  // get value type
-  static const key_type key = key_type::xocl_ex_error_code2string;
+  static constexpr key_type key = key_type::xocl_ex_error_code2string;
 
   virtual std::any
     get(const device*) const override = 0;
@@ -1681,7 +1681,7 @@ struct xocl_ex_error_code2string : request
 struct xocl_errors : request
 {
   using result_type = std::vector<char>;
-  static const key_type key = key_type::xocl_errors;
+  static constexpr key_type key = key_type::xocl_errors;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1705,7 +1705,7 @@ struct xocl_errors : request
 struct dna_serial_num : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::dna_serial_num;
+  static constexpr key_type key = key_type::dna_serial_num;
   static const char* name() { return "dna"; }
 
   virtual std::any
@@ -1722,7 +1722,7 @@ struct dna_serial_num : request
 struct aie_core_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_core_info_sysfs;
+  static constexpr key_type key = key_type::aie_core_info_sysfs;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1732,7 +1732,7 @@ struct aie_core_info_sysfs : request
 struct aie_shim_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_shim_info_sysfs;
+  static constexpr key_type key = key_type::aie_shim_info_sysfs;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1742,7 +1742,7 @@ struct aie_shim_info_sysfs : request
 struct aie_mem_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_mem_info_sysfs;
+  static constexpr key_type key = key_type::aie_mem_info_sysfs;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1752,7 +1752,7 @@ struct aie_mem_info_sysfs : request
 struct total_cols : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::total_cols;
+  static constexpr key_type key = key_type::total_cols;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1762,7 +1762,7 @@ struct total_cols : request
 struct npu_load : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::npu_load;
+  static constexpr key_type key = key_type::npu_load;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1779,7 +1779,7 @@ struct aie_status_version : request
   };
 
   using result_type = aie_version;
-  static const key_type key = key_type::aie_status_version;
+  static constexpr key_type key = key_type::aie_status_version;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1791,7 +1791,7 @@ struct aie_status_version : request
 struct aie_tiles_stats : request
 {
   using result_type = aie2::aie_tiles_info;
-  static const key_type key = key_type::aie_tiles_stats;
+  static constexpr key_type key = key_type::aie_tiles_stats;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -1818,7 +1818,7 @@ struct aie_tiles_status_info : request
   };
 
   using result_type = result;
-  static const key_type key = key_type::aie_tiles_status_info;
+  static constexpr key_type key = key_type::aie_tiles_status_info;
 
   virtual std::any
   get(const device* device, const std::any& param) const override = 0;
@@ -1864,7 +1864,7 @@ struct aie_partition_info : request
   };
 
   using result_type = std::vector<struct data>;
-  static const key_type key = key_type::aie_partition_info;
+  static constexpr key_type key = key_type::aie_partition_info;
 
   virtual std::any
   get(const device* device) const override = 0;
@@ -1905,7 +1905,7 @@ struct context_health_info : request
     std::vector<char> health_data_raw; 
   };
   using result_type = std::vector<smi_context_health>;
-  static const key_type key = key_type::context_health_info;
+  static constexpr key_type key = key_type::context_health_info;
 
   std::any
   get(const device* device) const override = 0;
@@ -1925,7 +1925,7 @@ struct aie_telemetry : request
   };
 
   using result_type = std::vector<data>;
-  static const key_type key = key_type::aie_telemetry;
+  static constexpr key_type key = key_type::aie_telemetry;
 
   virtual std::any
   get(const device* device) const override = 0;
@@ -1942,7 +1942,7 @@ struct misc_telemetry : request
   };
 
   using result_type = data;
-  static const key_type key = key_type::misc_telemetry;
+  static constexpr key_type key = key_type::misc_telemetry;
 
   virtual std::any
   get(const device* device) const override = 0;
@@ -1958,7 +1958,7 @@ struct opcode_telemetry : request
   };
 
   using result_type = std::vector<data>;
-  static const key_type key = key_type::opcode_telemetry;
+  static constexpr key_type key = key_type::opcode_telemetry;
 
   virtual std::any
   get(const device* device) const override = 0;
@@ -1993,7 +1993,7 @@ struct rtos_telemetry : request
   };
 
   using result_type = std::vector<data>;
-  static const key_type key = key_type::rtos_telemetry;
+  static constexpr key_type key = key_type::rtos_telemetry;
 
   virtual std::any
   get(const device* device) const override = 0;
@@ -2009,7 +2009,7 @@ struct stream_buffer_telemetry : request
   };
 
   using result_type = std::vector<data>;
-  static const key_type key = key_type::stream_buffer_telemetry;
+  static constexpr key_type key = key_type::stream_buffer_telemetry;
 
   virtual std::any
   get(const device* device) const override = 0;
@@ -2018,7 +2018,7 @@ struct stream_buffer_telemetry : request
 struct total_mem_usage : request
 {
   using result_type = uint64_t; // get value type
-  static const key_type key = key_type::total_mem_usage;
+  static constexpr key_type key = key_type::total_mem_usage;
 
   virtual std::any
   get(const device* device) const override = 0;
@@ -2042,7 +2042,7 @@ struct firmware_version : request
   };
 
   using result_type = data;
-  static const key_type key = key_type::firmware_version;
+  static constexpr key_type key = key_type::firmware_version;
 
   std::any
   get(const device* device, const std::any& req_type) const override = 0;
@@ -2059,7 +2059,7 @@ struct cert_firmware_version : request
   };
 
   using result_type = data;
-  static const key_type key = key_type::cert_firmware_version;
+  static constexpr key_type key = key_type::cert_firmware_version;
 
   std::any
   get(const device* device) const override = 0;
@@ -2068,7 +2068,7 @@ struct cert_firmware_version : request
 struct clock_freqs_mhz : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::clock_freqs_mhz;
+  static constexpr key_type key = key_type::clock_freqs_mhz;
   static const char* name() { return "clocks"; }
 
   virtual std::any
@@ -2085,7 +2085,7 @@ struct clock_freqs_mhz : request
 struct idcode : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::idcode;
+  static constexpr key_type key = key_type::idcode;
   static const char* name() { return "idcode"; }
 
   virtual std::any
@@ -2103,7 +2103,7 @@ struct data_retention : request
   using result_type = uint32_t;  // get value type
   using value_type = uint32_t;   // put value type
 
-  static const key_type key = key_type::data_retention;
+  static constexpr key_type key = key_type::data_retention;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2123,7 +2123,7 @@ struct sec_level : request
 {
   using result_type = uint16_t;   // get value type
   using value_type = std::string; // put value type
-  static const key_type key = key_type::sec_level;
+  static constexpr key_type key = key_type::sec_level;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2135,7 +2135,7 @@ struct sec_level : request
 struct max_shared_host_mem_aperture_bytes : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::max_shared_host_mem_aperture_bytes;
+  static constexpr key_type key = key_type::max_shared_host_mem_aperture_bytes;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2144,7 +2144,7 @@ struct max_shared_host_mem_aperture_bytes : request
 struct status_mig_calibrated : request
 {
   using result_type = bool;
-  static const key_type key = key_type::status_mig_calibrated;
+  static constexpr key_type key = key_type::status_mig_calibrated;
   static const char* name() { return "mig_calibrated"; }
 
   virtual std::any
@@ -2160,7 +2160,7 @@ struct status_mig_calibrated : request
 struct p2p_config : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::p2p_config;
+  static constexpr key_type key = key_type::p2p_config;
   static const char* name() { return "p2p_config"; }
 
   enum class value_type { disabled, enabled, error, no_iomem, not_supported };
@@ -2193,7 +2193,7 @@ struct p2p_config : request
 struct temp_card_top_front : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::temp_card_top_front;
+  static constexpr key_type key = key_type::temp_card_top_front;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2208,7 +2208,7 @@ struct temp_card_top_front : request
 struct temp_card_top_rear : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::temp_card_top_rear;
+  static constexpr key_type key = key_type::temp_card_top_rear;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2223,7 +2223,7 @@ struct temp_card_top_rear : request
 struct temp_card_bottom_front : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::temp_card_bottom_front;
+  static constexpr key_type key = key_type::temp_card_bottom_front;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2238,7 +2238,7 @@ struct temp_card_bottom_front : request
 struct temp_fpga : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::temp_fpga;
+  static constexpr key_type key = key_type::temp_fpga;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2253,7 +2253,7 @@ struct temp_fpga : request
 struct fan_trigger_critical_temp : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::fan_trigger_critical_temp;
+  static constexpr key_type key = key_type::fan_trigger_critical_temp;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2268,7 +2268,7 @@ struct fan_trigger_critical_temp : request
 struct fan_fan_presence : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::fan_fan_presence;
+  static constexpr key_type key = key_type::fan_fan_presence;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2283,7 +2283,7 @@ struct fan_fan_presence : request
 struct fan_speed_rpm : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::fan_speed_rpm;
+  static constexpr key_type key = key_type::fan_speed_rpm;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2298,7 +2298,7 @@ struct fan_speed_rpm : request
 struct ddr_temp_0 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ddr_temp_0;
+  static constexpr key_type key = key_type::ddr_temp_0;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2307,7 +2307,7 @@ struct ddr_temp_0 : request
 struct ddr_temp_1 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ddr_temp_1;
+  static constexpr key_type key = key_type::ddr_temp_1;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2316,7 +2316,7 @@ struct ddr_temp_1 : request
 struct ddr_temp_2 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ddr_temp_2;
+  static constexpr key_type key = key_type::ddr_temp_2;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2325,7 +2325,7 @@ struct ddr_temp_2 : request
 struct ddr_temp_3 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ddr_temp_3;
+  static constexpr key_type key = key_type::ddr_temp_3;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2334,7 +2334,7 @@ struct ddr_temp_3 : request
 struct hbm_temp : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::hbm_temp;
+  static constexpr key_type key = key_type::hbm_temp;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2349,7 +2349,7 @@ struct hbm_temp : request
 struct cage_temp_0 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::cage_temp_0;
+  static constexpr key_type key = key_type::cage_temp_0;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2364,7 +2364,7 @@ struct cage_temp_0 : request
 struct cage_temp_1 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::cage_temp_1;
+  static constexpr key_type key = key_type::cage_temp_1;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2379,7 +2379,7 @@ struct cage_temp_1 : request
 struct cage_temp_2 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::cage_temp_2;
+  static constexpr key_type key = key_type::cage_temp_2;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2394,7 +2394,7 @@ struct cage_temp_2 : request
 struct cage_temp_3 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::cage_temp_3;
+  static constexpr key_type key = key_type::cage_temp_3;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2409,7 +2409,7 @@ struct cage_temp_3 : request
 struct dimm_temp_0 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::dimm_temp_0;
+  static constexpr key_type key = key_type::dimm_temp_0;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2424,7 +2424,7 @@ struct dimm_temp_0 : request
 struct dimm_temp_1 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::dimm_temp_1;
+  static constexpr key_type key = key_type::dimm_temp_1;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2439,7 +2439,7 @@ struct dimm_temp_1 : request
 struct dimm_temp_2 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::dimm_temp_2;
+  static constexpr key_type key = key_type::dimm_temp_2;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2454,7 +2454,7 @@ struct dimm_temp_2 : request
 struct dimm_temp_3 : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::dimm_temp_3;
+  static constexpr key_type key = key_type::dimm_temp_3;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2469,7 +2469,7 @@ struct dimm_temp_3 : request
 struct v12v_pex_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12v_pex_millivolts;
+  static constexpr key_type key = key_type::v12v_pex_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2484,7 +2484,7 @@ struct v12v_pex_millivolts : request
 struct v12v_pex_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12v_pex_milliamps;
+  static constexpr key_type key = key_type::v12v_pex_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2499,7 +2499,7 @@ struct v12v_pex_milliamps : request
 struct v12v_aux_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12v_aux_millivolts;
+  static constexpr key_type key = key_type::v12v_aux_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2514,7 +2514,7 @@ struct v12v_aux_millivolts : request
 struct v12v_aux_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12v_aux_milliamps;
+  static constexpr key_type key = key_type::v12v_aux_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2529,7 +2529,7 @@ struct v12v_aux_milliamps : request
 struct v3v3_pex_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v3v3_pex_millivolts;
+  static constexpr key_type key = key_type::v3v3_pex_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2544,7 +2544,7 @@ struct v3v3_pex_millivolts : request
 struct v3v3_aux_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v3v3_aux_millivolts;
+  static constexpr key_type key = key_type::v3v3_aux_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2559,7 +2559,7 @@ struct v3v3_aux_millivolts : request
 struct ddr_vpp_bottom_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ddr_vpp_bottom_millivolts;
+  static constexpr key_type key = key_type::ddr_vpp_bottom_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2574,7 +2574,7 @@ struct ddr_vpp_bottom_millivolts : request
 struct ddr_vpp_top_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ddr_vpp_top_millivolts;
+  static constexpr key_type key = key_type::ddr_vpp_top_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2589,7 +2589,7 @@ struct ddr_vpp_top_millivolts : request
 struct v5v5_system_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v5v5_system_millivolts;
+  static constexpr key_type key = key_type::v5v5_system_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2604,7 +2604,7 @@ struct v5v5_system_millivolts : request
 struct v1v2_vcc_top_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v1v2_vcc_top_millivolts;
+  static constexpr key_type key = key_type::v1v2_vcc_top_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2619,7 +2619,7 @@ struct v1v2_vcc_top_millivolts : request
 struct v1v2_vcc_bottom_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v1v2_vcc_bottom_millivolts;
+  static constexpr key_type key = key_type::v1v2_vcc_bottom_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2634,7 +2634,7 @@ struct v1v2_vcc_bottom_millivolts : request
 struct v1v8_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v1v8_millivolts;
+  static constexpr key_type key = key_type::v1v8_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2649,7 +2649,7 @@ struct v1v8_millivolts : request
 struct v0v85_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v0v85_millivolts;
+  static constexpr key_type key = key_type::v0v85_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2664,7 +2664,7 @@ struct v0v85_millivolts : request
 struct v0v9_vcc_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v0v9_vcc_millivolts;
+  static constexpr key_type key = key_type::v0v9_vcc_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2679,7 +2679,7 @@ struct v0v9_vcc_millivolts : request
 struct v12v_sw_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12v_sw_millivolts;
+  static constexpr key_type key = key_type::v12v_sw_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2694,7 +2694,7 @@ struct v12v_sw_millivolts : request
 struct mgt_vtt_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::mgt_vtt_millivolts;
+  static constexpr key_type key = key_type::mgt_vtt_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2709,7 +2709,7 @@ struct mgt_vtt_millivolts : request
 struct int_vcc_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::int_vcc_millivolts;
+  static constexpr key_type key = key_type::int_vcc_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2724,7 +2724,7 @@ struct int_vcc_millivolts : request
 struct int_vcc_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::int_vcc_milliamps;
+  static constexpr key_type key = key_type::int_vcc_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2739,7 +2739,7 @@ struct int_vcc_milliamps : request
 struct int_vcc_temp : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::int_vcc_temp;
+  static constexpr key_type key = key_type::int_vcc_temp;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2754,7 +2754,7 @@ struct int_vcc_temp : request
 struct v3v3_pex_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v3v3_pex_milliamps;
+  static constexpr key_type key = key_type::v3v3_pex_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2769,7 +2769,7 @@ struct v3v3_pex_milliamps : request
 struct v3v3_aux_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v3v3_aux_milliamps;
+  static constexpr key_type key = key_type::v3v3_aux_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2784,7 +2784,7 @@ struct v3v3_aux_milliamps : request
 struct int_vcc_io_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::int_vcc_io_milliamps;
+  static constexpr key_type key = key_type::int_vcc_io_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2799,7 +2799,7 @@ struct int_vcc_io_milliamps : request
 struct v3v3_vcc_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v3v3_vcc_millivolts;
+  static constexpr key_type key = key_type::v3v3_vcc_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2814,7 +2814,7 @@ struct v3v3_vcc_millivolts : request
 struct hbm_1v2_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::hbm_1v2_millivolts;
+  static constexpr key_type key = key_type::hbm_1v2_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2829,7 +2829,7 @@ struct hbm_1v2_millivolts : request
 struct v2v5_vpp_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v2v5_vpp_millivolts;
+  static constexpr key_type key = key_type::v2v5_vpp_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2844,7 +2844,7 @@ struct v2v5_vpp_millivolts : request
 struct v12_aux1_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12_aux1_millivolts;
+  static constexpr key_type key = key_type::v12_aux1_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2859,7 +2859,7 @@ struct v12_aux1_millivolts : request
 struct vcc1v2_i_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::vcc1v2_i_milliamps;
+  static constexpr key_type key = key_type::vcc1v2_i_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2874,7 +2874,7 @@ struct vcc1v2_i_milliamps : request
 struct v12_in_i_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12_in_i_milliamps;
+  static constexpr key_type key = key_type::v12_in_i_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2889,7 +2889,7 @@ struct v12_in_i_milliamps : request
 struct v12_in_aux0_i_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12_in_aux0_i_milliamps;
+  static constexpr key_type key = key_type::v12_in_aux0_i_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2904,7 +2904,7 @@ struct v12_in_aux0_i_milliamps : request
 struct v12_in_aux1_i_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v12_in_aux1_i_milliamps;
+  static constexpr key_type key = key_type::v12_in_aux1_i_milliamps;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2919,7 +2919,7 @@ struct v12_in_aux1_i_milliamps : request
 struct vcc_aux_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::vcc_aux_millivolts;
+  static constexpr key_type key = key_type::vcc_aux_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2934,7 +2934,7 @@ struct vcc_aux_millivolts : request
 struct vcc_aux_pmc_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::vcc_aux_pmc_millivolts;
+  static constexpr key_type key = key_type::vcc_aux_pmc_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2949,7 +2949,7 @@ struct vcc_aux_pmc_millivolts : request
 struct vcc_ram_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::vcc_ram_millivolts;
+  static constexpr key_type key = key_type::vcc_ram_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2964,7 +2964,7 @@ struct vcc_ram_millivolts : request
 struct int_vcc_io_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::int_vcc_io_millivolts;
+  static constexpr key_type key = key_type::int_vcc_io_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2979,7 +2979,7 @@ struct int_vcc_io_millivolts : request
 struct v0v9_int_vcc_vcu_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v0v9_int_vcc_vcu_millivolts;
+  static constexpr key_type key = key_type::v0v9_int_vcc_vcu_millivolts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -2994,7 +2994,7 @@ struct v0v9_int_vcc_vcu_millivolts : request
 struct mac_contiguous_num : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::mac_contiguous_num;
+  static constexpr key_type key = key_type::mac_contiguous_num;
   static const char* name() { return "mac_contiguous_num"; }
 
   virtual std::any
@@ -3004,7 +3004,7 @@ struct mac_contiguous_num : request
 struct mac_addr_first : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::mac_addr_first;
+  static constexpr key_type key = key_type::mac_addr_first;
   static const char* name() { return "mac_addr_first"; }
 
   virtual std::any
@@ -3014,7 +3014,7 @@ struct mac_addr_first : request
 struct mac_addr_list : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::mac_addr_list;
+  static constexpr key_type key = key_type::mac_addr_list;
   static const char* name() { return "mac_addr_list"; }
 
   virtual std::any
@@ -3024,7 +3024,7 @@ struct mac_addr_list : request
 struct oem_id : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::oem_id;
+  static constexpr key_type key = key_type::oem_id;
   static const char* name() { return "oem_id"; }
 
   // parse an oem_id and return value as string
@@ -3039,7 +3039,7 @@ struct oem_id : request
 struct firewall_detect_level : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::firewall_detect_level;
+  static constexpr key_type key = key_type::firewall_detect_level;
   static const char* name() { return "level"; }
 
   virtual std::any
@@ -3055,7 +3055,7 @@ struct firewall_detect_level : request
 struct firewall_detect_level_name : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::firewall_detect_level_name;
+  static constexpr key_type key = key_type::firewall_detect_level_name;
   static const char* name() { return "level_name"; }
 
   virtual std::any
@@ -3066,7 +3066,7 @@ struct firewall_detect_level_name : request
 struct firewall_status : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::firewall_status;
+  static constexpr key_type key = key_type::firewall_status;
   static const char* name() { return "status"; }
 
   virtual std::any
@@ -3082,7 +3082,7 @@ struct firewall_status : request
 struct firewall_time_sec : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::firewall_time_sec;
+  static constexpr key_type key = key_type::firewall_time_sec;
   static const char* name() { return "time_sec"; }
 
   virtual std::any
@@ -3098,7 +3098,7 @@ struct firewall_time_sec : request
 struct power_microwatts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::power_microwatts;
+  static constexpr key_type key = key_type::power_microwatts;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3113,7 +3113,7 @@ struct power_microwatts : request
 struct power_warning : request
 {
   using result_type = bool;
-  static const key_type key = key_type::power_warning;
+  static constexpr key_type key = key_type::power_warning;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3128,7 +3128,7 @@ struct power_warning : request
 struct host_mem_addr : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::host_mem_addr;
+  static constexpr key_type key = key_type::host_mem_addr;
   static const char* name() { return "host_mem_addr"; }
 
   virtual std::any
@@ -3144,7 +3144,7 @@ struct host_mem_addr : request
 struct host_mem_size : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::host_mem_size;
+  static constexpr key_type key = key_type::host_mem_size;
   static const char* name() { return "host_mem_size"; }
 
   virtual std::any
@@ -3160,7 +3160,7 @@ struct host_mem_size : request
 struct kds_numcdmas : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::kds_numcdmas;
+  static constexpr key_type key = key_type::kds_numcdmas;
   static const char* name() { return "kds_numcdmas"; }
 
   virtual std::any
@@ -3177,7 +3177,7 @@ struct mig_cache_update : request
 {
   using result_type = std::string;
   using value_type = std::string;   // put value type
-  static const key_type key = key_type::mig_cache_update;
+  static constexpr key_type key = key_type::mig_cache_update;
 
   virtual std::any
   get(const device*, modifier m, const std::string&) const override = 0;
@@ -3189,7 +3189,7 @@ struct mig_cache_update : request
 struct mig_ecc_enabled : request
 {
   using result_type = bool;
-  static const key_type key = key_type::mig_ecc_enabled;
+  static constexpr key_type key = key_type::mig_ecc_enabled;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3198,7 +3198,7 @@ struct mig_ecc_enabled : request
 struct mig_ecc_status : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::mig_ecc_status;
+  static constexpr key_type key = key_type::mig_ecc_status;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3207,7 +3207,7 @@ struct mig_ecc_status : request
 struct mig_ecc_ce_cnt : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::mig_ecc_ce_cnt;
+  static constexpr key_type key = key_type::mig_ecc_ce_cnt;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3216,7 +3216,7 @@ struct mig_ecc_ce_cnt : request
 struct mig_ecc_ue_cnt : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::mig_ecc_ue_cnt;
+  static constexpr key_type key = key_type::mig_ecc_ue_cnt;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3225,7 +3225,7 @@ struct mig_ecc_ue_cnt : request
 struct mig_ecc_ce_ffa : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::mig_ecc_ce_ffa;
+  static constexpr key_type key = key_type::mig_ecc_ce_ffa;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3234,7 +3234,7 @@ struct mig_ecc_ce_ffa : request
 struct mig_ecc_ue_ffa : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::mig_ecc_ue_ffa;
+  static constexpr key_type key = key_type::mig_ecc_ue_ffa;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3243,7 +3243,7 @@ struct mig_ecc_ue_ffa : request
 struct is_mfg : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_mfg;
+  static constexpr key_type key = key_type::is_mfg;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3252,7 +3252,7 @@ struct is_mfg : request
 struct mfg_ver : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::mfg_ver;
+  static constexpr key_type key = key_type::mfg_ver;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3261,7 +3261,7 @@ struct mfg_ver : request
 struct is_recovery : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_recovery;
+  static constexpr key_type key = key_type::is_recovery;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3275,7 +3275,7 @@ struct is_recovery : request
 struct is_versal : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_versal;
+  static constexpr key_type key = key_type::is_versal;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3287,7 +3287,7 @@ struct is_versal : request
 struct is_ready : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_ready;
+  static constexpr key_type key = key_type::is_ready;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3303,7 +3303,7 @@ struct is_ready : request
 struct is_offline : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_offline;
+  static constexpr key_type key = key_type::is_offline;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3312,7 +3312,7 @@ struct is_offline : request
 struct f_flash_type : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::f_flash_type;
+  static constexpr key_type key = key_type::f_flash_type;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3321,7 +3321,7 @@ struct f_flash_type : request
 struct flash_type : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::flash_type;
+  static constexpr key_type key = key_type::flash_type;
   static const char* name() { return "flash_type"; }
 
   virtual std::any
@@ -3337,7 +3337,7 @@ struct flash_type : request
 struct flash_size : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::flash_size;
+  static constexpr key_type key = key_type::flash_size;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3346,7 +3346,7 @@ struct flash_size : request
 struct board_name : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::board_name;
+  static constexpr key_type key = key_type::board_name;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3355,7 +3355,7 @@ struct board_name : request
 struct flash_bar_offset : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::flash_bar_offset;
+  static constexpr key_type key = key_type::flash_bar_offset;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3365,7 +3365,7 @@ struct rp_program_status : request
 {
   using result_type = uint32_t;
   using value_type = uint32_t;   // put value type
-  static const key_type key = key_type::rp_program_status;
+  static constexpr key_type key = key_type::rp_program_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3383,7 +3383,7 @@ struct rp_program_status : request
 struct cpu_affinity : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::cpu_affinity;
+  static constexpr key_type key = key_type::cpu_affinity;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3392,7 +3392,7 @@ struct cpu_affinity : request
 struct shared_host_mem : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::shared_host_mem;
+  static constexpr key_type key = key_type::shared_host_mem;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3401,7 +3401,7 @@ struct shared_host_mem : request
 struct enabled_host_mem : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::enabled_host_mem;
+  static constexpr key_type key = key_type::enabled_host_mem;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3410,7 +3410,7 @@ struct enabled_host_mem : request
 struct clock_timestamp : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::clock_timestamp;
+  static constexpr key_type key = key_type::clock_timestamp;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3419,7 +3419,7 @@ struct clock_timestamp : request
 struct mailbox_metrics : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::mailbox_metrics;
+  static constexpr key_type key = key_type::mailbox_metrics;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3437,7 +3437,7 @@ struct config_mailbox_channel_disable : request
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
 
-  static const key_type key = key_type::config_mailbox_channel_disable;
+  static constexpr key_type key = key_type::config_mailbox_channel_disable;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3451,7 +3451,7 @@ struct config_mailbox_channel_switch : request
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
 
-  static const key_type key = key_type::config_mailbox_channel_switch;
+  static constexpr key_type key = key_type::config_mailbox_channel_switch;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3465,7 +3465,7 @@ struct config_xclbin_change : request
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
 
-  static const key_type key = key_type::config_xclbin_change;
+  static constexpr key_type key = key_type::config_xclbin_change;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3479,7 +3479,7 @@ struct cache_xclbin : request
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
 
-  static const key_type key = key_type::cache_xclbin;
+  static constexpr key_type key = key_type::cache_xclbin;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3493,7 +3493,7 @@ struct ert_sleep : request
   using result_type = uint32_t;  // get value type
   using value_type = uint32_t;   // put value type
 
-  static const key_type key = key_type::ert_sleep;
+  static constexpr key_type key = key_type::ert_sleep;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3506,7 +3506,7 @@ struct ert_sleep : request
 struct ert_cq_read : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ert_cq_read;
+  static constexpr key_type key = key_type::ert_cq_read;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3515,7 +3515,7 @@ struct ert_cq_read : request
 struct ert_cq_write : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ert_cq_write;
+  static constexpr key_type key = key_type::ert_cq_write;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3524,7 +3524,7 @@ struct ert_cq_write : request
 struct ert_cu_read : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ert_cu_read;
+  static constexpr key_type key = key_type::ert_cu_read;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3533,7 +3533,7 @@ struct ert_cu_read : request
 struct ert_cu_write : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::ert_cu_write;
+  static constexpr key_type key = key_type::ert_cu_write;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3543,7 +3543,7 @@ struct ert_cu_write : request
 struct ert_data_integrity : request
 {
   using result_type = bool;
-  static const key_type key = key_type::ert_data_integrity;
+  static constexpr key_type key = key_type::ert_data_integrity;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3562,7 +3562,7 @@ struct ert_status : request
     // add more in the future
   };
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::ert_status;
+  static constexpr key_type key = key_type::ert_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3574,7 +3574,7 @@ struct ert_status : request
 struct noop : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::noop;
+  static constexpr key_type key = key_type::noop;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3590,7 +3590,7 @@ struct noop : request
 struct heartbeat_err_time : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::heartbeat_err_time;
+  static constexpr key_type key = key_type::heartbeat_err_time;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3599,7 +3599,7 @@ struct heartbeat_err_time : request
 struct heartbeat_err_code : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::heartbeat_err_code;
+  static constexpr key_type key = key_type::heartbeat_err_code;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3608,7 +3608,7 @@ struct heartbeat_err_code : request
 struct heartbeat_count : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::heartbeat_count;
+  static constexpr key_type key = key_type::heartbeat_count;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3617,7 +3617,7 @@ struct heartbeat_count : request
 struct heartbeat_stall : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::heartbeat_stall;
+  static constexpr key_type key = key_type::heartbeat_stall;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3627,7 +3627,7 @@ struct aim_counter : request
 {
   using result_type = std::vector<uint64_t>;
   using debug_ip_data_type = debug_ip_data*;
-  static const key_type key = key_type::aim_counter;
+  static constexpr key_type key = key_type::aim_counter;
 
   virtual std::any
   get(const xrt_core::device* device, const std::any& dbg_ip_data) const override = 0;
@@ -3637,7 +3637,7 @@ struct am_counter : request
 {
   using result_type = std::vector<uint64_t>;
   using debug_ip_data_type = debug_ip_data*;
-  static const key_type key = key_type::am_counter;
+  static constexpr key_type key = key_type::am_counter;
 
   virtual std::any
   get(const xrt_core::device* device, const std::any& dbg_ip_data) const override = 0;
@@ -3647,7 +3647,7 @@ struct asm_counter : request
 {
   using result_type = std::vector<uint64_t>;
   using debug_ip_data_type = debug_ip_data*;
-  static const key_type key = key_type::asm_counter;
+  static constexpr key_type key = key_type::asm_counter;
 
   virtual std::any
   get(const xrt_core::device* device, const std::any& dbg_ip_data) const override = 0;
@@ -3657,7 +3657,7 @@ struct lapc_status : request
 {
   using result_type = std::vector<uint32_t>;
   using debug_ip_data_type = debug_ip_data*;
-  static const key_type key = key_type::lapc_status;
+  static constexpr key_type key = key_type::lapc_status;
 
   virtual std::any
   get(const xrt_core::device* device, const std::any& dbg_ip_data) const override = 0;
@@ -3667,7 +3667,7 @@ struct spc_status : request
 {
   using result_type = std::vector<uint32_t>;
   using debug_ip_data_type = debug_ip_data*;
-  static const key_type key = key_type::spc_status;
+  static constexpr key_type key = key_type::spc_status;
 
   virtual std::any
   get(const xrt_core::device* device, const std::any& dbg_ip_data) const override = 0;
@@ -3677,7 +3677,7 @@ struct accel_deadlock_status : request
 {
   using result_type = uint32_t;
   using debug_ip_data_type = debug_ip_data*;
-  static const key_type key = key_type::accel_deadlock_status;
+  static constexpr key_type key = key_type::accel_deadlock_status;
 
   virtual std::any
   get(const xrt_core::device* device, const std::any& dbg_ip_data) const override = 0;
@@ -3689,7 +3689,7 @@ struct boot_partition : request
   // backup : 1
   using result_type = uint32_t;
   using value_type = uint32_t;
-  static const key_type key = key_type::boot_partition;
+  static constexpr key_type key = key_type::boot_partition;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3702,7 +3702,7 @@ struct flush_default_only : request
 {
   using result_type = uint32_t;
   using value_type = uint32_t;
-  static const key_type key = key_type::flush_default_only;
+  static constexpr key_type key = key_type::flush_default_only;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3715,7 +3715,7 @@ struct program_sc : request
 {
   using result_type = uint32_t;
   using value_type = uint32_t;
-  static const key_type key = key_type::program_sc;
+  static constexpr key_type key = key_type::program_sc;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3732,7 +3732,7 @@ struct program_sc : request
 struct vmr_status : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::vmr_status;
+  static constexpr key_type key = key_type::vmr_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3741,7 +3741,7 @@ struct vmr_status : request
 struct extended_vmr_status : request
 {
   using result_type = std::vector<std::string>;
-  static const key_type key = key_type::extended_vmr_status;
+  static constexpr key_type key = key_type::extended_vmr_status;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3759,7 +3759,7 @@ struct xclbin_slots : request
   };
 
   using result_type = std::vector<slot_info>;
-  static const key_type key = key_type::xclbin_slots;
+  static constexpr key_type key = key_type::xclbin_slots;
 
   // Convert raw data to associative map
   static std::map<slot_id, xrt::uuid>
@@ -3773,7 +3773,7 @@ struct xclbin_slots : request
 struct hwmon_sdm_serial_num : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_serial_num;
+  static constexpr key_type key = key_type::hwmon_sdm_serial_num;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3783,7 +3783,7 @@ struct hwmon_sdm_serial_num : request
 struct hwmon_sdm_oem_id : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_oem_id;
+  static constexpr key_type key = key_type::hwmon_sdm_oem_id;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3793,7 +3793,7 @@ struct hwmon_sdm_oem_id : request
 struct hwmon_sdm_board_name : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_board_name;
+  static constexpr key_type key = key_type::hwmon_sdm_board_name;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3803,7 +3803,7 @@ struct hwmon_sdm_board_name : request
 struct hwmon_sdm_active_msp_ver : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_active_msp_ver;
+  static constexpr key_type key = key_type::hwmon_sdm_active_msp_ver;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3813,7 +3813,7 @@ struct hwmon_sdm_active_msp_ver : request
 struct hwmon_sdm_target_msp_ver : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_target_msp_ver;
+  static constexpr key_type key = key_type::hwmon_sdm_target_msp_ver;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3823,7 +3823,7 @@ struct hwmon_sdm_target_msp_ver : request
 struct hwmon_sdm_mac_addr0 : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_mac_addr0;
+  static constexpr key_type key = key_type::hwmon_sdm_mac_addr0;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3833,7 +3833,7 @@ struct hwmon_sdm_mac_addr0 : request
 struct hwmon_sdm_mac_addr1 : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_mac_addr1;
+  static constexpr key_type key = key_type::hwmon_sdm_mac_addr1;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3843,7 +3843,7 @@ struct hwmon_sdm_mac_addr1 : request
 struct hwmon_sdm_revision : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_revision;
+  static constexpr key_type key = key_type::hwmon_sdm_revision;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3853,7 +3853,7 @@ struct hwmon_sdm_revision : request
 struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_fan_presence;
+  static constexpr key_type key = key_type::hwmon_sdm_fan_presence;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3863,7 +3863,7 @@ struct hwmon_sdm_fan_presence : request
 struct hwmon_sdm_mfg_date : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::hwmon_sdm_mfg_date;
+  static constexpr key_type key = key_type::hwmon_sdm_mfg_date;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3872,7 +3872,7 @@ struct hwmon_sdm_mfg_date : request
 struct hotplug_offline : request
 {
   using result_type = bool;
-  static const key_type key = key_type::hotplug_offline;
+  static constexpr key_type key = key_type::hotplug_offline;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3881,7 +3881,7 @@ struct hotplug_offline : request
 struct cu_size : request
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::cu_size;
+  static constexpr key_type key = key_type::cu_size;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3894,7 +3894,7 @@ struct cu_read_range : request
     uint32_t end;
   };
   using result_type = std::string;
-  static const key_type key = key_type::cu_read_range;
+  static constexpr key_type key = key_type::cu_read_range;
 
   virtual std::any
   get(const device*, modifier, const std::string&) const override = 0;
@@ -3919,7 +3919,7 @@ struct clk_scaling_info : request
   };
   using result_type = std::vector<struct data>;
   using data_type = struct data;
-  static const key_type key = key_type::clk_scaling_info;
+  static constexpr key_type key = key_type::clk_scaling_info;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3929,7 +3929,7 @@ struct xgq_scaling_enabled : request
 {
   using result_type = bool; // get value type
   using value_type = std::string; // put value type
-  static const key_type key = key_type::xgq_scaling_enabled;
+  static constexpr key_type key = key_type::xgq_scaling_enabled;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3942,7 +3942,7 @@ struct xgq_scaling_power_override : request
 {
   using result_type = std::string; // get value type
   using value_type = std::string; // put value type
-  static const key_type key = key_type::xgq_scaling_power_override;
+  static constexpr key_type key = key_type::xgq_scaling_power_override;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3955,7 +3955,7 @@ struct xgq_scaling_temp_override : request
 {
   using result_type = std::string; // get value type
   using value_type = std::string; // put value type
-  static const key_type key = key_type::xgq_scaling_temp_override;
+  static constexpr key_type key = key_type::xgq_scaling_temp_override;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -3978,7 +3978,7 @@ struct performance_mode : request
   using result_type = uint32_t;  // get value type
   using value_type = power_type;   // put value type
 
-  static const key_type key = key_type::performance_mode;
+  static constexpr key_type key = key_type::performance_mode;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -4015,7 +4015,7 @@ struct preemption : request
   using result_type = uint32_t;  // get value type
   using value_type = uint32_t;   // put value type
 
-  static const key_type key = key_type::preemption;
+  static constexpr key_type key = key_type::preemption;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -4049,7 +4049,7 @@ struct event_trace_version : request
 {
   using result_type = uint32_t;
 
-  static const key_type key = key_type::event_trace_version;
+  static constexpr key_type key = key_type::event_trace_version;
 
   std::any
   get(const device*) const override = 0;
@@ -4058,7 +4058,7 @@ struct event_trace_version : request
 struct event_trace_data : request
 {
   using result_type = firmware_debug_buffer;
-  static const key_type key = key_type::event_trace_data;
+  static constexpr key_type key = key_type::event_trace_data;
 
   std::any
   get(const device*) const override = 0;
@@ -4070,7 +4070,7 @@ struct event_trace_data : request
 
 struct event_trace_state : request
 {
-  static const key_type key = key_type::event_trace_state;
+  static constexpr key_type key = key_type::event_trace_state;
   struct value_type {
     uint32_t action;
     uint32_t categories;
@@ -4086,7 +4086,7 @@ struct event_trace_state : request
 
 struct event_trace_config : request
 {
-  static const key_type key = key_type::event_trace_config;
+  static constexpr key_type key = key_type::event_trace_config;
   using result_type = std::string;
 
   std::any
@@ -4097,7 +4097,7 @@ struct event_trace_config : request
 struct firmware_log_version : request 
 {
   using result_type = uint32_t;
-  static const key_type key = key_type::firmware_log_version;
+  static constexpr key_type key = key_type::firmware_log_version;
 
   std::any
   get(const device*) const override = 0;
@@ -4107,7 +4107,7 @@ struct firmware_log_version : request
 struct firmware_log_data : request
 {
   using result_type = firmware_debug_buffer;
-  static const key_type key = key_type::firmware_log_data;
+  static constexpr key_type key = key_type::firmware_log_data;
 
   std::any
   get(const device*) const override = 0;
@@ -4124,7 +4124,7 @@ struct firmware_log_state : request
   };
   using result_type = value_type;  // get value type
 
-  static const key_type key = key_type::firmware_log_state;
+  static constexpr key_type key = key_type::firmware_log_state;
   std::any
   get(const device*) const override = 0;
 
@@ -4134,7 +4134,7 @@ struct firmware_log_state : request
 
 struct firmware_log_config : request
 {
-  static const key_type key = key_type::firmware_log_config;
+  static constexpr key_type key = key_type::firmware_log_config;
   using result_type = std::string;
 
   std::any
@@ -4143,7 +4143,7 @@ struct firmware_log_config : request
 
 struct archive_path : request
 {
-  static const key_type key = key_type::archive_path;
+  static constexpr key_type key = key_type::archive_path;
   using result_type = std::string;
 
   std::any
@@ -4155,7 +4155,7 @@ struct auto_coredump : request
   using result_type = uint32_t;
   using value_type = uint32_t;
 
-  static const key_type key = key_type::auto_coredump;
+  static constexpr key_type key = key_type::auto_coredump;
 
   std::any
   get(const device*) const override = 0;
@@ -4173,7 +4173,7 @@ struct frame_boundary_preemption : request
   using result_type = uint32_t;  // get value type
   using value_type = uint32_t;   // put value type
 
-  static const key_type key = key_type::frame_boundary_preemption;
+  static constexpr key_type key = key_type::frame_boundary_preemption;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -4188,7 +4188,7 @@ struct debug_ip_layout_path : request
   // Get debug ip layout path
   // Used by xdp code
   using result_type = std::string; // get value type
-  static const key_type key = key_type::debug_ip_layout_path;
+  static constexpr key_type key = key_type::debug_ip_layout_path;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
@@ -4198,7 +4198,7 @@ struct debug_ip_layout : request
 {
   // Get debug ip layout
   using result_type = std::vector<char>; // get value type
-  static const key_type key = key_type::debug_ip_layout;
+  static constexpr key_type key = key_type::debug_ip_layout;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -4208,7 +4208,7 @@ struct num_live_processes : request
 {
   // Get the count of number of live processes
   using result_type = uint32_t; // get value type
-  static const key_type key = key_type::num_live_processes;
+  static constexpr key_type key = key_type::num_live_processes;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -4218,7 +4218,7 @@ struct device_clock_freq_mhz : request
 {
   // Get device clock frequency in MHz
   using result_type = double; // get value type
-  static const key_type key = key_type::device_clock_freq_mhz;
+  static constexpr key_type key = key_type::device_clock_freq_mhz;
 
   virtual std::any
   get(const device*) const override = 0;
@@ -4232,7 +4232,7 @@ struct trace_buffer_info : request
   };
   // Get trace buffer info
   using result_type = info; // get value type
-  static const key_type key = key_type::trace_buffer_info;
+  static constexpr key_type key = key_type::trace_buffer_info;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
@@ -4242,7 +4242,7 @@ struct host_max_bandwidth_mbps : request
 {
   // Get Max host bandwidth MBps
   using result_type = double; // get value type
-  static const key_type key = key_type::host_max_bandwidth_mbps;
+  static constexpr key_type key = key_type::host_max_bandwidth_mbps;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
@@ -4252,7 +4252,7 @@ struct kernel_max_bandwidth_mbps : request
 {
   // Get Max host bandwidth MBps
   using result_type = double; // get value type
-  static const key_type key = key_type::kernel_max_bandwidth_mbps;
+  static constexpr key_type key = key_type::kernel_max_bandwidth_mbps;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
@@ -4266,7 +4266,7 @@ struct sub_device_path : request
   };
   // Get sub device sysfs path
   using result_type = std::string; // get value type
-  static const key_type key = key_type::sub_device_path;
+  static constexpr key_type key = key_type::sub_device_path;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
@@ -4282,7 +4282,7 @@ struct read_trace_data : request
   };
   // Get sub device sysfs path
   using result_type = std::vector<uint32_t>; // get value type
-  static const key_type key = key_type::read_trace_data;
+  static constexpr key_type key = key_type::read_trace_data;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
@@ -4307,7 +4307,7 @@ struct aie_read : request
     uint32_t  size;
   };
   using result_type = std::vector<char>;
-  static const key_type key = key_type::aie_read;
+  static constexpr key_type key = key_type::aie_read;
 
   std::any
   get(const device*, const std::any&) const override = 0;
@@ -4332,7 +4332,7 @@ struct aie_write : request
     std::vector<char> data;
   };
   using result_type = size_t;  // returns bytes written
-  static const key_type key = key_type::aie_write;
+  static constexpr key_type key = key_type::aie_write;
 
   std::any
   get(const device*, const std::any&) const override = 0;
@@ -4347,7 +4347,7 @@ struct aie_coredump : request
   };
 
   using result_type = std::vector<char>;
-  static const key_type key = key_type::aie_coredump;
+  static constexpr key_type key = key_type::aie_coredump;
 
   std::any
   get(const device*, const std::any&) const override = 0;
@@ -4357,7 +4357,7 @@ struct aie_coredump : request
 struct flr_reset : request
 {
   using result_type = bool;
-  static const key_type key = key_type::flr_reset;
+  static constexpr key_type key = key_type::flr_reset;
 
   virtual std::any
   get(const device*) const override = 0;
