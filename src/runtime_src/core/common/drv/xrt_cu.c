@@ -398,8 +398,14 @@ static inline int process_rq(struct xrt_cu *xcu)
 
 	/* if successfully get credit, you must start cu */
 	if (xrt_cu_submit_config(xcu, xcmd)) {
+		/* A rejected configure left on rq is retried forever. */
 		xrt_cu_put_credit(xcu, 1);
-		return 0;
+		xcmd->status = KDS_ERROR;
+		dst_q = &xcu->cq;
+		dst_len = &xcu->num_cq;
+		move_to_queue(xcmd, dst_q, dst_len);
+		--xcu->num_rq;
+		return 1;
 	}
 	xrt_cu_start(xcu);
 	if (xcu->thread) {
