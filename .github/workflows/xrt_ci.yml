@@ -58,10 +58,6 @@ jobs:
             packageType: rpm
           - os: rhel10.0
             packageType: rpm
-          - os: rhel9.8
-            packageType: rpm
-          - os: rhel10.2
-            packageType: rpm
           - os: hip
             packageType: deb
           - os: ubuntu2404
