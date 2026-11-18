@@ -246,6 +246,14 @@ static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	zchan_dbg(chan, "addr_off 0x%x, size %d, offset %d, pid %d",
 		   add_off, size, offset, pid);
 
+	if (size == 0 || add_off > chan->mem_size ||
+	    size > chan->mem_size - add_off) {
+		zchan_err(chan, "invalid address offset 0x%x or size %d", add_off, size);
+		init_resp(resp, cmd->cid, -EINVAL);
+		cq->cq_log_payload.count = 0;
+		return;
+	}
+
 	switch (pid) {
 	case XGQ_CMD_LOG_INFO:
 		ret = zchan_cmd_log_page_info(chan, add_off, size, &total_count);
@@ -280,6 +288,14 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 	zchan_info(chan, "addr_off 0x%x, size %d, remain %d",
 		address_offset, size, remain_size);
 
+	if (size == 0 || address_offset > chan->mem_size ||
+	    size > chan->mem_size - address_offset) {
+		zchan_err(chan, "invalid address_offset 0x%x or size %d",
+			  address_offset, size);
+		ret = -EINVAL;
+		goto fail;
+	}
+
 	/*
 	 * if remain_size is not 0, this is not last pkt.
 	 *
@@ -294,6 +310,12 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 	}
 	entry->data_size = size;
 	entry->data_entry = vmalloc(size);
+	if (!entry->data_entry) {
+		zchan_err(chan, "no memory for data entry");
+		vfree(entry);
+		ret = -ENOMEM;
+		goto fail;
+	}
 	memcpy_fromio(entry->data_entry, src, size);
 
 	list_add_tail(&entry->entry_list, &chan->data_list);
