@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: chienwei@xilinx.com
  *
@@ -1782,10 +1783,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 	if (!strncmp(m_tag, "DDR", left_parentness-start) ||
 		!strncmp(m_tag, "bank", left_parentness-start)) {
 
-		strncpy(temp, left_parentness+1, digit_len);
-		/* assumption, temperature won't higher than 3 digits, or
-		 * the temp[digit_len] should be a null character */
-		temp[digit_len] = '\0';
+		strscpy(temp, left_parentness+1, digit_len + 1);
 		/* convert to signed long, decimal base */
 		if (kstrtol(temp, 10, &idx))
 			return ret;
@@ -4537,8 +4535,8 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 
 		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
 		if (tmp_str) {
-			strncpy(xmc->exp_bmc_ver, tmp_str,
-				sizeof(xmc->exp_bmc_ver) - 1);
+			strscpy(xmc->exp_bmc_ver, tmp_str,
+				sizeof(xmc->exp_bmc_ver));
 		}
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc, false)))
