@@ -569,13 +569,11 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	}
 	xcmd->cb.free = kds_free_command;
 	xcmd->cb.notify_host = notify_execbuf;
-	xcmd->execbuf = (u32 *)ecmd;
+	xcmd->execbuf = (u32 *)kecmd;
 	xcmd->gem_obj = gem_obj;
 	xcmd->exec_bo_handle = args->exec_bo_handle;
 	/* Default hw context. For backward compatibility */
 	xcmd->hw_ctx_id = 0;
-
-	//print_ecmd_info(ecmd);
 
 	switch(kecmd->opcode) {
 	case ERT_CONFIGURE:
@@ -625,8 +623,7 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		goto out1;
 	}
 
-	/* The translators set type and execbuf on the copy */
-	ecmd->type = kecmd->type;
+	/* Reset execbuf to user-mapped memory so the async notify writes state to the exec BO */
 	xcmd->execbuf = (u32 *)ecmd;
 	kfree(kecmd);
 
