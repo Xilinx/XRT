@@ -86,13 +86,7 @@ endif(DEFINED ENV{DK_ROOT} OR XRT_UPSTREAM)
 # Upstream builds must be reproducilble.
 if (NOT XRT_UPSTREAM)
   # Get the build date RFC format
-  execute_process(
-    COMMAND date -R
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    OUTPUT_VARIABLE XRT_DATE_RFC
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
+  string(TIMESTAMP XRT_DATE_RFC "%a, %d %b %Y %H:%M:%S +0000" UTC)
   string(TIMESTAMP XRT_DATE "%Y-%m-%d %H:%M:%S")
 endif()
 
