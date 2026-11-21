@@ -41,7 +41,7 @@ $(ELF): $(OBJ) $(XGQ_CTRL_OBJ) $(XGQ_CU_OBJ)
 	$(LINK) $(MYLFLAGS) -o $@ $^ -L$(BSP)/lib -lxil
 
 $(BIN): $(ELF)
-	$(MB_HOME)/bin/mb-objcopy -I elf32-microblaze -O binary $< $@
+	$(MB_HOME)/bin/mb-objcopy -O binary $< $@
 
 .PHONY: ert
 ert: $(BIN)
