@@ -873,13 +873,6 @@ private:
   size_t m_size;              // cache address space size
 };
 
-// Maximum time that the destructor of a run or runlist waits for
-// commands that are still in progress, which is an application error
-// (wait() was not called).  If the commands are not done in this time,
-// the destructor gives up and does not recycle the resources used by
-// the commands.  Note that not all shims honor wait timeouts.
-constexpr std::chrono::milliseconds destruct_wait_timeout{10000};
-
 // class kernel_command - Immplements command API expected by schedulers
 //
 // The kernel command is
@@ -974,10 +967,10 @@ public:
   // command is done.  Does not throw.
   //
   // A managed command is not waited for.  Its owner can be destructed
-  // from a callback on the thread that completes commands, which would
-  // then wait for itself.
+  // from a callback on the thread that completes commands; waiting from
+  // that thread for a command that has not yet completed would deadlock.
   bool
-  wait_on_destruct(const std::chrono::milliseconds& timeout) const noexcept
+  wait_on_destruct() const noexcept
   {
     try {
       if (is_done())
@@ -986,8 +979,8 @@ public:
       if (is_managed())
         return false;
 
-      auto result = wait(timeout);
-      return result.second == std::cv_status::no_timeout && is_done();
+      wait();
+      return true;
     }
     catch (const std::exception& ex) {
       xrt_core::send_exception_message(std::string("wait for command in progress failed: ") + ex.what());
@@ -2858,7 +2851,7 @@ public:
     if (!cmd->is_done()) {
       xrt_core::send_exception_message("xrt::run destructed while command is still in progress");
 
-      if (!cmd->wait_on_destruct(destruct_wait_timeout)) {
+      if (!cmd->wait_on_destruct()) {
         XRT_DEBUGF("<- run_impl::~run_impl(%d)\n" , uid);
         return;
       }
@@ -4037,13 +4030,17 @@ class runlist_impl
   wait_on_destruct() const noexcept
   {
     try {
-      if (wait_last_cmd(destruct_wait_timeout) == std::cv_status::timeout)
-        return false;
+      // Infinite wait for last command
+      if (wait_last_cmd(0ms) == std::cv_status::timeout)
+        throw xrt_core::error("internal error: unexpected timeout in infinite wait");
 
-      for (auto execbuf : m_submitted_cmds) {
+      // All commands have completed (error or not), if
+      // get_completed_state(..., 1ms) times out it would be an
+      // internal error, not because the hardware is hanging.
+      for (auto execbuf : m_submitted_cmds)
         if (execbuf != m_submitted_cmds.back())
           get_completed_state(execbuf, 1ms);
-      }
+
       return true;
     }
     catch (const std::exception& ex) {
