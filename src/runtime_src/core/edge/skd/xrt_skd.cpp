@@ -363,13 +363,23 @@ namespace xrt {
       }
 
       const std::filesystem::path path(SOFT_KERNEL_FILE_PATH);
+      std::error_code ec;
       xrt_core::message::send(severity_level::debug, "SKD", path.string());
 
-      std::filesystem::create_directories(path);
+      std::filesystem::create_directories(path, ec);
+      if (ec)
+        return -EPERM;
+      std::filesystem::permissions(path, std::filesystem::perms::owner_all,
+                                   std::filesystem::perm_options::replace, ec);
+      if (ec)
+        return -EPERM;
 
       // Check if file already exists and is the same size
       if (std::filesystem::exists(m_sk_path) && (std::filesystem::file_size(m_sk_path) == size)) {
-        return 0;
+        std::filesystem::permissions(m_sk_path,
+            std::filesystem::perms::owner_read | std::filesystem::perms::owner_write,
+            std::filesystem::perm_options::replace, ec);
+        return ec ? -EPERM : 0;
       }
 
       // Create / overwrite file if either file do not exist or is not the same size
@@ -403,7 +413,10 @@ namespace xrt {
       fptr.close();
       bohdl->unmap(buf);
 
-      return 0;
+      std::filesystem::permissions(m_sk_path,
+          std::filesystem::perms::owner_read | std::filesystem::perms::owner_write,
+          std::filesystem::perm_options::replace, ec);
+      return ec ? -EPERM : 0;
   }
 
   /*

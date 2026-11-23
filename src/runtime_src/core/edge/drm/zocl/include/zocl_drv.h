@@ -287,6 +287,8 @@ zocl_kds_set_cu_read_range(struct drm_zocl_dev *zdev, struct kds_client *client,
 
 int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
 		zocl_dma_handle_t *handle, struct drm_zocl_copy_bo *bo);
+struct ert_packet *zocl_execbuf_copy(struct drm_gem_object *gem_obj,
+		struct ert_packet *ecmd);
 
 bool zocl_can_dma_performed(struct drm_device *dev, struct drm_file *filp,
 	struct drm_zocl_copy_bo *args, uint64_t *dst_paddr,

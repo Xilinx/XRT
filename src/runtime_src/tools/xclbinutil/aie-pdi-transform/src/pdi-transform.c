@@ -363,6 +363,18 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 {
   uint32_t BufLen = 0/*, Ret*/;
   /*const*/ uint32_t *Buf = NULL;
+  uint32_t HdrLen = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
+        sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
+  const uint32_t cdo_hdr_bytes = XCDO_CDO_HDR_LEN * sizeof(uint32_t);
+  /* Each input word can expand to two output words. */
+  const size_t out_bytes_per_word = 2U * sizeof(uint32_t);
+
+  if (!PdiLoad || !PdiLoad->PdiPtr ||
+      PdiLoad->PdiLen < HdrLen + cdo_hdr_bytes) {
+    XCdo_PError("Failed to transform PDI, input is shorter than the CDO header.\n\r");
+    return;
+  }
+
   //Check whether the PDI already get transformed or not.
   if (XPdi_Header_Transform_Type(PdiLoad, NULL) != NOTRANFORM) {
     printf("PDI is in tranform format can not compress again, do normal pdi load.");
@@ -375,10 +387,24 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
   XPdi_GetFirstPrtn(PdiLoad, &CdoLoad);
   ParseBufFromCDO(&Buf, &BufLen, &CdoLoad);
 
+  /* BufLen is a word count from the CDO header. Reject a value past the
+   * bytes present, and a value whose output would wrap size_t. The cast
+   * keeps the compare from being tautological on 64-bit. */
+  const size_t header_bytes = (size_t)HdrLen + cdo_hdr_bytes;
+  if (CdoLoad.CdoLen < cdo_hdr_bytes ||
+      BufLen > CdoLoad.CdoLen / sizeof(*Buf) - XCDO_CDO_HDR_LEN ||
+      (size_t)BufLen > (SIZE_MAX - header_bytes) / out_bytes_per_word) {
+    XCdo_PError("Failed to transform PDI, invalid cdo length %u, Buflen %u.\n\r",
+                CdoLoad.CdoLen, BufLen);
+    return;
+  }
+
   //Prepare the new PDI memory
-  char* pdi_buf = (char *)malloc((size_t)BufLen * 2 * 4);
-  uint32_t HdrLen = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
-        sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
+  char* pdi_buf = (char *)malloc(header_bytes + (size_t)BufLen * out_bytes_per_word);
+  if (!pdi_buf) {
+    XCdo_PError("Failed to allocate transformed PDI buffer.\n\r");
+    return;
+  }
 
   //Copy the PDI header
   XPdiLoad newPdiLoad;

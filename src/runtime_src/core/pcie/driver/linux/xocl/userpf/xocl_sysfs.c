@@ -1,5 +1,5 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: GPL-2.0
  * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
  * A GEM style device manager for PCIe based OpenCL accelerators.

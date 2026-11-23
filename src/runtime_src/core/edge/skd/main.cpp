@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
   if (pid > 0)
     exit(EXIT_SUCCESS);
 
-  // Starting the child process
-  umask(0);
+  // Owner-only files. umask(0) made the soft-kernel .so world-writable.
+  umask(077);
 
   // Send the first message to XRT log
   const auto msg = "Daemon Start...";

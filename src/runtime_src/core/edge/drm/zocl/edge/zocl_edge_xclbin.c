@@ -59,6 +59,58 @@ zocl_cache_xclbin(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 }
 
 /*
+ * Check the za_kernels blob before it is used. The blob is a sequence of
+ * struct kernel_info, each followed by anums struct argument_info. Every
+ * entry must fit in the blob, every name must be NUL-terminated within its
+ * 64-byte field, and the sequence must end exactly at size.
+ *
+ * zocl_query_kernel() walks the same layout, so a blob that passes here
+ * cannot make it loop forever or read past the end.
+ *
+ * @param	blob:	kernel blob copied from userspace
+ * @param	size:	size of blob in bytes, must be > 0
+ *
+ * @return	true if the blob is well formed, false otherwise
+ */
+static bool
+zocl_kernels_blob_valid(const char *blob, size_t size)
+{
+	const struct kernel_info *kernel;
+	size_t off = 0;
+	int i;
+
+	while (off < size) {
+		if (size - off < sizeof(struct kernel_info))
+			return false;
+
+		kernel = (const struct kernel_info *)(blob + off);
+		if (kernel->anums < 0)
+			return false;
+
+		/* Divide instead of multiplying so anums cannot overflow */
+		if ((size - off - sizeof(struct kernel_info)) /
+		    sizeof(struct argument_info) < (size_t)kernel->anums)
+			return false;
+
+		if (strnlen(kernel->name, sizeof(kernel->name)) ==
+		    sizeof(kernel->name))
+			return false;
+
+		for (i = 0; i < kernel->anums; i++) {
+			if (strnlen(kernel->args[i].name,
+				    sizeof(kernel->args[i].name)) ==
+			    sizeof(kernel->args[i].name))
+				return false;
+		}
+
+		off += sizeof(struct kernel_info) +
+		       sizeof(struct argument_info) * kernel->anums;
+	}
+
+	return off == size;
+}
+
+/*
  * This function is the main entry point to load xclbin. It's takes an userspace
  * pointer of xclbin and copy the xclbin data to kernel space. Then load that
  * xclbin to the FPGA. It also initialize other modules like, memory, aie, CUs
@@ -84,6 +136,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	void *kernels = NULL;
 	void *aie_res = 0;
 	int ret = 0;
+	int err = 0;
 	struct drm_zocl_slot *slot = NULL;
 	uint32_t flags = 0;
 	bool dt_overlay = false;
@@ -188,7 +241,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * such a section.
 	 */
 
-	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	err = zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	if (err < 0) {
+		ret = err;
+		goto done;
+	}
 
 	/* 1. We locked slot->slot_xclbin_lock so that no new contexts
 	 * can be opened and/or closed
@@ -350,7 +407,16 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		}
 		if (copy_from_user(kernels, axlf_obj->za_kernels,
 		    axlf_obj->za_ksize)) {
+			vfree(kernels);
 			ret = -EFAULT;
+			goto out0;
+		}
+		/* Validate the kernel copy, not the user buffer, which can change */
+		if (!zocl_kernels_blob_valid(kernels, axlf_obj->za_ksize)) {
+			DRM_WARN("read xclbin: invalid kernel table, size %d",
+				 axlf_obj->za_ksize);
+			vfree(kernels);
+			ret = -EINVAL;
 			goto out0;
 		}
 		slot->ksize = axlf_obj->za_ksize;

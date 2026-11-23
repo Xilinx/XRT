@@ -2273,12 +2273,22 @@ int start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	return 0;
 }
 
+/* FA descriptor size is bounded by cu_fa_get_desc_size() to 128 KB */
+#define MAX_FA_DESC_SIZE	(128 * 1024)
+
 int start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
 	u32 num_mask = 1 + ecmd->extra_cu_masks;
+	size_t isize;
 
 	if (ecmd->count < num_mask)
+		return -EINVAL;
+
+	isize = (ecmd->count - num_mask) * sizeof(u32);
+
+	/* Coarse upper-bound: reject oversized descriptors before KDS queues them */
+	if (isize > MAX_FA_DESC_SIZE)
 		return -EINVAL;
 
 	xcmd->opcode = OP_START;
@@ -2298,7 +2308,7 @@ int start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 * Based on ert.h, ecmd->count is the number of words following header.
 	 * The descriptor size is (count - (1 + extra_cu_masks)).
 	 */
-	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
+	xcmd->isize = isize;
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	ecmd->type = ERT_CTRL;
 	return 0;

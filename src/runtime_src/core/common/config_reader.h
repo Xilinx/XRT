@@ -286,6 +286,13 @@ get_aie_halt_settings_control_code()
 }
 
 inline bool
+get_aie_halt_settings_halt_on_every_run()
+{
+  static bool value = detail::get_bool_value("AIE_halt_settings.halt_on_every_run", false);
+  return value;
+}
+
+inline bool
 get_profile_api()
 {
   static bool value = detail::get_bool_value("Debug.profile_api", false);

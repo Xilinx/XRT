@@ -5,6 +5,8 @@
 
 #ifdef _WIN32
 # include "core/common/detail/windows/xilinx_xrt.h"
+#elif defined(XRT_WSL2_HAS_DXG)
+# include "core/common/detail/wsl2/xilinx_xrt.h"
 #else
 # include "core/common/detail/linux/xilinx_xrt.h"
 #endif

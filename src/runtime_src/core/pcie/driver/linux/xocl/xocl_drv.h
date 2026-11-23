@@ -1,5 +1,5 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: GPL-2.0
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
@@ -1632,6 +1632,13 @@ static inline int xocl_get_pl_slot(xdev_handle_t xdev_hdl, uint32_t *slot_id)
 	ret = XOCL_GET_XCLBIN_ID(xdev_hdl, xclbin_id, DEFAULT_PL_PS_SLOT);
 	if (ret)
 		return ret;
+
+	/* Release the reader ref immediately; we only needed it to verify
+	 * a xclbin is present. Without this drop the reader_ref leaks on
+	 * every call, eventually blocking write-lock acquisition (xbutil
+	 * program) in wait_event_interruptible. (SWSPLAT-11920)
+	 */
+	XOCL_PUT_XCLBIN_ID(xdev_hdl, DEFAULT_PL_PS_SLOT); // NOLINT(cppcoreguidelines-pro-type-cstyle-cast)
 
 	/* As of now we have single PL/PS slot and hard coded to slot 0 */
 	*slot_id = DEFAULT_PL_PS_SLOT;

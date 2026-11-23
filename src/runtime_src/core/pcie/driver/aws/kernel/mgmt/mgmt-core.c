@@ -348,17 +348,21 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	unsigned long phys;
 	unsigned long vsize;
 	unsigned long psize;
+	resource_size_t bar_len;
 	BUG_ON(!lro_char);
 	lro = lro_char->lro;
 	BUG_ON(!lro);
 
 	printk(KERN_INFO "%s: %s \n", DRV_NAME, __FUNCTION__);
+	bar_len = pci_resource_len(lro->pci_dev, lro_char->bar);
 	off = vma->vm_pgoff << PAGE_SHIFT;
+	if (off >= bar_len)
+		return -EINVAL;
 	/* BAR physical address */
 	phys = pci_resource_start(lro->pci_dev, lro_char->bar) + off;
 	vsize = vma->vm_end - vma->vm_start;
 	/* complete resource */
-	psize = pci_resource_end(lro->pci_dev, lro_char->bar) - pci_resource_start(lro->pci_dev, lro_char->bar) + 1 - off;
+	psize = bar_len - off;
 
 	printk(KERN_INFO "mmap(): lro_char = 0x%08lx\n", (unsigned long)lro_char);
 	printk(KERN_INFO "mmap(): lro_char->bar = %d\n", lro_char->bar);

@@ -15,6 +15,7 @@
 #define _KDS_CLIENT_H
 
 #include <linux/list.h>
+#include <linux/rculist.h>
 #include <linux/mutex.h>
 #include <linux/pid.h>
 #include <linux/device.h>
@@ -104,31 +105,39 @@ struct kds_client {
 	atomic_t		  event;
 };
 
-/* Macros to operates client statistics */
+/* Completion does not hold client->lock. kds_del_context() holds it while
+ * waiting for these counters, so this walk cannot take the mutex.
+ */
 #define client_stat_read(client, hw_ctx, field)				\
 ({									\
 	struct kds_client_hw_ctx *curr_ctx;				\
 	u64 res = 0;							\
-	list_for_each_entry(curr_ctx, &client->hw_ctx_list, link)	\
-                if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+	rcu_read_lock();						\
+	list_for_each_entry_rcu(curr_ctx, &(client)->hw_ctx_list, link)	\
+		if (curr_ctx->hw_ctx_idx == (hw_ctx))			\
 			res = stat_read((curr_ctx)->stats, field);	\
+	rcu_read_unlock();						\
 	res;								\
 })
 
 #define client_stat_inc(client, hw_ctx, field)				\
 ({									\
 	struct kds_client_hw_ctx *curr_ctx;				\
-	list_for_each_entry(curr_ctx, &client->hw_ctx_list, link)	\
-		if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+	rcu_read_lock();						\
+	list_for_each_entry_rcu(curr_ctx, &(client)->hw_ctx_list, link)	\
+		if (curr_ctx->hw_ctx_idx == (hw_ctx))			\
 			this_stat_inc((curr_ctx)->stats, field);	\
+	rcu_read_unlock();						\
 })
 
 #define client_stat_dec(client, hw_ctx, field)				\
 ({									\
 	struct kds_client_hw_ctx *curr_ctx;				\
-        list_for_each_entry(curr_ctx, &client->hw_ctx_list, link)	\
-                if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+	rcu_read_lock();						\
+	list_for_each_entry_rcu(curr_ctx, &(client)->hw_ctx_list, link)	\
+		if (curr_ctx->hw_ctx_idx == (hw_ctx))			\
 			this_stat_dec((curr_ctx)->stats, field);	\
+	rcu_read_unlock();						\
 })
 
 #endif

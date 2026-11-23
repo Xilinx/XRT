@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file is an implementation detail of the XRT coreutil library.
 // It is not part of the public XRT API. Include guards are not
@@ -80,7 +80,11 @@ xilinx_xrt()
     // rather than hardcoding a fixed number of levels. Skip empty and root
     // components so an absolute XRT_LIB_DIR (e.g. "/usr/lib") does not
     // over-strip past the XRT root.
-    sfs::path xrt_root = sfs::path(info.dli_fname).parent_path();
+    //
+    // The loader can report a path that contains '..' when the library was
+    // found through an $ORIGIN-relative RPATH; normalize it before stripping
+    // XRT_LIB_DIR so the root's last component is the real directory name.
+    sfs::path xrt_root = sfs::path(info.dli_fname).lexically_normal().parent_path();
     for (const auto& comp : sfs::path(xrt_lib_dir)) {
       if (comp.empty() || comp == comp.root_directory())
         continue;
