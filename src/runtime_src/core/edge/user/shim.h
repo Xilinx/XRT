@@ -27,6 +27,7 @@
 #include <mutex>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/aie.h"
@@ -161,7 +162,16 @@ public:
     void
     sync(direction dir, size_t size, size_t offset) override
     {
-      m_shim->xclSyncBO(m_hdl, static_cast<xclBOSyncDirection>(dir), size, offset);
+      // xclSyncBO returns -errno on failure.  A failed sync means the
+      // cache was neither flushed nor invalidated, so the caller must
+      // not be allowed to continue as if the data were coherent.
+      auto ret = m_shim->xclSyncBO(m_hdl, static_cast<xclBOSyncDirection>(dir), size, offset);
+      if (ret) {
+        throw xrt_core::system_error(ret, "failed to sync bo (handle=" + std::to_string(m_hdl)
+                                     + ", dir=" + std::to_string(static_cast<int>(dir))
+                                     + ", size=" + std::to_string(size)
+                                     + ", offset=" + std::to_string(offset) + ")");
+      }
     }
 
     void
@@ -381,6 +391,25 @@ private:
   int mKernelFD;
   static std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
+
+  /*
+   * User space reference count of GEM handles owned by this shim.
+   *
+   * GEM handles are not reference counted by the kernel.  There is one
+   * handle per object per DRM file, so DRM_IOCTL_PRIME_FD_TO_HANDLE on a
+   * dma-buf exported from this same file returns the exporter's existing
+   * handle.  Every buffer_object holding the handle must therefore count
+   * as an owner and DRM_IOCTL_GEM_CLOSE must be issued only when the last
+   * owner releases it.  Handles not present in the map are treated as
+   * singly owned.
+   *
+   * m_bo_ref_mtx also serializes handle creation/import against release
+   * so a handle cannot be closed between PRIME_FD_TO_HANDLE and the count
+   * being taken.
+   */
+  std::mutex m_bo_ref_mtx;
+  std::unordered_map<unsigned int, unsigned int> m_bo_refcnt;
+
   std::shared_ptr<xrt_core::edge::dev_zocl> mDev = nullptr;
   size_t mKernelClockFreq;
   bool hw_context_enable = false;

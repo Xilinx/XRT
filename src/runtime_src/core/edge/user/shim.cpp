@@ -293,6 +293,11 @@ xclAllocBO(size_t size, unsigned flags, xrt_core::hwctx_handle* hwctx_hdl)
   if (result)
     throw std::bad_alloc();
 
+  {
+    std::lock_guard<std::mutex> lk(m_bo_ref_mtx);
+    ++m_bo_refcnt[info.handle];
+  }
+
   xclLog(XRT_DEBUG, "%s: size %ld, flags 0x%x", __func__, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
@@ -310,6 +315,11 @@ xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags, xrt_core::hwctx_ha
   if (result)
     throw std::bad_alloc();
 
+  {
+    std::lock_guard<std::mutex> lk(m_bo_ref_mtx);
+    ++m_bo_refcnt[info.handle];
+  }
+
   xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
@@ -323,6 +333,14 @@ xclGetHostBO(uint64_t paddr, size_t size)
   drm_zocl_host_bo info = {paddr, size, 0xffffffff};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_GET_HOST_BO, &info);
 
+  // On failure info.handle is still the null handle, do not count it.
+  // The returned handle is adopted by the caller (e.g. via
+  // shim_int::get_buffer_handle) which then is the sole owner.
+  if (!result) {
+    std::lock_guard<std::mutex> lk(m_bo_ref_mtx);
+    ++m_bo_refcnt[info.handle];
+  }
+
   xclLog(XRT_DEBUG, "%s: paddr 0x%lx, size %ld", __func__, paddr, size);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
@@ -333,10 +351,32 @@ void
 shim::
 xclFreeBO(unsigned int boHandle)
 {
+  // Nothing to close for a detached or failed handle
+  if (boHandle == XRT_NULL_BO)
+    return;
+
+  // Hold the lock across the close so that a recycled handle number
+  // returned by a following create/import can only be counted after
+  // this close has completed.
+  std::lock_guard<std::mutex> lk(m_bo_ref_mtx);
+
+  auto it = m_bo_refcnt.find(boHandle);
+  if (it != m_bo_refcnt.end()) {
+    if (--it->second > 0) {
+      // Handle is still owned, e.g. exporter of a same device import
+      xclLog(XRT_DEBUG, "%s: boHandle %d still referenced, refcnt %u", __func__, boHandle, it->second);
+      return;
+    }
+    m_bo_refcnt.erase(it);
+  }
+
   drm_gem_close closeInfo = {boHandle, 0};
   int result = ioctl(mKernelFD, DRM_IOCTL_GEM_CLOSE, &closeInfo);
 
   xclLog(XRT_DEBUG, "%s: boHandle %d, ioctl return %d", __func__, boHandle, result);
+  if (result)
+    xclLog(XRT_ERROR, "%s: DRM_IOCTL_GEM_CLOSE failed for boHandle %d: %s",
+           __func__, boHandle, std::strerror(errno));
 }
 
 int
@@ -881,7 +921,19 @@ shim::
 xclImportBO(int fd, unsigned flags)
 {
   drm_prime_handle info = {0xffffffff, flags, fd};
-  int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
+
+  // A dma-buf exported from this same DRM file yields the exporter's
+  // existing GEM handle (one handle per object per file) without any
+  // kernel reference.  Take the user space reference under the same lock
+  // as the ioctl so the handle cannot be closed by its other owner
+  // before it is counted.
+  int result = 0;
+  {
+    std::lock_guard<std::mutex> lk(m_bo_ref_mtx);
+    result = ioctl(mKernelFD, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
+    if (!result)
+      ++m_bo_refcnt[info.handle];
+  }
   if (result)
     throw xrt_core::system_error(result, "ioctl failed to import bo");
 
