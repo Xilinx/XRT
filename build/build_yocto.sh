@@ -1,9 +1,5 @@
 #!/bin/bash
 
-bold=$(tput bold)
-normal=$(tput sgr0)
-red=$(tput setaf 1)
-
 ABS_PATH=$(pwd)
 XRT_REPO_DIR=`readlink -f ${ABS_PATH}/..`
 SETTINGS_FILE="$ABS_PATH/yocto.build"
@@ -113,9 +109,6 @@ while [ $# -gt 0 ]; do
         -aarch )
             shift
             ARCH="$1"
-            ;;
-        --* | -* )
-            error "Unregognized option: $1"
             ;;
         * )
             error "Unregognized option: $1"
