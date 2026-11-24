@@ -3300,7 +3300,16 @@ public:
   ert_cmd_state
   state() const
   {
-    return cmd->get_state();
+    auto s = cmd->get_state();
+    // Dump logs if terminal state is reached
+    // (i.e., completed, error, abort, or timeout)
+    if (s == ERT_CMD_STATE_COMPLETED)
+      dump_logs(true);
+    else if (s == ERT_CMD_STATE_ERROR || s == ERT_CMD_STATE_ABORT ||
+             s == ERT_CMD_STATE_TIMEOUT)
+      dump_logs(false);
+
+    return s;
   }
 
   // return_code() - get kernel execution return code
