@@ -373,11 +373,12 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			if (ip->m_base_address == EMPTY_APT_VALUE)
 				continue;
 
-			strncpy(kname, ip->m_name, sizeof(kname));
-			kname[sizeof(kname)-1] = '\0';
+			strscpy(kname, ip->m_name, sizeof(kname));
 			kname_p = &kname[0];
-			strncpy(kname, strsep(&kname_p, ":"), sizeof(kname));
-			kname[sizeof(kname)-1] = '\0';
+			/* strsep() NUL-terminates kname at ':' in place, leaving
+			 * only the kernel name in kname.
+			 */
+			strsep(&kname_p, ":");
 			krnl_info = zocl_query_kernel(slot, kname);
 			if (krnl_info && krnl_info->range >= CU_SIZE)
 				apt_size = krnl_info->range;

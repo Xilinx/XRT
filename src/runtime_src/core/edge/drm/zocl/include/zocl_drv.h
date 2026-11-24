@@ -62,6 +62,14 @@
 #endif
 
 /*
+ * Include drm_print.h first so that the #ifndef checks below see the
+ * kernel's own DRM_ERROR/DRM_WARN/... definitions. Otherwise the macros
+ * below get defined first and drm_print.h then redefines them (newer
+ * kernels, e.g. 7.x, build with -Werror).
+ */
+#include <drm/drm_print.h>
+
+/*
  * Legacy uppercase DRM logging helpers were dropped from newer kernels.
  * Keep the existing call sites working by mapping them to the generic
  * printk-based helpers when the DRM headers no longer provide them.
