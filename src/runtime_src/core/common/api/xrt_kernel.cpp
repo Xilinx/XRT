@@ -520,9 +520,12 @@ cu_access_mode(xrt::hw_context::access_mode mode)
 // Data members should be moved to xrt_core::device, but
 // some are maintained in shim and not accessible outside
 // What's worse is that not all data members are in all shims
-struct device_type
+class device_type
 {
+public:
   std::shared_ptr<xrt_core::device> core_device;
+
+private:
   xrt_core::bo_cache exec_buffer_cache;
   uint32_t uid; // internal unique id for debug
 
@@ -535,6 +538,7 @@ struct device_type
     return count++;
   }
 
+public:
   explicit
   device_type(xrtDeviceHandle dhdl)
     : core_device(xrt_core::device_int::get_core_device(dhdl))
@@ -569,6 +573,14 @@ struct device_type
   create_exec_buf()
   {
     return exec_buffer_cache.alloc<CommandType>();
+  }
+
+  template <typename CommandType>
+  void
+  release_exec_buf(xrt_core::bo_cache::cmd_bo<CommandType>&& execbuf)
+  {
+    execbuf.first->reset(); // notify shim of recycled buffer
+    exec_buffer_cache.release(std::move(execbuf));
   }
 
   xrt_core::device*
@@ -901,12 +913,14 @@ public:
   {
     XRT_DEBUGF("kernel_command::~kernel_command(%d)\n", m_uid);
 
-    // Notify shim that any BOs bound to this kernel command are no
-    // longer used by the command.
-    get_exec_bo()->reset();
-
-    // This is problematic, bo_cache should return managed BOs
-    m_device->exec_buffer_cache.release(std::move(m_execbuf));
+    // Recycle the exec buffer only if the command is done.  A command
+    // that is still in progress, because its owner was destructed
+    // without waiting, may still be in use by the hardware and its
+    // state may be updated on completion.  In that case the buffer is
+    // destructed with this object instead of being returned to the
+    // cache, where it could be reused by another command.
+    if (is_done())
+      m_device->release_exec_buf(std::move(m_execbuf));
   }
 
   kernel_command(const kernel_command&) = delete;
@@ -935,6 +949,43 @@ public:
   {
     std::lock_guard<std::mutex> lk(m_mutex);
     return m_done;
+  }
+
+  // Check if the command was started as a managed command, which is
+  // completed by the thread of the hw queue and notified through
+  // callbacks.
+  bool
+  is_managed() const
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    return m_managed;
+  }
+
+  // Wait for a command that is still in progress when its owner is
+  // destructed, so that the hardware is done with the command and its
+  // resources before they are released or reused.  Return true if the
+  // command is done.  Does not throw.
+  //
+  // A managed command is not waited for.  Its owner can be destructed
+  // from a callback on the thread that completes commands; waiting from
+  // that thread for a command that has not yet completed would deadlock.
+  bool
+  wait_on_destruct() const noexcept
+  {
+    try {
+      if (is_done())
+        return true;
+
+      if (is_managed())
+        return false;
+
+      wait();
+      return true;
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(std::string("wait for command in progress failed: ") + ex.what());
+      return false;
+    }
   }
 
   // Return state of command object.  The underlying packet
@@ -989,8 +1040,10 @@ public:
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_managed && !m_done)
         throw xrt_core::error(ENOTSUP, "Cannot add callback to running unmanaged command");
+      
       if (!m_callbacks)
         m_callbacks = std::make_unique<callback_list>();
+      
       m_callbacks->emplace_back(std::move(fcn));
       auto pkt = get_ert_packet();
       state = static_cast<ert_cmd_state>(pkt->state);
@@ -1045,6 +1098,7 @@ public:
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_done)
         throw std::runtime_error("bad command state, can't launch");
+      
       m_managed = (m_callbacks && !m_callbacks->empty());
       m_done = false;
     }
@@ -1602,14 +1656,16 @@ private:
   size_t num_cumasks = 1;                     // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                               // Internal unique id for debug
-  uint32_t m_ctrl_code_id = xrt_core::elf_int::no_ctrl_code_id;
-                                              // ID to identify which ctrl code to load from elf
 
+  // ID to identify which ctrl code to load from elf
+  uint32_t m_ctrl_code_id = xrt_core::elf_int::no_ctrl_code_id;
+
+  // Cache for ctrlpkt buffers, in ELF flow we create xrt::bo and fill
+  // it with ctrlpkt data. Creating ctrlpkt bo at xrt::run creation
+  // adds overhead and reduces performace, so creating a buffer
+  // pool/cache of this ctrlpkt to reduce this overhead
   std::unique_ptr<buffer_cache> m_ctrlpkt_bo_cache;
-                                              // Cache for ctrlpkt buffers, in ELF flow we create xrt::bo
-                                              // and fill it with ctrlpkt data. Creating ctrlpkt bo at xrt::run
-                                              // creation adds overhead and reduces performace, so creating a
-                                              // buffer pool/cache of this ctrlpkt to reduce this overhead
+
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -2784,18 +2840,27 @@ public:
   virtual
   ~run_impl()
   {
-    // It is a fatal error to destruct a run_impl while its command is
-    // still in progress.  But only abort if there are no live
-    // exception objects.
+    XRT_DEBUGF("-> run_impl::~run_impl(%d)\n" , uid);
+    // It is an error to destruct a run_impl while its command is still
+    // in progress, wait() must have been called first.  The error is
+    // reported, but is not fatal.  Wait for the command to complete, so
+    // that the hardware is done with the ctrlpkt buffer before it is
+    // released to the kernel's cache.  If the command is not done after
+    // the wait, the buffer is not released, as the hardware may still
+    // be reading it and another run could overwrite it.
     if (!cmd->is_done()) {
       xrt_core::send_exception_message("xrt::run destructed while command is still in progress");
-      if (!std::uncaught_exceptions())
-        std::abort();
+
+      if (!cmd->wait_on_destruct()) {
+        XRT_DEBUGF("<- run_impl::~run_impl(%d)\n" , uid);
+        return;
+      }
     }
 
-    XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
     if (m_ctrlpkt_bo)
       kernel->release_ctrlpkt_buffer(std::move(m_ctrlpkt_bo));
+
+    XRT_DEBUGF("<- run_impl::~run_impl(%d)\n" , uid);
   }
 
   run_impl(const run_impl&) = delete;
@@ -2850,13 +2915,13 @@ public:
   }
 
   void
-  set_runlist(const runlist_impl*)
+  set_runlist(const runlist_impl*) noexcept
   {
     ++m_runlist_counter;
   }
 
   void
-  clear_runlist()
+  clear_runlist() noexcept
   {
     --m_runlist_counter;
   }
@@ -3805,11 +3870,18 @@ class runlist_impl
   // ert_packets with payload interpreted as ert_cmd_chain_data
   using cmd_type = ert_packet;
   using execbuf_type = xrt_core::bo_cache::cmd_bo<cmd_type>;
-  xrt_core::bo_cache_t<execbuf_size> m_exec_buffer_cache;
+
+  // The chained commands are allocated from, and returned to, the device
+  // wide exec buffer cache.  They are shared with the kernel commands
+  // (runs) and outlive the runlist.  A chained command must fit in a
+  // cached exec buffer.
+  static_assert(execbuf_size <= xrt_core::bo_cache::bo_size,
+                "runlist chain command must fit in a cached exec buffer");
 
   enum class state { idle, closed, running, error };
   mutable state m_state = state::idle;
 
+  std::shared_ptr<device_type> m_device;
   xrt::hw_context m_hwctx;
   xrt_core::hw_queue m_hwqueue;
   std::vector<xrt::run> m_runlist;
@@ -3848,19 +3920,37 @@ class runlist_impl
     return unpack(*execbuf);
   }
 
-  // Execution buffers are cached and reused within this runlist
-  // This function creates or gets an execbuf from the cache
-  // and initializes the command in prep for add chained commands.
+  // Execution buffers are cached in the device wide exec buffer cache
+  // and reused by runs and runlists.  This function creates or gets an
+  // execbuf from the cache and initializes the command in prep for add
+  // chained commands.  A cached buffer may last have been used for a
+  // different kind of command, so the entire packet header is cleared.
   execbuf_type
   create_exec_buf()
   {
-    auto execbuf = m_exec_buffer_cache.alloc<cmd_type>();
+    auto execbuf = m_device->create_exec_buf<cmd_type>();
     auto pkt = execbuf.second;
+    pkt->header = 0;
     pkt->opcode = ERT_CMD_CHAIN;
     pkt->count = sizeof(ert_cmd_chain_data) / word_size;  // payload size in words
     auto chain_data = get_ert_cmd_chain_data(pkt);
     std::memset(chain_data, 0, sizeof(*chain_data));
     return execbuf;
+  }
+
+  // Return the chained commands to the device wide exec buffer cache.
+  // Pre: none of the submitted commands are still running.
+  void
+  release_cmds()
+  {
+    m_submitted_cmds.clear();   // points into m_cmds
+
+    // Exception safety, keep state clean before any exceptions
+    auto cmds = std::move(m_cmds);
+    m_cmds.clear();
+
+    for (auto& execbuf : cmds)
+      m_device->release_exec_buf(std::move(execbuf));
   }
 
   // The chained command execbufs are created as needed
@@ -3926,6 +4016,37 @@ class runlist_impl
 
     auto [cmd, pkt] = unpack(m_submitted_cmds.back());
     return m_hwqueue.wait(cmd, timeout);
+  }
+
+  // Wait for the submitted commands of a runlist that is destructed
+  // while running, so that the hardware is done with the commands
+  // before their resources are released or reused.  Return true if
+  // all commands completed.  Does not throw.
+  //
+  // The shim completes per command bookkeeping when it waits for a
+  // command, so wait for every submitted command and not only for the
+  // last one.  The latter are all done when the last has completed.
+  bool
+  wait_on_destruct() const noexcept
+  {
+    try {
+      // Infinite wait for last command
+      if (wait_last_cmd(0ms) == std::cv_status::timeout)
+        throw xrt_core::error("internal error: unexpected timeout in infinite wait");
+
+      // All commands have completed (error or not), if
+      // get_completed_state(..., 1ms) times out it would be an
+      // internal error, not because the hardware is hanging.
+      for (auto execbuf : m_submitted_cmds)
+        if (execbuf != m_submitted_cmds.back())
+          get_completed_state(execbuf, 1ms);
+
+      return true;
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(std::string("wait for runlist in progress failed: ") + ex.what());
+      return false;
+    }
   }
 
   // Poll the last command for completion.  If the last submitted
@@ -4064,16 +4185,15 @@ class runlist_impl
 
 public:
   void
-  clear_runs() const
+  clear_runs() noexcept
   {
     for (auto& run : m_runlist)
       run.get_handle()->clear_runlist();
   }
 
 public:
-  explicit
-  runlist_impl(xrt::hw_context hwctx)
-    : m_exec_buffer_cache{hwctx.get_device().get_handle(), 128}
+  runlist_impl(std::shared_ptr<device_type> dev, xrt::hw_context hwctx)
+    : m_device{std::move(dev)}
     , m_hwctx{std::move(hwctx)}
     , m_hwqueue{m_hwctx}
   {}
@@ -4081,12 +4201,32 @@ public:
   virtual
   ~runlist_impl()
   {
-    // Make sure all run objects are severed from this list
+    // It is an error to destruct a runlist while its commands are still
+    // in progress, wait() must have been called first.  The error is
+    // reported, but is not fatal.  Wait for the commands to complete, so
+    // that the hardware is done with them before the chained commands
+    // are released to the cache.  If the commands are not done after
+    // the wait, the runs are severed from this list and the chained
+    // commands are not recycled, as the hardware may still be using
+    // them.  They are destructed along with the list.
+    if (m_state == state::running) {
+      xrt_core::send_exception_message("xrt::runlist destructed while commands are still in progress");
+
+      if (!wait_on_destruct()) {
+        clear_runs();
+        return;
+      }
+
+      // The hardware is done with the commands, release them as for
+      // a runlist that was waited on.
+      m_state = state::idle;
+    }
+
     try {
-      clear_runs();
+      reset();
     }
     catch (const std::exception& ex) {
-      xrt_core::send_exception_message("runlist clear_runs error: " + std::string(ex.what()));
+      xrt_core::send_exception_message("runlist destruction failed: " + std::string(ex.what()));
     }
   }
 
@@ -4231,13 +4371,17 @@ public:
                             "Please use wait() to ensure that all commands have completed "
                             "before calling reset().");
 
-    clear_runs();
-
-    m_runlist.clear();
-    m_bos.clear();
-    m_submitted_cmds.clear();
-    m_cmds.clear();
+    // There is a bit of a dance here to ensure that individual run
+    // commands are valid as long as runlist commands are alive.  The
+    // latter commands chain (reference) the former so the former must
+    // remain valid till the end.  The dance is to handle potential
+    // exception during release_cmds.
+    clear_runs();                     // noexcept, severs runs from this list
+    auto runs = std::move(m_runlist); // keep run objects alive until the chained
+    m_runlist.clear();                // commands are reset, they are destructed on exit
+    m_bos.clear();                    // noexcept
     m_state = state::idle;
+    release_cmds();                   // may throw
   }
 }; // class runlist_impl
 
@@ -4446,10 +4590,12 @@ get_mailbox_impl(const xrt::run& run)
 static std::shared_ptr<xrt::runlist_impl>
 alloc_runlist(const xrt::hw_context& hwctx)
 {
-  if (xrt_core::config::get_capture_frames())
-    return std::make_shared<xrt::runlist_impl_debug>(hwctx);
+  auto device = get_device(hwctx.get_device());
 
-  return std::make_shared<xrt::runlist_impl>(hwctx);
+  if (xrt_core::config::get_capture_frames())
+    return std::make_shared<xrt::runlist_impl_debug>(device, hwctx);
+
+  return std::make_shared<xrt::runlist_impl>(std::move(device), hwctx);
 }
 
 ////////////////////////////////////////////////////////////////
