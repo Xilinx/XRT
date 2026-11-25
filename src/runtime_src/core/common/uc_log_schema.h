@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 
-// UC Log Schema Version 0.26
+// UC Log Schema Version v1.13.0.55
 // This file defines UC log schema mappings for parsing binary log messages
 // from the firmware. It includes mappings for file IDs to filenames and
 // log IDs to format strings.
@@ -193,7 +193,11 @@ uc_log_schema = {
     {138, "restore L2 done & load_last_pdi start\n"},
     {139, "restore done\n"},
     {140, "assert\n"},
-    {141, "\n"}
+    {141, "load pdi done\n"},
+    {142, "load core elfs done\n"},
+    {143, "ucdma dm2mm status: addr 0x%x value 0x%x\n"},
+    {144, "ucdma mm2dm status: addr 0x%x value 0x%x\n"},
+    {145, "\n"}
   }
 };
 
