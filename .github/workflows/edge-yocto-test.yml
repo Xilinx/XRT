@@ -1,0 +1,81 @@
+# TEMPORARY (APRO-8628): validates the gen1 Yocto EDF edge build on the `apu` runner
+# before it is added to the nightly. Lives only on branch siddjere.apro-8628-edge-yocto-test,
+# which is deleted after the run. Uses the draft actions-int branches:
+#   composite-workflows#73 and build-action#144 (siddjere.apro-8628-edge-yocto).
+name: Edge Yocto test (APRO-8628, temporary)
+
+on:
+  push:
+    branches: [siddjere.apro-8628-edge-yocto-test]
+
+env:
+  RELEASE: '2027.1'
+  PIPELINE: 'xrt'
+  ACTIONS_REF: 'siddjere.apro-8628-edge-yocto'
+  EDF_MIRROR: '/proj/yocto/edf/2027.1/stable/Yocto_edf_2027.1_latest'
+
+jobs:
+  edge-yocto-build:
+    runs-on: apu
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        aarch: [gen1]
+    steps:
+      - name: Mint GHE token for actions-int
+        id: ghe-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHE_XRT_APP_ID }}
+          private-key: ${{ secrets.GHE_XRT_APP_PRIVATE_KEY }}
+          github-api-url: ${{ secrets.GHE_API_URL }}
+          owner: actions-int
+          permission-contents: read
+
+      - name: Set env variables
+        run: echo "PATH=/usr/bin:$PATH" >> "$GITHUB_ENV"
+
+      # run_id as the directory name: cannot collide with the nightly/PR run-number dirs
+      - name: Checkout XRT
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}/${{ github.run_id }}
+          submodules: recursive
+
+      - name: Checkout private repository
+        uses: actions/checkout@v4
+        with:
+          repository: actions-int/composite-workflows
+          token: ${{ steps.ghe-token.outputs.token }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          path: composite-workflows
+          ref: ${{ env.ACTIONS_REF }}
+
+      # Read-only token for github.com/AMD-AECG-SSW-PUBLIC (EDF layers come from there)
+      - name: Mint EMU fetch token
+        id: emu-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.EMU_FETCH_APP_ID }}
+          private-key: ${{ secrets.EMU_FETCH_APP_PRIVATE_KEY }}
+          owner: AMD-AECG-SSW-PUBLIC
+          permission-contents: read
+
+      - name: Edge Yocto build (${{ matrix.aarch }})
+        uses: ./composite-workflows/edge-yocto-package
+        with:
+          aarch: ${{ matrix.aarch }}
+          edfMirror: ${{ env.EDF_MIRROR }}
+          buildActionRef: ${{ env.ACTIONS_REF }}
+          pipeline: ${{ env.PIPELINE }}
+          workspace: ${{ github.workspace }}
+          buildNumber: ${{ github.run_id }}
+          release: ${{ env.RELEASE }}
+          accessToken: ${{ steps.ghe-token.outputs.token }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }}
+          appConfig1: ${{ secrets.APP_CONFIG1 }}
+          appConfig2: ${{ secrets.APP_CONFIG2 }}
+          appConfig3: ${{ secrets.APP_CONFIG3 }}
+          emuToken: ${{ steps.emu-token.outputs.token }}

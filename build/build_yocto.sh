@@ -18,6 +18,8 @@ usage()
     echo "          -help                                 Print this usage"
     echo "          -clean, clean                         Remove build directories, Specify architecture"
     echo "          -aarch [gen1|gen2]                    Platform class (required)"
+    echo "          -mirror <dir>                         Use <dir>/downloads and <dir>/sstate-cache of an EDF build"
+    echo "                                                as source and sstate mirrors (optional)"
     echo ""
     echo "gen1: vck190, vek280, vrk160 (amd-cortexa72-common)"
     echo "gen2: vek385 DSP (amd-cortexa78-common)"
@@ -98,6 +100,7 @@ install_recipes()
 
 clean=0
 ARCH=""
+MIRROR_DIR=""
 while [ $# -gt 0 ]; do
     case $1 in
         -help )
@@ -109,6 +112,10 @@ while [ $# -gt 0 ]; do
         -aarch )
             shift
             ARCH="$1"
+            ;;
+        -mirror )
+            shift
+            MIRROR_DIR="$1"
             ;;
         * )
             error "Unregognized option: $1"
@@ -133,6 +140,10 @@ fi
 
 # Set architecture-specific parameters
 set_architecture_params
+
+if [[ -n "$MIRROR_DIR" ]] && [[ ! -d "$MIRROR_DIR/downloads" || ! -d "$MIRROR_DIR/sstate-cache" ]]; then
+    error "-mirror $MIRROR_DIR has no downloads/ or sstate-cache/"
+fi
 
 if [ -f $SETTINGS_FILE  ]; then
     echo "source YOCTO Manifest from local file"
@@ -169,7 +180,19 @@ else
     install_recipes
 fi
 
-if MACHINE=$MACHINE bitbake xrt; then
+BB_POSTREAD=()
+if [[ -n "$MIRROR_DIR" ]]; then
+    # EDF's local.conf points SOURCE_MIRROR_URL and SSTATE_MIRRORS at edf.amd.com.
+    # bitbake -R reads this file after local.conf, so these values win.
+    cat > conf/xrt-mirror.conf <<EOF
+SOURCE_MIRROR_URL = "file://$MIRROR_DIR/downloads"
+SSTATE_MIRRORS = "file://.* file://$MIRROR_DIR/sstate-cache/PATH"
+EOF
+    BB_POSTREAD=(-R conf/xrt-mirror.conf)
+    echo "Using mirrors from $MIRROR_DIR"
+fi
+
+if MACHINE=$MACHINE bitbake "${BB_POSTREAD[@]}" xrt; then
     echo "bitbake xrt succeeded."
 
     rm -rf "$yocto_path/rpms"
@@ -197,4 +220,5 @@ if MACHINE=$MACHINE bitbake xrt; then
     cd -
 else
     echo "bitbake xrt failed"
+    exit 1
 fi
