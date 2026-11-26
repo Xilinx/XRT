@@ -49,8 +49,6 @@
 #ifdef XRT_WSL2_HAS_DXG
 
 #include "core/common/debug.h"
-#include "core/common/module_loader.h"
-#include "core/common/utils.h"
 
 // wsl/winadapter.h must precede dxg/d3dkmthk.h — it supplies the base
 // Windows types (ULONG, PVOID, DISPATCH_LEVEL, ...) the dxg headers build
@@ -62,7 +60,6 @@
 
 #include <dlfcn.h>
 
-#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <stdexcept>
@@ -71,10 +68,6 @@
 
 #ifndef XRT_INSTALL_PREFIX
 # error "XRT_INSTALL_PREFIX is undefined"
-#endif
-
-#ifndef XRT_VERSION_STRING
-# error "XRT_VERSION_STRING is undefined"
 #endif
 
 // XRT_LIB_DIR (CMAKE_INSTALL_LIBDIR) is supplied as a compile definition on
@@ -164,6 +157,53 @@ struct adapter
     }
     return desc;
   }
+
+  // Driver store directory of this adapter's driver package, e.g.
+  // /usr/lib/wsl/drivers/ipukmddrv.inf_amd64_<hash>.
+  //
+  // Same two-call D3DKMTQueryAdapterInfo query as
+  // detail/windows/xilinx_xrt.h: the first call returns the required buffer
+  // size (BUFFER_OVERFLOW), the second the path.  libdxg rewrites the
+  // \...\FileRepository\<dir> path returned by the host to
+  // /usr/lib/wsl/drivers/<dir>, so the result can be used as is.
+  std::string
+  driver_store_path() const
+  {
+    D3DKMT_QUERYADAPTERINFO query_adapter_info = {};
+    D3DDDI_QUERYREGISTRY_INFO query_registry_info = {};
+    query_adapter_info.hAdapter = handle();
+    query_adapter_info.Type = KMTQAITYPE_QUERYREGISTRY;
+    query_adapter_info.pPrivateDriverData = &query_registry_info;
+    query_adapter_info.PrivateDriverDataSize = sizeof(query_registry_info);
+    query_registry_info.QueryType = D3DDDI_QUERYREGISTRY_DRIVERSTOREPATH;
+    if (!NT_SUCCESS(D3DKMTQueryAdapterInfo(&query_adapter_info)))
+      throw std::runtime_error("D3DKMTQueryAdapterInfo failed KMTQAITYPE_QUERYREGISTRY");
+
+    if (query_registry_info.Status != D3DDDI_QUERYREGISTRY_STATUS_BUFFER_OVERFLOW)
+      throw std::runtime_error("Unexpected D3DDDI_QUERYREGISTRY_STATUS");
+
+    // OutputValueSize is the size in bytes of the output value. Allocate a
+    // variable sized query registry info buffer and query again.
+    std::vector<char> buffer(sizeof(D3DDDI_QUERYREGISTRY_INFO) + query_registry_info.OutputValueSize);
+    std::memcpy(buffer.data(), &query_registry_info, sizeof(query_registry_info));
+    query_adapter_info.pPrivateDriverData = buffer.data();
+    query_adapter_info.PrivateDriverDataSize = static_cast<UINT>(buffer.size());
+    if (!NT_SUCCESS(D3DKMTQueryAdapterInfo(&query_adapter_info)))
+      throw std::runtime_error("D3DKMTQueryAdapterInfo failed KMTQAITYPE_QUERYREGISTRY");
+
+    auto query_info = reinterpret_cast<D3DDDI_QUERYREGISTRY_INFO*>(buffer.data());
+    if (query_info->Status != D3DDDI_QUERYREGISTRY_STATUS_SUCCESS)
+      throw std::runtime_error("D3DDDI_QUERYREGISTRY_STATUS_SUCCESS failed");
+
+    // WCHAR[] -> narrow string (driver store path is ASCII in practice).
+    // Read up to the terminating null, but never past the end of the buffer.
+    const auto string_offset = reinterpret_cast<const char*>(query_info->OutputString) - buffer.data();
+    const auto max_chars = (buffer.size() - static_cast<size_t>(string_offset)) / sizeof(query_info->OutputString[0]);
+    std::string path;
+    for (size_t i = 0; i < max_chars && query_info->OutputString[i] != 0; ++i)
+      path += static_cast<char>(query_info->OutputString[i]);
+    return path;
+  }
 };
 
 // Abstraction to manage list of enumerated adapters
@@ -238,29 +278,56 @@ xilinx_xrt()
   return sfs::path(XRT_INSTALL_PREFIX);
 }
 
-// See detail/linux/xilinx_xrt.h for the full search-order documentation;
-// identical here since WSL has nothing extra to add to it.
+// Driver store directory of the NPU driver package.
+//
+// On WSL the host's Windows driver store is exposed inside the guest under
+// /usr/lib/wsl/drivers/<driver package dir> (libdxg rewrites the
+// \...\FileRepository\<dir> path returned by the host to this form), so the
+// same D3DKMTQueryAdapterInfo DRIVERSTOREPATH query used by
+// detail/windows/xilinx_xrt.h works here.
+//
+// Returns an empty path if there is no matching adapter or the query fails
+// (e.g. no /dev/dxg), so that callers fail with a plain "no such file".
+static sfs::path
+system_driver_store()
+{
+  try {
+    wsl2::adapter_list adapters;
+
+    // Tight coupling with KMD driver description string, same as
+    // detail/windows/xilinx_xrt.h
+    auto adapter = adapters.find("AMD XDNA(TM) NPU");
+
+    // If not found, try previous adapter name
+    if (!adapter)
+      adapter = adapters.find("NPU Compute Accelerator Device");
+
+    if (adapter)
+      return adapter->driver_store_path();
+  }
+  catch (const std::exception& ex) {
+    XRT_DEBUGF("wsl2: driver store not available: %s\n", ex.what());
+  }
+
+  return {};
+}
+
+// Platform files (e.g. the xrt-smi validate archives and xclbins) are
+// installed by the host driver package, which is built together with this
+// XRT, so they are resolved from the driver store, same as on Windows.
+//
+// This applies to platform files only.  xilinx_xrt() deliberately stays
+// dladdr() based: the driver store holds Windows binaries, while the Linux
+// XRT libraries are installed under the XRT install prefix.
+//
+// Returns an empty list if the driver store is not available.
 std::vector<sfs::path>
 platform_repo_path()
 {
-  std::vector<sfs::path> paths;
-  auto xrt = xrt_core::environment::xilinx_xrt();
+  if (auto driver_store = system_driver_store(); !driver_store.empty())
+    return {driver_store};
 
-  if (xrt.filename() == "xrt")
-    paths.push_back(xrt / "share");
-  else
-    paths.push_back(xrt / "share/xrt");
-
-  if (auto xdg = xrt_core::utils::getenv("XDG_DATA_HOME"); !xdg.empty()) {
-    paths.push_back(sfs::path(xdg) / "xrt" / XRT_VERSION_STRING);
-    paths.push_back(sfs::path(xdg) / "xrt");
-  }
-  else if (auto home = xrt_core::utils::getenv("HOME"); !home.empty()) {
-    paths.push_back(sfs::path(home) / ".local/share/xrt" / XRT_VERSION_STRING);
-    paths.push_back(sfs::path(home) / ".local/share/xrt");
-  }
-
-  return paths;
+  return {};
 }
 
 } // xrt_core::detail
