@@ -15,13 +15,27 @@ env:
   EDF_MIRROR: '/proj/yocto/edf/2027.1/stable/Yocto_edf_2027.1_latest'
 
 jobs:
+  # Disk/CPU of the apu runner hosts (4 probes so idle instances on both hosts are likely hit)
+  runner-probe:
+    runs-on: apu
+    strategy:
+      matrix:
+        probe: [1, 2, 3, 4]
+    steps:
+      - name: Runner resources
+        run: |
+          echo "host=$(hostname) cpus=$(nproc) mem=$(free -g | awk '/Mem/{print $2}')G"
+          df -h "$GITHUB_WORKSPACE" /wrk/ci 2>&1
+          find /wrk/ci/yocto-buildtools -maxdepth 2 2>&1 | head -8
+
   edge-yocto-build:
     runs-on: apu
     timeout-minutes: 360
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
-        aarch: [gen1]
+        aarch: [gen1, gen2]
     steps:
       - name: Mint GHE token for actions-int
         id: ghe-token

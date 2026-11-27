@@ -175,6 +175,16 @@ else
     echo "repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE"
     yes ""| repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
 
+    # meta-xilinx-internal (AMD-AECG-SSW-PRODUCT) is not used by the public EDF layers
+    # this build sets up (edf-init-build-env), and CI has no access to that org
+    mkdir -p .repo/local_manifests
+    cat > .repo/local_manifests/xrt.xml <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remove-project name="AMD-AECG-SSW-PRODUCT/meta-xilinx-internal" optional="true"/>
+</manifest>
+XML
+
     repo sync
     source edf-init-build-env
     install_recipes
