@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi Hou <lizhih@xilinx.com>
  *
@@ -207,7 +208,7 @@ static int axigate_probe(struct platform_device *pdev)
 		len = p ? ((ulong)p - (ulong)res->name) :
 			sizeof(gate->ep_name) - 1;
 
-		strncpy(gate->ep_name, res->name, len);
+		strscpy(gate->ep_name, res->name, len + 1);
 	}
 
 	gate->base = ioremap_nocache(res->start,
